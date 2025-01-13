@@ -1,19 +1,19 @@
 import { createBrowserRouter } from "react-router-dom";
-import App from "../App";
-import Chats from "../pages/Chats";
+import MainLayout from "../layout/MainLayout";
+import { ErrorPage, Login, Welcome } from "../pages";
 import PrivateRoute from "./PrivateRoute";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
-    errorElement: <h1>Error</h1>,
+    element: <MainLayout />,
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
         path: "/",
         element: (
           <PrivateRoute>
-            <Chats />
+            <Welcome />
           </PrivateRoute>
         ),
       },
@@ -26,6 +26,10 @@ const router = createBrowserRouter([
       //     element: <Dashboard />,
       //   },
     ],
+  },
+  {
+    path: "/login",
+    element: <Login />,
   },
 ]);
 

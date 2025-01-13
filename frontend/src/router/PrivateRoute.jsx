@@ -1,4 +1,4 @@
-import Login from "../pages/Login";
+import { Navigate } from "react-router-dom";
 import { useUserStore } from "../zustand/userStore";
 
 const PrivateRoute = ({ children }) => {
@@ -6,7 +6,7 @@ const PrivateRoute = ({ children }) => {
   const { isAuthenticated } = useUserStore();
 
   if (!isAuthenticated) {
-    return <Login />;
+    return <Navigate to="/login" />;
   }
 
   return children;
