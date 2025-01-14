@@ -1,5 +1,6 @@
 {
   "name": "backend",
+<<<<<<< HEAD
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -19,3 +20,18 @@
     "socket.io": "^4.8.1"
   }
 }
+=======
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.13",
+    "fastify": "^5.2.1"
+  }
+}
+>>>>>>> 0cd7e5d (feat: working on backend using bun and fastify, added nativewind for mobile)
