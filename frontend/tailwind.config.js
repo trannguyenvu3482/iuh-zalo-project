@@ -8,5 +8,5 @@ export default {
       },
     },
   },
-  plugins: ["@tailwindcss/forms"],
+  plugins: ["@tailwindcss/forms", "prettier-plugin-tailwindcss"],
 };

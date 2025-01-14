@@ -10,7 +10,7 @@ const MainLayout = () => {
         <title>Zalo - Vũ Trần</title>
       </Helmet>
       <Sidebar />
-      <main className="w-full">
+      <main className="w-full overflow-hidden">
         <Outlet />
       </main>
     </div>

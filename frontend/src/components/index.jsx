@@ -1,3 +1,5 @@
+import ChatRoom from "./ChatRoom";
 import Sidebar from "./Sidebar";
 import SidebarControls from "./SidebarControls";
-export { Sidebar, SidebarControls };
+
+export { ChatRoom, Sidebar, SidebarControls };
