@@ -1,79 +1,80 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
-import { useUserStore } from "../zustand/userStore";
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useUserStore } from '../zustand/userStore'
 const ChatsTest = () => {
-  const { logout } = useUserStore();
-  const navigate = useNavigate();
-  const [messages, setMessages] = useState([]);
-  const [inputMessage, setInputMessage] = useState("");
+  const { logout } = useUserStore()
+  const navigate = useNavigate()
+  const [messages, setMessages] = useState([])
+  const [inputMessage, setInputMessage] = useState('')
+
   const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
+    logout()
+    navigate('/')
+  }
 
   useEffect(() => {
     const fetchMessages = async () => {
-      const { data, error } = await supabase.from("messages").select("*");
+      const { data, error } = await supabase.from('messages').select('*')
 
       if (error) {
-        console.log(error);
+        console.log(error)
       }
 
-      console.log(">> Messages: ", data);
-      setMessages(data);
-    };
+      console.log('>> Messages: ', data)
+      setMessages(data)
+    }
 
-    fetchMessages();
-  }, []);
+    fetchMessages()
+  }, [])
 
   // Realtime listener
   useEffect(() => {
     const channel = supabase
-      .channel("chat-room")
+      .channel('chat-room')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
         },
         (payload) => {
-          console.log("Change received: ", payload);
-          setMessages([...messages, payload.new]);
-        }
+          console.log('Change received: ', payload)
+          setMessages([...messages, payload.new])
+        },
       )
-      .subscribe();
+      .subscribe()
 
     return () => {
-      channel.unsubscribe();
-    };
-  }, [messages]);
+      channel.unsubscribe()
+    }
+  }, [messages])
 
   const handleSendMessage = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     const { error } = await supabase
-      .from("messages")
+      .from('messages')
       .insert([
-        { text: inputMessage, send_by: "0e014799-8643-4b1f-b9dc-4635e43b48d8" },
-      ]);
+        { text: inputMessage, send_by: '0e014799-8643-4b1f-b9dc-4635e43b48d8' },
+      ])
 
     if (error) {
-      console.log(error);
+      console.log(error)
     }
 
-    setInputMessage("");
-  };
+    setInputMessage('')
+  }
 
   return (
-    <div className="w-full max-h-screen overflow-auto">
-      <div className="w-full mx-auto bg-blue-300  flex flex-col h-full">
-        <h1 className="text-center font-bold text-2xl">Chats</h1>
+    <div className="max-h-screen w-full overflow-auto">
+      <div className="mx-auto flex h-full w-full flex-col bg-blue-300">
+        <h1 className="text-center text-2xl font-bold">Chats</h1>
 
         <ul className="">
           {messages.map((message) => (
             <li
-              className="text-blue-500 font-bold bg-gray-300 w-fit py-2 px-4 rounded-md mt-2"
+              className="mt-2 w-fit rounded-md bg-gray-300 px-4 py-2 font-bold text-blue-500"
               key={message.id}
             >
               {message.text}
@@ -86,7 +87,7 @@ const ChatsTest = () => {
             type="text"
             id="UserEmail"
             placeholder="Enter your message"
-            className="mt-1 rounded-md border-gray-200 shadow-sm sm:text-sm p-2 h-full"
+            className="mt-1 h-full rounded-md border-gray-200 p-2 shadow-sm sm:text-sm"
             onChange={(e) => setInputMessage(e.target.value)}
             value={inputMessage}
           />
@@ -101,7 +102,7 @@ const ChatsTest = () => {
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ChatsTest;
+export default ChatsTest
