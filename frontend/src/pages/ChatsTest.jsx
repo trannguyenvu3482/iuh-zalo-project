@@ -66,11 +66,11 @@ const ChatsTest = () => {
   };
 
   return (
-    <div className="w-full max-h-screen">
-      <div className="max-w-[1440px] mx-auto bg-blue-300 my-6 h-[800px] flex flex-col p-4">
+    <div className="w-full max-h-screen overflow-auto">
+      <div className="w-full mx-auto bg-blue-300  flex flex-col h-full">
         <h1 className="text-center font-bold text-2xl">Chats</h1>
 
-        <ul>
+        <ul className="">
           {messages.map((message) => (
             <li
               className="text-blue-500 font-bold bg-gray-300 w-fit py-2 px-4 rounded-md mt-2"

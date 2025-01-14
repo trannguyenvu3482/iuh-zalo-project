@@ -1,21 +1,26 @@
 import { createBrowserRouter } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import { ErrorPage, Login, Welcome } from "../pages";
+import ChatsTest from "../pages/ChatsTest";
 import PrivateRoute from "./PrivateRoute";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <MainLayout />,
+    element: (
+      <PrivateRoute>
+        <MainLayout />
+      </PrivateRoute>
+    ),
     errorElement: <ErrorPage />,
     children: [
       {
         index: true,
         path: "/",
-        element: (
-          <PrivateRoute>
-            <Welcome />
-          </PrivateRoute>
-        ),
+        element: <Welcome />,
+      },
+      {
+        path: "/chat/:id",
+        element: <ChatsTest />,
       },
       //   {
       //     path: "/register",
