@@ -26,4 +26,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+<<<<<<< HEAD
 >>>>>>> cfd46bf (create mobile)
+=======
+>>>>>>> 9e09406 (create mobile)
+>>>>>>> 4ce08b6 (create mobile)
