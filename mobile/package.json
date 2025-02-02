@@ -18,6 +18,7 @@
     "expo-checkbox": "^4.0.1",
     "expo-status-bar": "~2.0.1",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "expo-symbols": "~0.2.1",
     "expo-system-ui": "~4.0.7",
     "expo-web-browser": "~14.0.2",
@@ -36,11 +37,19 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.6",
+=======
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.6",
+>>>>>>> cfd46bf (create mobile)
     "react-native-gesture-handler": "^2.22.0",
     "react-native-paper": "^5.13.1",
     "react-native-vector-icons": "^10.2.0",
     "react-native-video": "^6.9.1",
     "react-native-web": "~0.19.13"
+<<<<<<< HEAD
+>>>>>>> cfd46bf (create mobile)
+=======
 >>>>>>> cfd46bf (create mobile)
   },
   "devDependencies": {
