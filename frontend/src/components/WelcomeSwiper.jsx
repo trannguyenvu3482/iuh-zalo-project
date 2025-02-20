@@ -10,7 +10,7 @@ import zBusinessBanner from '../assets/imgs/z-business-welcome.png'
 const WelcomeSwiper = () => {
   return (
     <Swiper
-      className="mt-12 flex w-full items-center justify-center"
+      className="mt-12 flex w-full select-none items-center justify-center"
       modules={[Navigation, Pagination, A11y, Autoplay]}
       autoplay={{
         delay: 5000,
