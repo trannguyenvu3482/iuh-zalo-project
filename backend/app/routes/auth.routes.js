@@ -20,4 +20,8 @@ module.exports = function (app) {
   );
 
   app.post("/api/auth/signin", controller.signin);
+
+  app.get("/api/auth/generate-qr", controller.generateQR);
+
+  app.post("/api/auth/scan-qr", controller.scanQR);
 };

@@ -21,18 +21,17 @@ db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
 // Setup auth tables
-db.user = require("../models/user.model.js")(sequelize, Sequelize);
-db.role = require("../models/role.model.js")(sequelize, Sequelize);
+db.User = require("../models/user.model.js")(sequelize, Sequelize.DataTypes);
+db.Role = require("../models/role.model.js")(sequelize, Sequelize.DataTypes);
 
-db.role.belongsToMany(db.user, {
+db.Role.belongsToMany(db.User, {
   through: "user_roles",
 });
-db.user.belongsToMany(db.role, {
+db.User.belongsToMany(db.Role, {
   through: "user_roles",
 });
 
 db.ROLES = ["user", "admin", "moderator"];
 
 // Setup message tables
-
 module.exports = db;
