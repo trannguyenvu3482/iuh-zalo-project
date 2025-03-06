@@ -20,15 +20,25 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(100),
         allowNull: false,
         unique: true,
-        // validate: {
-        //   isEmail: {
-        //     msg: "Email is not valid",
-        //   },
-        // },
+        validate: {
+          isEmail: {
+            msg: "Email is not valid",
+          },
+        },
       },
       password: {
         type: DataTypes.STRING(255),
         allowNull: false,
+      },
+      phoneNumber: {
+        type: DataTypes.STRING(15),
+        allowNull: false,
+        unique: true,
+        validate: {
+          isNumeric: {
+            msg: "Phone number must be numeric",
+          },
+        },
       },
       // gender: {
       //   type: DataTypes.STRING(10),

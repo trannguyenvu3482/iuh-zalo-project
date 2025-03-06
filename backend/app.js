@@ -6,63 +6,62 @@ require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: "http://localhost:8081",
+    methods: ["GET", "POST"],
+  },
+});
 
-var corsOptions = {
-  origin: "http://localhost:8081",
-};
-
+const corsOptions = { origin: "http://localhost:8081" };
 app.use(cors(corsOptions));
 
-// parse requests of content-type - application/json
 app.use(express.json());
-
-// parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
 
-// database
 const db = require("./app/models");
 const Role = db.Role;
 
-db.sequelize.sync();
+db.sequelize.sync().then(() => {
+  console.log("Database synced");
+});
 
-// force: true will drop the table if it already exists
-// db.sequelize.sync({ force: true }).then(() => {
-//   console.log("Drop and Resync Database with { force: true }");
-//   initial();
-// });
-
-// simple route
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to Zalo." });
 });
 
-// routes
 require("./app/routes/auth.routes")(app);
-require("./app/routes/user.routes")(app);
-
-// set port, listen for requests
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}.`);
-});
+require("./app/routes/user.routes")(app); // Existing user routes
+const userRoutes = require("./app/routes/user.routes"); // Renamed from messageRoutes
+const { setIo } = require("./app/controllers/message.controller"); // Use one controller to set io
+userRoutes(app);
+setIo(io);
 
 io.on("connection", (socket) => {
   console.log("A user connected");
-
-  // Optionally, you can handle authentication for socket connections here
-  // e.g., by checking a token sent during the handshake:
-  // const token = socket.handshake.query.token;
-
-  // Listen for chat messages
-  socket.on("chat message", (msg) => {
-    // Broadcast the message to all connected clients
-    io.emit("chat message", msg);
-  });
+  const userId = socket.handshake.query.userId;
+  if (userId) {
+    db.ConversationMember.findAll({ where: { userId } }).then((members) => {
+      members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
+    });
+    socket.join(`user_${userId}`);
+  }
 
   socket.on("joinQRRoom", (token) => {
     console.log("Client joining room:", token);
     socket.join(token);
+  });
+
+  socket.on("chat message", (msg) => {
+    io.emit("chat message", msg);
+  });
+
+  socket.on("friend_request", (data) => {
+    console.log(`Friend request from ${data.from} to ${userId}`);
+  });
+
+  socket.on("friend_accepted", (data) => {
+    console.log(`Friend accepted: ${data.from} and ${userId}`);
   });
 
   socket.on("disconnect", () => {
@@ -70,17 +69,27 @@ io.on("connection", (socket) => {
   });
 });
 
-// Initial data
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Something went wrong";
+  console.error(
+    `[${req.method} ${req.url}] Error ${statusCode}: ${message}`,
+    err.stack
+  );
+  res.status(statusCode).json({
+    status: err.status || "error",
+    error: message,
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+});
+
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}.`);
+});
+
 function initial() {
-  Role.create({
-    name: "user",
-  });
-
-  Role.create({
-    name: "moderator",
-  });
-
-  Role.create({
-    name: "admin",
-  });
+  Role.create({ name: "user" });
+  Role.create({ name: "moderator" });
+  Role.create({ name: "admin" });
 }

@@ -20,6 +20,7 @@ exports.signup = async (req, res) => {
       email: req.body.email,
       password: bcrypt.hashSync(req.body.password, 10),
       fullname: req.body.fullname,
+      phoneNumber: req.body.phoneNumber,
     });
 
     await assignRolesToUser(user, req.body.roles);

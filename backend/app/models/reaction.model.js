@@ -1,24 +1,23 @@
 module.exports = (sequelize, DataTypes) => {
-  const Conversation = sequelize.define(
-    "conversations",
+  const Reaction = sequelize.define(
+    "reaction",
     {
       id: {
         type: DataTypes.UUID,
         primaryKey: true,
         defaultValue: DataTypes.UUIDV4,
       },
-      name: {
-        type: DataTypes.STRING(255),
-        allowNull: true,
-      },
       type: {
-        type: DataTypes.ENUM("PRIVATE", "GROUP"),
+        type: DataTypes.ENUM("LIKE", "HEART", "LAUGH", "WOW", "SAD", "ANGRY"),
         allowNull: false,
-        defaultValue: "PRIVATE",
       },
-      avatar: {
-        type: DataTypes.STRING,
-        allowNull: true,
+      userId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      messageId: {
+        type: DataTypes.UUID,
+        allowNull: false,
       },
     },
     {
@@ -28,5 +27,5 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
-  return Conversation;
+  return Reaction;
 };
