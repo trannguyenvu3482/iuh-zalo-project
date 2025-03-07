@@ -22,8 +22,6 @@ const BOTTOM_TAB_BUTTONS = [
 const SidebarControls = () => {
   const location = useLocation()
 
-  console.log(location.pathname)
-
   return (
     <div className="controls flex h-full min-w-[64px] select-none flex-col items-center justify-between bg-primary-blue">
       {/* TOP TABS */}

@@ -10,7 +10,7 @@ exports.searchUserByPhone = async (phoneNumber, userId) => {
   try {
     const user = await User.findOne({
       where: { phoneNumber },
-      attributes: ["id", "username", "phoneNumber"],
+      attributes: ["id", "username", "phoneNumber", "fullname"],
     });
     if (!user) throw new NotFoundError("User not found");
     if (user.id === userId) throw new ValidationError("Cannot search yourself");
