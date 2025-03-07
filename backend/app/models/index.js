@@ -79,6 +79,7 @@ db.Reaction.belongsTo(db.Message, { foreignKey: "messageId", as: "message" });
 db.User.hasMany(db.Reaction, { foreignKey: "userId", as: "reactions" });
 db.Reaction.belongsTo(db.User, { foreignKey: "userId", as: "user" });
 
+// User - User relationship
 db.User.belongsToMany(db.User, {
   as: "friends",
   through: db.Friendship,
@@ -90,6 +91,18 @@ db.User.belongsToMany(db.User, {
   through: db.Friendship,
   foreignKey: "friendId",
   otherKey: "userId",
+});
+
+// Add Friendship to User associations
+db.Friendship.belongsTo(db.User, { foreignKey: "userId", as: "user" });
+db.Friendship.belongsTo(db.User, { foreignKey: "friendId", as: "friend" });
+db.User.hasMany(db.Friendship, {
+  foreignKey: "userId",
+  as: "friendshipsInitiated",
+});
+db.User.hasMany(db.Friendship, {
+  foreignKey: "friendId",
+  as: "friendshipsReceived",
 });
 
 db.sequelize.sync({ force: false }).then(() => {

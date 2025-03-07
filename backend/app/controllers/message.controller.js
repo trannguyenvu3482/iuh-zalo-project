@@ -1,7 +1,7 @@
-// controllers/message.controller.js
 const messageService = require("../services/message.service");
 const { UnauthorizedError } = require("../exceptions/errors");
 const upload = require("../middleware/fileUpload");
+const { successResponse } = require("../utils/response");
 
 let io;
 
@@ -33,7 +33,12 @@ exports.sendPrivateMessage = [
       if (io) {
         io.to(`conversation_${conversationId}`).emit("new_message", newMessage);
       }
-      res.status(201).json({ message: newMessage, conversationId });
+      successResponse(
+        res,
+        "Private message sent successfully",
+        { message: newMessage, conversationId },
+        201
+      );
     } catch (error) {
       next(error);
     }
@@ -59,7 +64,7 @@ exports.sendGroupMessage = [
       if (io) {
         io.to(`conversation_${conversationId}`).emit("new_message", newMessage);
       }
-      res.status(201).json(newMessage);
+      successResponse(res, "Group message sent successfully", newMessage, 201);
     } catch (error) {
       next(error);
     }
