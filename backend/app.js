@@ -1,6 +1,7 @@
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
+const path = require("path");
 const cors = require("cors");
 require("dotenv").config();
 
@@ -19,6 +20,9 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads folder// Serve static files from uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 const db = require("./app/models");
 const Role = db.Role;
 
@@ -31,10 +35,9 @@ app.get("/", (req, res) => {
 });
 
 require("./app/routes/auth.routes")(app);
-require("./app/routes/user.routes")(app); // Existing user routes
-const userRoutes = require("./app/routes/user.routes"); // Renamed from messageRoutes
+require("./app/routes/friend.routes")(app);
+require("./app/routes/user.routes")(app);
 const { setIo } = require("./app/controllers/message.controller"); // Use one controller to set io
-userRoutes(app);
 setIo(io);
 
 io.on("connection", (socket) => {
@@ -88,8 +91,11 @@ server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`);
 });
 
+// Initial roles
 function initial() {
   Role.create({ name: "user" });
   Role.create({ name: "moderator" });
   Role.create({ name: "admin" });
 }
+
+// initial();

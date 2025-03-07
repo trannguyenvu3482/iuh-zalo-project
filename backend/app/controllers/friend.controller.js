@@ -1,5 +1,6 @@
 const friendService = require("../services/friend.service");
-const { UnauthorizedError } = require("../exceptions/errors");
+const { UnauthorizedError, ValidationError } = require("../exceptions/errors");
+const { successResponse } = require("../utils/response");
 
 let io;
 
@@ -8,19 +9,22 @@ const setIo = (socketIo) => {
 };
 
 exports.addFriend = async (req, res, next) => {
-  const { phoneNumber } = req.body;
-  const userId = req.user?.id;
+  const { friendId } = req.body;
+
+  if (!friendId) return next(new ValidationError("Friend ID is required"));
+
+  const userId = req?.userId;
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    const friendship = await friendService.addFriend(userId, phoneNumber);
+    const friendship = await friendService.addFriend(userId, friendId);
     if (io) {
       io.to(`user_${friendship.friendId}`).emit("friend_request", {
         from: userId,
         friendshipId: friendship.id,
       });
     }
-    res.status(201).json(friendship);
+    successResponse(res, "Friend request sent successfully", friendship);
   } catch (error) {
     next(error);
   }
@@ -28,7 +32,7 @@ exports.addFriend = async (req, res, next) => {
 
 exports.acceptFriend = async (req, res, next) => {
   const { friendId } = req.body;
-  const userId = req.user?.id;
+  const userId = req?.userId;
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
@@ -36,19 +40,19 @@ exports.acceptFriend = async (req, res, next) => {
     if (io) {
       io.to(`user_${friendId}`).emit("friend_accepted", { from: userId });
     }
-    res.status(200).json(friendship);
+    successResponse(res, "Friend request accepted successfully", friendship);
   } catch (error) {
     next(error);
   }
 };
 
 exports.getFriendList = async (req, res, next) => {
-  const userId = req.user?.id;
+  const userId = req?.userId;
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
     const friends = await friendService.getFriendList(userId);
-    res.status(200).json(friends);
+    successResponse(res, "Friends fetched successfully", friends);
   } catch (error) {
     next(error);
   }

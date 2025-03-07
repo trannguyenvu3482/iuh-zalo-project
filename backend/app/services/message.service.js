@@ -8,7 +8,11 @@ const {
   ConversationMember,
 } = require("../models");
 const { v4: uuidv4 } = require("uuid");
-const { NotFoundError, ForbiddenError, AppError } = require("../errors");
+const {
+  NotFoundError,
+  ForbiddenError,
+  AppError,
+} = require("../exceptions/errors");
 
 exports.createPrivateMessage = async (
   senderId,

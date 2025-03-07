@@ -6,13 +6,9 @@ const {
   AppError,
 } = require("../exceptions/errors");
 
-exports.addFriend = async (userId, friendPhoneNumber) => {
+exports.addFriend = async (userId, friendId) => {
   try {
-    if (!friendPhoneNumber)
-      throw new ValidationError("Phone number is required");
-    const friend = await User.findOne({
-      where: { phoneNumber: friendPhoneNumber },
-    });
+    const friend = await User.findByPk(friendId);
     if (!friend) throw new NotFoundError("User not found");
     if (userId === friend.id)
       throw new ValidationError("Cannot add yourself as a friend");
@@ -25,10 +21,13 @@ exports.addFriend = async (userId, friendPhoneNumber) => {
         ],
       },
     });
-    if (existingFriendship)
-      throw new ValidationError(
-        "Friend request already exists or user is already a friend"
-      );
+    if (existingFriendship) {
+      if (existingFriendship.status === "PENDING") {
+        throw new ValidationError("Friend request already exists");
+      } else if (existingFriendship.status === "ACCEPTED") {
+        throw new ValidationError("User is already a friend");
+      }
+    }
 
     const friendship = await Friendship.create({
       userId,
@@ -72,15 +71,25 @@ exports.getFriendList = async (userId) => {
       include: [
         {
           model: User,
-          as: "friends",
+          as: "friend",
           attributes: ["id", "username", "phoneNumber"],
-        },
+        }, // Changed from 'friends' to 'friend'
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "username", "phoneNumber"],
+        }, // Include initiator too
       ],
     });
 
-    return friendships.map((f) =>
-      f.userId === userId ? f.friend : f.userId === userId ? null : f.friend
-    );
+    // Map to return the friend (not the user themselves)
+    return friendships
+      .map((f) => {
+        if (f.userId === userId) return f.friend; // Return the friend if userId matches
+        if (f.friendId === userId) return f.user; // Return the user if friendId matches
+        return null;
+      })
+      .filter((f) => f !== null);
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to fetch friend list", 500);

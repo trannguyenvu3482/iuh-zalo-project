@@ -3,11 +3,11 @@ module.exports = (sequelize, DataTypes) => {
     "friendship",
     {
       userId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
         allowNull: false,
       },
       friendId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
         allowNull: false,
       },
       status: {

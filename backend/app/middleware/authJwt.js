@@ -2,8 +2,12 @@ const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config.js");
 const db = require("../models");
 const User = db.User;
-
+const { ValidationError } = require("../exceptions/errors.js");
 verifyToken = (req, res, next) => {
+  if (!req.headers["authorization"]) {
+    throw new ValidationError("No token provided!");
+  }
+
   let token = req.headers["authorization"].split(" ")[1];
 
   console.log(token);

@@ -1,5 +1,6 @@
 const reactionService = require("../services/reaction.service");
 const { UnauthorizedError } = require("../errors");
+const { successResponse } = require("../utils/response");
 
 let io;
 
@@ -24,7 +25,7 @@ exports.editMessage = async (req, res, next) => {
         updatedMessage
       );
     }
-    res.status(200).json(updatedMessage);
+    successResponse(res, "Message edited successfully", updatedMessage);
   } catch (error) {
     next(error);
   }
@@ -44,7 +45,7 @@ exports.addReaction = async (req, res, next) => {
         reaction
       );
     }
-    res.status(201).json(reaction);
+    successResponse(res, "Reaction added successfully", reaction);
   } catch (error) {
     next(error);
   }
@@ -61,7 +62,7 @@ exports.getReactions = async (req, res, next) => {
       messageId,
       aggregate === "true"
     );
-    res.status(200).json(reactions);
+    successResponse(res, "Reactions fetched successfully", reactions);
   } catch (error) {
     next(error);
   }

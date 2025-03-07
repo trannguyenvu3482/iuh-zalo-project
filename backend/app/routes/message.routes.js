@@ -63,20 +63,4 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     reactionController.getReactions
   );
-
-  app.post(
-    "/api/users/friends/add",
-    [authJwt.verifyToken],
-    friendController.addFriend
-  );
-  app.put(
-    "/api/users/friends/accept",
-    [authJwt.verifyToken],
-    friendController.acceptFriend
-  );
-  app.get(
-    "/api/users/friends",
-    [authJwt.verifyToken],
-    friendController.getFriendList
-  );
 };

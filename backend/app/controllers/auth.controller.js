@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { assignRolesToUser } = require("../services/auth.service");
+const { successResponse } = require("../utils/response");
 
 const pendingLogins = {};
 
