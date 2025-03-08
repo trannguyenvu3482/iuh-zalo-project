@@ -46,5 +46,3 @@ exports.createGroup = async (req, res, next) => {
     next(error);
   }
 };
-
-// Apply similar changes to updateConversation and getRecent

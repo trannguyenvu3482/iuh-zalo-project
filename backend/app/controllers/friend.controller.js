@@ -35,8 +35,12 @@ exports.acceptFriend = async (req, res, next) => {
   const userId = req?.userId;
 
   try {
+    if (!friendId) throw new ValidationError("Friend ID is required");
     if (!userId) throw new UnauthorizedError("Authentication required");
+
+    // Accept the friend request
     const friendship = await friendService.acceptFriend(userId, friendId);
+
     if (io) {
       io.to(`user_${friendId}`).emit("friend_accepted", { from: userId });
     }

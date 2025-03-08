@@ -41,6 +41,25 @@ exports.getConversationMessages = async (conversationId, userId) => {
   }
 };
 
+exports.createPrivateConversation = async (userId1, userId2) => {
+  const existingConversation = await Conversation.findOne({
+    isGroup: false,
+    members: { $all: [{ userId: userId1 }, { userId: userId2 }] },
+    $expr: { $eq: [{ $size: "$members" }, 2] },
+  });
+
+  if (existingConversation) {
+    return existingConversation;
+  }
+
+  const conversation = new Conversation({
+    members: [{ userId: userId1 }, { userId: userId2 }],
+    isGroup: false,
+  });
+  await conversation.save();
+  return conversation;
+};
+
 exports.createGroupConversation = async (
   name,
   userIds,
