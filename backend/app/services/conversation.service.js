@@ -48,6 +48,7 @@ exports.createPrivateConversation = async (userId1, userId2) => {
     $expr: { $eq: [{ $size: "$members" }, 2] },
   });
 
+
   if (existingConversation) {
     return existingConversation;
   }
@@ -57,6 +58,13 @@ exports.createPrivateConversation = async (userId1, userId2) => {
     isGroup: false,
   });
   await conversation.save();
+
+  // // create conversation member
+  // ConversationMember.bulkCreate([
+  //   { userId: userId1, conversationId: conversation.id, role: "MEMBER" },
+  //   { userId: userId2, conversationId: conversation.id, role: "MEMBER" },
+  // ]);
+
   return conversation;
 };
 
