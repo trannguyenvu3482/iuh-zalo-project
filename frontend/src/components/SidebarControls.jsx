@@ -7,6 +7,7 @@ import contactsIcon from '../assets/icons/contacts-btn.png'
 import settingsIcon from '../assets/icons/settings-btn.png'
 import todoIcon from '../assets/icons/todo-btn.png'
 import zCloudIcon from '../assets/icons/zcloud-btn.png'
+import Avatar from './Avatar'
 
 const TOP_TAB_BUTTONS = [
   { name: 'Chats', icon: chatIcon, link: '/', active: true },
@@ -22,18 +23,17 @@ const BOTTOM_TAB_BUTTONS = [
 const SidebarControls = () => {
   const location = useLocation()
 
-  console.log(location.pathname)
-
   return (
     <div className="controls flex h-full min-w-[64px] select-none flex-col items-center justify-between bg-primary-blue">
       {/* TOP TABS */}
       <div>
         <div className="pt-8">
-          <img
+          {/* <img
             className="h-[48px] w-[48px] rounded-full border border-gray-100"
             src="https://s120-ava-talk.zadn.vn/b/a/c/2/7/120/e67b9b28aa1641d0fb5241e27aee9087.jpg"
             alt=""
-          />
+          /> */}
+          <Avatar />
         </div>
 
         {/* Button groups */}

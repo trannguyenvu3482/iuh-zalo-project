@@ -47,6 +47,7 @@ exports.acceptFriend = async (userId, friendId) => {
     const friendship = await Friendship.findOne({
       where: { userId: friendId, friendId: userId, status: "PENDING" },
     });
+    
     if (!friendship) throw new NotFoundError("No pending friend request found");
 
     friendship.status = "ACCEPTED";
@@ -94,4 +95,18 @@ exports.getFriendList = async (userId) => {
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to fetch friend list", 500);
   }
+};
+
+exports.getMyFriendRequests = async (userId) => {
+  const friendRequests = await Friendship.findAll({
+    where: { friendId: userId, status: "PENDING" },
+    include: [
+      {
+        model: User,
+        as: "user",
+        attributes: ["id", "username", "phoneNumber"],
+      },
+    ],
+  });
+  return friendRequests;
 };

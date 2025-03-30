@@ -47,4 +47,22 @@ exports.createGroup = async (req, res, next) => {
   }
 };
 
-// Apply similar changes to updateConversation and getRecent
+exports.createPrivateConversation = async (req, res, next) => {
+  const { userId2 } = req.body;
+  const userId = req.user?.id;
+
+  try {
+    if (!userId) throw new UnauthorizedError("Authentication required");
+
+    const conversation = await conversationService.createPrivateConversation(
+      userId,
+      userId2
+    );
+    if (io) {
+      io.to(`user_${userId2}`).emit("conversation_created", conversation);
+    }
+    successResponse(res, "Private conversation created successfully", conversation, 201);
+  } catch (error) {
+    next(error);
+  }
+};
