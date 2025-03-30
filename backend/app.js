@@ -59,6 +59,35 @@ io.on("connection", (socket) => {
     io.emit("chat message", msg);
   });
 
+  socket.on("typing_start", ({ conversationId }) => {
+    socket.to(`conversation_${conversationId}`).emit("user_typing", {
+      userId: socket.userId,
+      conversationId
+    });
+  });
+
+  socket.on("typing_end", ({ conversationId }) => {
+    socket.to(`conversation_${conversationId}`).emit("user_stopped_typing", {
+      userId: socket.userId,
+      conversationId
+    });
+  });
+
+  socket.on("message_read", async ({ messageId, conversationId }) => {
+    try {
+      // Update message read status in database
+      await messageService.markMessageAsRead(messageId, socket.userId);
+      
+      // Notify other users in the conversation
+      socket.to(`conversation_${conversationId}`).emit("message_read_update", {
+        messageId,
+        userId: socket.userId
+      });
+    } catch (error) {
+      socket.emit("error", { message: "Failed to mark message as read" });
+    }
+  });
+
   socket.on("friend_request", (data) => {
     console.log(`Friend request from ${data.from} to ${userId}`);
   });
@@ -69,6 +98,18 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("A user disconnected");
+  });
+
+  socket.on("reconnect_attempt", () => {
+    if (socket.userId) {
+      db.ConversationMember.findAll({ where: { userId: socket.userId } })
+        .then((members) => {
+          members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
+        })
+        .catch(error => {
+          console.error("Reconnection error:", error);
+        });
+    }
   });
 });
 

@@ -1,1 +1,3 @@
-export const secret = process.env.JWT_SECRET_KEY;
+module.exports = {
+  secret: process.env.JWT_SECRET_KEY,
+};
