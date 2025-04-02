@@ -88,7 +88,7 @@ const Sidebar = () => {
               </svg>
             </button>
             <input
-              className="input rounded-md border border-transparent bg-[#ebecf0] py-[5px] pl-8 pr-1 text-sm placeholder-gray-500 transition-all duration-300 focus:border-blue-500 focus:outline-none"
+              className="input rounded-md border border-transparent bg-[#ebecf0] py-[5px] pl-8 pr-12 text-sm placeholder-gray-500 transition-all duration-300 focus:border-blue-500 focus:outline-none"
               placeholder="Tìm kiếm"
               required=""
               type="text"
@@ -98,23 +98,23 @@ const Sidebar = () => {
             />
           </form>
 
-          <div className="flex h-[30px] w-full items-center justify-center">
+          <div className="flex h-[30px] w-fit items-center justify-center">
             {isSearching ? (
               <button
                 onClick={() => {
                   setSearchValue('')
                   setIsSearching(false)
                 }}
-                className="ml-1 h-full w-full font-semibold hover:bg-gray-300"
+                className="h-full w-full rounded-sm px-3.5 font-semibold hover:bg-gray-200"
               >
                 Đóng
               </button>
             ) : (
               <>
-                <button className="flex h-full items-center justify-center rounded-md p-2 transition-all hover:bg-gray-200">
+                <button className="flex h-full items-center justify-center rounded-md p-2 hover:bg-gray-200">
                   <img src={addFriendIcon} alt="" />
                 </button>
-                <button className="flex h-full items-center justify-center rounded-md p-2 transition-all hover:bg-gray-200">
+                <button className="flex h-full items-center justify-center rounded-md p-2 hover:bg-gray-200">
                   <img src={createGroupIcon} alt="" />
                 </button>
               </>
