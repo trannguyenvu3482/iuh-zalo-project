@@ -24,7 +24,7 @@ export const Button = forwardRef<View, ButtonProps>(
         <Text
           className={`${styles.buttonText} ${
             type === "primary" ? styles.primaryText : styles.secondaryText
-          }`}
+          } ${touchableProps.disabled ? "opacity-15" : ""}`}
         >
           {title}
         </Text>

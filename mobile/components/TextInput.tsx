@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   TextInput as RNTextInput,
@@ -26,8 +26,8 @@ const TextInput = ({
   return (
     <View className={`w-full ${containerClassName}`}>
       <View
-        className={`flex-row items-center ${
-          isFocused ? "border-blue-500" : "border-gray-300"
+        className={`flex-row items-center border-b border-b-gray-300 ${
+          isFocused ? "border-b-2 border-b-primary" : ""
         } ${error ? "border-red-500" : ""}`}
         style={[
           {
@@ -36,7 +36,7 @@ const TextInput = ({
         ]}
       >
         <RNTextInput
-          className="flex-1 py-3 text-base bg-gray-100 text-black w-full"
+          className="flex-1 py-3 text-xl text-black w-full"
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setIsFocused(true)}
@@ -46,7 +46,7 @@ const TextInput = ({
         />
         {value && value.length > 0 && !secureTextEntry && (
           <TouchableOpacity onPress={() => onChangeText?.("")} className="p-2">
-            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            <AntDesign name="close" size={20} color="#aaa" />
           </TouchableOpacity>
         )}
         {secureTextEntry && (

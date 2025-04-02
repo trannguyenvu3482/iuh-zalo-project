@@ -1,32 +1,46 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { Text, TouchableOpacity, View, ViewProps } from "react-native";
+import { useRouter } from "expo-router";
+import { Text, TouchableOpacity, View } from "react-native";
 
-interface HeaderProps extends ViewProps {
-  title: string;
+interface HeaderProps {
+  title?: string;
   showBackButton?: boolean;
+  onBackPress?: () => void;
+  rightComponent?: React.ReactNode;
 }
 
 const Header = ({
-  title,
-  showBackButton = true,
-  className,
-  ...props
+  title = "Tìm kiếm",
+  showBackButton = false,
+  onBackPress,
+  rightComponent,
 }: HeaderProps) => {
+  const router = useRouter();
+
+  const handleBackPress = () => {
+    if (onBackPress) {
+      onBackPress();
+    } else {
+      router.back();
+    }
+  };
+
   return (
-    <View
-      className={`flex-row gap-4 bg-blue-500 px-4 py-4 border-b border-gray-200 ${className || ""}`}
-      style={{
-        flexDirection: "row",
-      }}
-      {...props}
-    >
-      {showBackButton && (
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
-      <Text className="text-xl font-bold text-white">{title}</Text>
+    <View className="flex-row items-center justify-between px-4 py-3 bg-primary border-b border-gray-200">
+      <View className="flex-row items-center">
+        {showBackButton && (
+          <TouchableOpacity
+            onPress={handleBackPress}
+            className="mr-3"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={24} color="white" />
+          </TouchableOpacity>
+        )}
+        <View className="flex-row items-center">
+          <Text className="ml-2 text-lg font-semibold text-white">{title}</Text>
+        </View>
+      </View>
     </View>
   );
 };

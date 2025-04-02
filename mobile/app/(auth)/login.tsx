@@ -1,33 +1,34 @@
-import { Link } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Button } from "~/components/Button";
 import Header from "~/components/Header";
 import TextInput from "~/components/TextInput";
-import { images } from "~/constants/images";
 
 const Login = () => {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
-    // TODO: Implement login logic
-    console.log("Login with:", { phone, password });
+  const handleNext = () => {
+    if (phone === "1" && password === "1") {
+      router.replace("/(root)/messages");
+    } else {
+      console.log("Login with:", { phone, password });
+    }
   };
+
+  const isFormValid = phone.length > 0 && password.length > 0;
 
   return (
     <SafeAreaView className="flex-1">
-      <Header title="Đăng nhập" showBackButton={false} className="bg-white" />
-      <View className="flex-1 items-center justify-center px-4">
-        <Image
-          className="w-[140px] h-auto object-cover mb-10"
-          source={images.zaloLogo}
-          resizeMode="contain"
-        />
-
-        <View className="w-full gap-4">
+      <Header title="Đăng nhập" showBackButton />
+      <View className="bg-gray-100 w-full p-4">
+        <Text>Vui lòng nhập số điện thoại và mật khẩu để đăng nhập</Text>
+      </View>
+      <View className="flex-1 items-center px-4 mt-4">
+        <View className="w-full gap-4 flex-1">
           <TextInput
             placeholder="Số điện thoại"
             keyboardType="phone-pad"
@@ -42,25 +43,26 @@ const Login = () => {
             onChangeText={setPassword}
           />
 
-          <TouchableOpacity className="items-end">
-            <Text className="text-blue-500">Quên mật khẩu?</Text>
+          <TouchableOpacity className="items-start">
+            <Text className="text-blue-500">Lấy lại mật khẩu</Text>
           </TouchableOpacity>
-
-          <Button
-            onPress={handleLogin}
-            title="Đăng nhập"
-            type="primary"
-            className="mt-4"
-          />
         </View>
 
-        <View className="flex-row items-center justify-center mt-8">
-          <Text className="text-gray-500">Chưa có tài khoản? </Text>
-          <Link href="/(auth)/signup" asChild>
-            <TouchableOpacity>
-              <Text className="text-blue-500">Đăng ký</Text>
-            </TouchableOpacity>
-          </Link>
+        <View className="w-full flex-row items-center justify-between mt-8 mb-4">
+          <TouchableOpacity className="flex-row items-center gap-1">
+            <Text className="text-gray-500">Câu hỏi thường gặp</Text>
+            <Ionicons name="chevron-forward" size={14} color="#aaa" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleNext}
+            disabled={!isFormValid}
+            className={`w-12 h-12 rounded-full items-center justify-center ${
+              isFormValid ? "bg-blue-500" : "bg-gray-300"
+            }`}
+          >
+            <Ionicons name="arrow-forward" size={24} color="white" />
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>

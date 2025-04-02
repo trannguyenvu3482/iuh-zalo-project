@@ -13,6 +13,10 @@ export default function Layout() {
         name="(auth)"
         options={{ title: "Auth", headerShown: false }}
       />
+      <Stack.Screen
+        name="(root)"
+        options={{ title: "Root", headerShown: false }}
+      />
     </Stack>
   );
 }
