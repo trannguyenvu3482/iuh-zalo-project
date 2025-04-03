@@ -9,22 +9,27 @@ import {
 type ButtonProps = {
   title: string;
   type?: "primary" | "secondary";
+  containerStyle?: string;
+  textStyle?: string;
 } & TouchableOpacityProps;
 
 export const Button = forwardRef<View, ButtonProps>(
-  ({ title, type = "primary", ...touchableProps }, ref) => {
+  (
+    { title, type = "primary", containerStyle, textStyle, ...touchableProps },
+    ref,
+  ) => {
     return (
       <TouchableOpacity
         ref={ref}
         {...touchableProps}
         className={`${styles.button} ${touchableProps.className} ${
           type === "primary" ? styles.primary : styles.secondary
-        }`}
+        } ${containerStyle} ${touchableProps.disabled ? "bg-gray-300" : ""}`}
       >
         <Text
           className={`${styles.buttonText} ${
             type === "primary" ? styles.primaryText : styles.secondaryText
-          } ${touchableProps.disabled ? "opacity-15" : ""}`}
+          } ${touchableProps.disabled ? "opacity-50 !text-black !font-normal" : ""} ${textStyle}`}
         >
           {title}
         </Text>

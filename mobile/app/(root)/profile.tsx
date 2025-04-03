@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -101,7 +102,15 @@ const Profile = () => {
       {/* Header */}
       <ScrollView>
         {/* Profile Section */}
-        <TouchableOpacity className="flex-row items-center px-4 py-4 bg-white mb-2">
+        <TouchableOpacity
+          className="flex-row items-center px-4 py-4 bg-white mb-2"
+          onPress={() =>
+            router.push({
+              pathname: "/profile/[id]",
+              params: { id: "me" },
+            })
+          }
+        >
           <Image
             source={{ uri: "https://github.com/shadcn.png" }}
             className="w-16 h-16 rounded-full"

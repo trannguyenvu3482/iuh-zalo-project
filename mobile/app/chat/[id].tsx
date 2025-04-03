@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   Image,
@@ -7,11 +7,13 @@ import {
   Platform,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import ChatHeader from "../../components/chat/ChatHeader";
+import ChatInput from "../../components/chat/ChatInput";
 
 type Message = {
   id: string;
@@ -104,7 +106,6 @@ const mockMessages: Message[] = [
 
 export default function Chat() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
   const [message, setMessage] = useState("");
 
   const handleSend = () => {
@@ -116,48 +117,7 @@ export default function Chat() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="bg-primary">
-        <View className="flex-row items-center justify-between px-4 py-2">
-          <View className="flex-row items-center">
-            <TouchableOpacity onPress={() => router.back()} className="mr-3">
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
-            <View>
-              <Text className="text-xl text-white">Đông Nhi</Text>
-              <View className="flex-row">
-                <View className="bg-white rounded-lg">
-                  <Text className="text-primary px-2 py-[3px] font-semibold text-sm">
-                    NGƯỜI LẠ
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          <View className="flex-row items-center gap-4">
-            <TouchableOpacity className="mr-5">
-              <Ionicons name="call-outline" size={26} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity className="mr-5">
-              <Ionicons name="videocam-outline" size={26} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Ionicons name="list-outline" size={26} color="white" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-      <View className="px-4 py-3 bg-white border-b border-gray-100">
-        <View className="flex-row items-center justify-center">
-          <Ionicons
-            name="person-add-outline"
-            size={20}
-            color="gray"
-            className="mr-2"
-          />
-          <Text className="text-gray-600">Đã gửi lời mời kết bạn</Text>
-        </View>
-      </View>
+      <ChatHeader name="Đông Nhi" isStranger />
 
       {/* Messages */}
       <KeyboardAvoidingView
@@ -214,36 +174,11 @@ export default function Chat() {
           ))}
         </ScrollView>
 
-        {/* Input */}
-        <View className="flex-row items-center px-4 py-2 border-t border-gray-200">
-          <TouchableOpacity className="mr-4">
-            <Ionicons name="happy-outline" size={24} color="#666" />
-          </TouchableOpacity>
-          <TextInput
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Tin nhắn"
-            placeholderTextColor="#666"
-            multiline
-            className="flex-1 text-base max-h-24"
-            textAlignVertical="center"
-          />
-          <View className="flex-row items-center gap-5">
-            <TouchableOpacity>
-              <Ionicons
-                name="ellipsis-horizontal-outline"
-                size={24}
-                color="#666"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Ionicons name="mic-outline" size={24} color="#666" />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Ionicons name="image-outline" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <ChatInput
+          message={message}
+          onMessageChange={setMessage}
+          onSend={handleSend}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

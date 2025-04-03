@@ -21,6 +21,14 @@ export default function Layout() {
         name="chat"
         options={{ title: "Chat", headerShown: false }}
       />
+      <Stack.Screen
+        name="profile/[id]"
+        options={{ title: "Profile", headerShown: false }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{ title: "Settings", headerShown: false }}
+      />
     </Stack>
   );
 }
