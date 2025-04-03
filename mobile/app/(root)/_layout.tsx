@@ -1,7 +1,8 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import SearchHeader from "../../components/SearchHeader";
 import SearchResultsPanel from "../../components/SearchResultsPanel";
@@ -11,7 +12,7 @@ const TabLayout = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
-    <View className="flex-1">
+    <SafeAreaView className="flex-1">
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: "#0286FF",
@@ -124,7 +125,7 @@ const TabLayout = () => {
         />
       </Tabs>
       {isSearchActive && <SearchResultsPanel />}
-    </View>
+    </SafeAreaView>
   );
 };
 
