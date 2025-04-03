@@ -1,13 +1,25 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
-import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 
-const SearchHeader = () => {
+import QRCodeButton from "./QRCodeButton";
+
+interface SearchHeaderProps {
+  isSearchActive: boolean;
+  setIsSearchActive: (active: boolean) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+}
+
+const SearchHeader = ({
+  isSearchActive,
+  setIsSearchActive,
+  searchQuery,
+  setSearchQuery,
+}: SearchHeaderProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const currentTab = pathname.split("/").pop();
-  const [isSearchActive, setIsSearchActive] = useState(false);
 
   const handleSearchPress = () => {
     setIsSearchActive(true);
@@ -15,18 +27,12 @@ const SearchHeader = () => {
 
   const handleBackPress = () => {
     setIsSearchActive(false);
+    setSearchQuery("");
   };
 
   const renderRightButtons = () => {
     if (isSearchActive) {
-      return (
-        <TouchableOpacity
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="ml-4"
-        >
-          <MaterialCommunityIcons name="qrcode-scan" size={20} color="white" />
-        </TouchableOpacity>
-      );
+      return <QRCodeButton className="ml-4" />;
     }
 
     switch (currentTab) {
@@ -35,16 +41,7 @@ const SearchHeader = () => {
       case "apps":
         return (
           <View className="flex-row items-center">
-            <TouchableOpacity
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              className="mr-4"
-            >
-              <MaterialCommunityIcons
-                name="qrcode-scan"
-                size={20}
-                color="white"
-              />
-            </TouchableOpacity>
+            <QRCodeButton className="mr-4" />
             <TouchableOpacity
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
@@ -107,8 +104,10 @@ const SearchHeader = () => {
                 }}
                 placeholder="Tìm kiếm"
                 placeholderTextColor="#9CA3AF"
-                className=" text-gray-800 ml-2 text-lg"
+                className="text-gray-800 ml-2 text-lg"
                 autoFocus
+                value={searchQuery}
+                onChangeText={setSearchQuery}
               />
             </View>
           </>
@@ -118,7 +117,7 @@ const SearchHeader = () => {
             className="flex-row items-center"
           >
             <Ionicons name="search" size={20} color="white" />
-            <Text className="ml-2 text-lg font-semibold text-gray-800 opacity-45">
+            <Text className="ml-2 text-lg font-semibold text-white opacity-35">
               Tìm kiếm
             </Text>
           </TouchableOpacity>

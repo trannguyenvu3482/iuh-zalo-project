@@ -10,6 +10,8 @@ const AuthLayout = () => {
     >
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
+      <Stack.Screen name="qr-scanner" />
+      <Stack.Screen name="qr-result" />
     </Stack>
   );
 };
