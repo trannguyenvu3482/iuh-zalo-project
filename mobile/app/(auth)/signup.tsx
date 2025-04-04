@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,16 +12,17 @@ const Signup = () => {
   const [phone, setPhone] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [socialAccepted, setSocialAccepted] = useState(false);
+  const router = useRouter();
 
   const handleContinue = () => {
-    // TODO: Implement continue logic
-    console.log("Continue with:", { phone, termsAccepted, socialAccepted });
+    if (!isFormValid) return;
+    router.push("/signup/captcha");
   };
 
   const isFormValid = phone.length > 0 && termsAccepted && socialAccepted;
 
   return (
-    <SafeAreaView className="flex-1">
+    <SafeAreaView className="flex-1 bg-white">
       <Header title="Đăng ký" showBackButton />
       <View className="flex-1 px-4">
         <View className="items-center mt-8 mb-6">

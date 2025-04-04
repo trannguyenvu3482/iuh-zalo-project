@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import QRCodeButton from "./QRCodeButton";
 
@@ -73,6 +74,11 @@ const SearchHeader = ({
         return (
           <TouchableOpacity
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={() =>
+              router.push({
+                pathname: "/settings" as any,
+              })
+            }
           >
             <Ionicons name="settings-outline" size={24} color="white" />
           </TouchableOpacity>
@@ -83,7 +89,7 @@ const SearchHeader = ({
   };
 
   return (
-    <View
+    <SafeAreaView
       className={`flex-row items-center justify-between px-4 bg-primary border-b border-gray-200 ${isSearchActive ? "py-2" : "py-3"}`}
     >
       <View className="flex-row items-center flex-1">
@@ -124,7 +130,7 @@ const SearchHeader = ({
         )}
       </View>
       {renderRightButtons()}
-    </View>
+    </SafeAreaView>
   );
 };
 

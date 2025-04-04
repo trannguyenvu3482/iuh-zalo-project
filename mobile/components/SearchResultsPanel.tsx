@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Fake data for now
 const fakeSearchResults = [
@@ -255,7 +256,7 @@ const SearchResultsPanel = () => {
   };
 
   return (
-    <View className="absolute top-0 left-0 right-0 bottom-0 bg-white z-50 mt-14">
+    <SafeAreaView className="absolute top-0 left-0 right-0 bottom-0 bg-white z-50 mt-14">
       <ScrollView className="flex-1">
         <View className="px-4 pb-2">
           {/* Tab Switcher */}
@@ -284,7 +285,7 @@ const SearchResultsPanel = () => {
           {renderContent()}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
