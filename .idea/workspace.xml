@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bfacf19c-89f8-4410-aba7-20771a3fb2cf" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/mobile/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/mobile/app.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile/app/(auth)/signup/otp.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/mobile/app/(auth)/signup/otp.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/mobile/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/mobile/package.json" afterDir="false" />
-    </list>
+    <list default="true" id="bfacf19c-89f8-4410-aba7-20771a3fb2cf" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -58,7 +53,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1743737107010</updated>
-      <workItem from="1743737108251" duration="2270000" />
+      <workItem from="1743737108251" duration="3264000" />
     </task>
     <servers />
   </component>
