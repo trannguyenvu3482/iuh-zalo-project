@@ -1,7 +1,6 @@
 const { authJwt } = require("../middleware");
 const messageController = require("../controllers/message.controller");
 const conversationController = require("../controllers/conversation.controller");
-const friendController = require("../controllers/friend.controller");
 const reactionController = require("../controllers/reaction.controller");
 
 module.exports = function (app) {
@@ -41,10 +40,44 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     conversationController.updateConversation
   );
+  app.put(
+    "/api/conversations/nickname",
+    [authJwt.verifyToken],
+    conversationController.setNickname
+  );
+  app.post(
+    "/api/conversations/clear",
+    [authJwt.verifyToken],
+    conversationController.clearChatHistory
+  );
+  app.post(
+    "/api/groups/leave",
+    [authJwt.verifyToken],
+    conversationController.leaveGroup
+  );
+  app.delete(
+    "/api/groups/delete",
+    [authJwt.verifyToken],
+    conversationController.deleteGroup
+  );
   app.get(
     "/api/messages/recent",
     [authJwt.verifyToken],
     conversationController.getRecent
+  );
+  
+  // New route for getting all user's conversations
+  app.get(
+    "/api/conversations",
+    [authJwt.verifyToken],
+    conversationController.getMyConversations
+  );
+  
+  // Debug route to check conversation details
+  app.get(
+    "/api/conversations/:conversationId/debug",
+    [authJwt.verifyToken],
+    conversationController.debugConversation
   );
 
   // Reaction Routes
@@ -62,5 +95,19 @@ module.exports = function (app) {
     "/api/messages/reaction/:messageId",
     [authJwt.verifyToken],
     reactionController.getReactions
+  );
+
+  // Add members to group
+  app.post(
+    "/api/groups/members/add",
+    [authJwt.verifyToken],
+    conversationController.addGroupMembers
+  );
+  
+  // Remove member from group
+  app.delete(
+    "/api/groups/members/remove",
+    [authJwt.verifyToken],
+    conversationController.removeGroupMember
   );
 };

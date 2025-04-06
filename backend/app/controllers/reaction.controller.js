@@ -1,5 +1,5 @@
 const reactionService = require("../services/reaction.service");
-const { UnauthorizedError } = require("../errors");
+const { UnauthorizedError } = require("../exceptions/errors");
 const { successResponse } = require("../utils/response");
 
 let io;
