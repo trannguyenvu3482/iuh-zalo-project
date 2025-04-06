@@ -76,6 +76,5 @@ exports.sendGroupMessage = [
 
 module.exports = {
   setIo,
-  sendPrivateMessage: exports.sendPrivateMessage,
-  sendGroupMessage: exports.sendGroupMessage,
+  ...exports
 };
