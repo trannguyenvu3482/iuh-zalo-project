@@ -5,7 +5,7 @@ module.exports = function (app) {
   app.use(function (req, res, next) {
     res.header(
       "Access-Control-Allow-Headers",
-      "x-access-token, Origin, Content-Type, Accept"
+      "x-access-token, Origin, Content-Type, Accept, Authorization"
     );
     next();
   });
@@ -42,5 +42,30 @@ module.exports = function (app) {
     "/api/users",
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.getAllUsers
+  );
+  
+  // Profile management routes
+  app.put(
+    "/api/users/profile",
+    [authJwt.verifyToken],
+    controller.updateProfile
+  );
+  
+  app.put(
+    "/api/users/avatar",
+    [authJwt.verifyToken],
+    controller.updateAvatar
+  );
+  
+  app.put(
+    "/api/users/banner",
+    [authJwt.verifyToken],
+    controller.updateBanner
+  );
+  
+  app.put(
+    "/api/users/status",
+    [authJwt.verifyToken],
+    controller.updateStatus
   );
 };

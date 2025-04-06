@@ -1,5 +1,6 @@
 // services/message.service.js
 const { Op } = require("sequelize");
+const db = require("../models");
 const {
   Message,
   Conversation,
@@ -142,5 +143,41 @@ exports.createGroupMessage = async (
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to create group message", 500);
+  }
+};
+
+/**
+ * Create a system message
+ * @param {string} conversationId - ID of the conversation
+ * @param {string} messageContent - System message content
+ * @param {string} eventType - Type of system event (e.g., 'USER_JOINED', 'USER_LEFT')
+ * @returns {Object} Created message
+ */
+exports.createSystemMessage = async (conversationId, messageContent, eventType = null) => {
+  try {
+    console.log("Creating system message:", { conversationId, messageContent, eventType });
+    
+    // Verify conversation exists
+    const conversation = await Conversation.findByPk(conversationId);
+    if (!conversation) {
+      throw new NotFoundError("Conversation not found");
+    }
+    
+    // Create system message
+    const message = await Message.create({
+      id: uuidv4(),
+      message: messageContent,
+      sender: null, // null sender indicates system message
+      conversationId,
+      isSystemMessage: true,
+      systemEventType: eventType
+    });
+    
+    console.log("System message created successfully:", message.id);
+    return message;
+  } catch (error) {
+    console.error("Error creating system message:", error);
+    if (error instanceof AppError) throw error;
+    throw new AppError(`Failed to create system message: ${error.message}`, 500);
   }
 };

@@ -40,29 +40,50 @@ module.exports = (sequelize, DataTypes) => {
           },
         },
       },
-      // gender: {
-      //   type: DataTypes.STRING(10),
-      //   allowNull: false,
-      //   // validate: {
-      //   //   isIn: {
-      //   //     args: [["male", "female"]],
-      //   //     msg: "Gender must be either male or female",
-      //   //   },
-      //   // },
-      // },
-      // birthdate: {
-      //   type: DataTypes.DATEONLY,
-      //   allowNull: false,
-      //   // validate: {
-      //   //   isDate: {
-      //   //     msg: "Birthdate must be a valid date",
-      //   //   },
-      //   //   isBefore: {
-      //   //     args: [Sequelize.literal("CURRENT_DATE")],
-      //   //     msg: "Birthdate must be in the past",
-      //   //   },
-      //   // },
-      // },
+      gender: {
+        type: DataTypes.STRING(10),
+        allowNull: true,
+        validate: {
+          isIn: {
+            args: [["male", "female", "other"]],
+            msg: "Gender must be male, female, or other",
+          },
+        },
+      },
+      birthdate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+        validate: {
+          isDate: {
+            msg: "Birthdate must be a valid date",
+          },
+        },
+      },
+      avatar: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        defaultValue: "https://via.placeholder.com/150?text=User",
+        validate: {
+          isUrl: {
+            msg: "Avatar must be a valid URL"
+          }
+        }
+      },
+      banner: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        defaultValue: "https://via.placeholder.com/1200x300?text=Banner",
+        validate: {
+          isUrl: {
+            msg: "Banner must be a valid URL"
+          }
+        }
+      },
+      status: {
+        type: DataTypes.ENUM("active", "inactive"),
+        defaultValue: "active",
+        allowNull: false,
+      },
     },
     {
       timestamps: true,

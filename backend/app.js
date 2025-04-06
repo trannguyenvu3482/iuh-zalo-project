@@ -3,24 +3,43 @@ const http = require("http");
 const socketIo = require("socket.io");
 const path = require("path");
 const cors = require("cors");
+const initSupabase = require("./app/utils/initSupabase");
 require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Initialize Supabase storage buckets
+initSupabase().catch(err => {
+  console.error("Failed to initialize Supabase storage:", err);
+  console.warn("⚠️ File uploads may not work correctly. Check your Supabase configuration.");
+});
+
+// Configure CORS options from environment variables
+const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+const corsOptions = { 
+  origin: clientUrl, 
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
+
+// Setup Socket.IO with same CORS config
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:8081",
+    origin: clientUrl,
     methods: ["GET", "POST"],
+    credentials: true
   },
 });
 
-const corsOptions = { origin: "http://localhost:3000", credentials: true };
+// Apply CORS for Express
 app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from uploads folder// Serve static files from uploads folder
+// Serve static files from uploads folder (for backward compatibility)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const db = require("./app/models");
@@ -37,8 +56,16 @@ app.get("/", (req, res) => {
 require("./app/routes/auth.routes")(app);
 require("./app/routes/friend.routes")(app);
 require("./app/routes/user.routes")(app);
-const { setIo } = require("./app/controllers/message.controller"); // Use one controller to set io
-setIo(io);
+require("./app/routes/message.routes")(app);
+
+// Initialize Socket.IO for all controllers that need it
+const { setIo: setMessageIo } = require("./app/controllers/message.controller");
+const { setIo: setConversationIo } = require("./app/controllers/conversation.controller");
+const { setIo: setFriendIo } = require("./app/controllers/friend.controller");
+
+setMessageIo(io);
+setConversationIo(io);
+setFriendIo(io);
 
 io.on("connection", (socket) => {
   console.log("A user connected");
@@ -113,6 +140,7 @@ io.on("connection", (socket) => {
   });
 });
 
+// Global error handler
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || "Something went wrong";
@@ -121,8 +149,8 @@ app.use((err, req, res, next) => {
     err.stack
   );
   res.status(statusCode).json({
-    status: err.status || "error",
-    error: message,
+    statusCode: 0, // Error indicator
+    message,
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 });

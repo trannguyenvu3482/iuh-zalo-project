@@ -1,41 +1,84 @@
 // middleware/fileUpload.js
 const multer = require("multer");
 const path = require("path");
+const { ValidationError } = require("../exceptions/errors");
 
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Store files in 'uploads' folder
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueSuffix}-${file.originalname}`); // Unique filename
-  },
-});
+// Use memory storage for Supabase
+const memoryStorage = multer.memoryStorage();
 
-// File filter to restrict allowed types
-const fileFilter = (req, file, cb) => {
+// File size limits
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB for all uploads
+
+// File filter for message attachments
+const messageFileFilter = (req, file, cb) => {
   const allowedTypes = [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
     "application/x-rar-compressed", // .rar
     "application/zip", // .zip
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
   ];
+  
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(
-      new Error("Invalid file type. Only PDF, DOCX, RAR, and ZIP are allowed."),
+      new ValidationError("Invalid file type. Only PDF, DOCX, RAR, ZIP, and images are allowed."),
       false
     );
   }
 };
 
-// Multer setup
+// File filter for images only
+const imageFileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(
+      new ValidationError("Invalid file type. Only JPEG, JPG, PNG, GIF, and WEBP images are allowed."),
+      false
+    );
+  }
+};
+
+// Standard upload for message attachments
 const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  storage: memoryStorage,
+  fileFilter: messageFileFilter,
+  limits: { fileSize: MAX_FILE_SIZE },
 });
 
-module.exports = upload; // middleware/fileUpload.js
+// Avatar upload
+const avatarUpload = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: MAX_FILE_SIZE },
+});
+
+// Banner upload
+const bannerUpload = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: MAX_FILE_SIZE },
+});
+
+module.exports = {
+  upload,
+  avatarUpload,
+  bannerUpload,
+  single: upload.single.bind(upload),
+  array: upload.array.bind(upload),
+  fields: upload.fields.bind(upload),
+  none: upload.none.bind(upload),
+};

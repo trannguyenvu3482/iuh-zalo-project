@@ -2,94 +2,111 @@ const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config.js");
 const db = require("../models");
 const User = db.User;
-const { ValidationError } = require("../exceptions/errors.js");
-verifyToken = (req, res, next) => {
-  if (!req.headers["authorization"]) {
-    throw new ValidationError("No token provided!");
-  }
+const { ValidationError, UnauthorizedError, ForbiddenError } = require("../exceptions/errors.js");
 
-  let token = req.headers["authorization"].split(" ")[1];
-
-  console.log(token);
-
-  if (!token) {
-    return res.status(403).send({
-      message: "No token provided!",
-    });
-  }
-
-  jwt.verify(token, config.secret, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({
-        message: "Unauthorized!",
-      });
+/**
+ * Verify JWT token middleware
+ */
+const verifyToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers["authorization"];
+    
+    if (!authHeader) {
+      throw new ValidationError("No authorization header provided");
     }
-    req.userId = decoded.id;
-    next();
-  });
+    
+    const parts = authHeader.split(" ");
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
+      throw new ValidationError("Authorization header format must be 'Bearer {token}'");
+    }
+    
+    const token = parts[1];
+    
+    try {
+      const decoded = jwt.verify(token, config.secret);
+      
+      // Add user data to request
+      const user = await User.findByPk(decoded.id);
+      if (!user) {
+        throw new UnauthorizedError("User not found");
+      }
+      
+      req.userId = decoded.id;
+      req.user = user;
+      next();
+    } catch (jwtError) {
+      throw new UnauthorizedError("Invalid or expired token");
+    }
+  } catch (error) {
+    next(error);
+  }
 };
 
-isAdmin = (req, res, next) => {
-  User.findByPk(req.userId).then((user) => {
-    user.getRoles().then((roles) => {
-      for (let i = 0; i < roles.length; i++) {
-        if (roles[i].name === "admin") {
-          next();
-          return;
-        }
+/**
+ * Check if user has admin role
+ */
+const isAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    const roles = await user.getRoles();
+    
+    for (let i = 0; i < roles.length; i++) {
+      if (roles[i].name === "admin") {
+        return next();
       }
-
-      res.status(403).send({
-        message: "Require Admin Role!",
-      });
-      return;
-    });
-  });
+    }
+    
+    throw new ForbiddenError("Require Admin Role");
+  } catch (error) {
+    next(error);
+  }
 };
 
-isModerator = (req, res, next) => {
-  User.findByPk(req.userId).then((user) => {
-    user.getRoles().then((roles) => {
-      for (let i = 0; i < roles.length; i++) {
-        if (roles[i].name === "moderator") {
-          next();
-          return;
-        }
+/**
+ * Check if user has moderator role
+ */
+const isModerator = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    const roles = await user.getRoles();
+    
+    for (let i = 0; i < roles.length; i++) {
+      if (roles[i].name === "moderator") {
+        return next();
       }
-
-      res.status(403).send({
-        message: "Require Moderator Role!",
-      });
-    });
-  });
+    }
+    
+    throw new ForbiddenError("Require Moderator Role");
+  } catch (error) {
+    next(error);
+  }
 };
 
-isModeratorOrAdmin = (req, res, next) => {
-  User.findByPk(req.userId).then((user) => {
-    user.getRoles().then((roles) => {
-      for (let i = 0; i < roles.length; i++) {
-        if (roles[i].name === "moderator") {
-          next();
-          return;
-        }
-
-        if (roles[i].name === "admin") {
-          next();
-          return;
-        }
+/**
+ * Check if user has moderator or admin role
+ */
+const isModeratorOrAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    const roles = await user.getRoles();
+    
+    for (let i = 0; i < roles.length; i++) {
+      if (roles[i].name === "moderator" || roles[i].name === "admin") {
+        return next();
       }
-
-      res.status(403).send({
-        message: "Require Moderator or Admin Role!",
-      });
-    });
-  });
+    }
+    
+    throw new ForbiddenError("Require Moderator or Admin Role");
+  } catch (error) {
+    next(error);
+  }
 };
 
 const authJwt = {
-  verifyToken: verifyToken,
-  isAdmin: isAdmin,
-  isModerator: isModerator,
-  isModeratorOrAdmin: isModeratorOrAdmin,
+  verifyToken,
+  isAdmin,
+  isModerator,
+  isModeratorOrAdmin,
 };
+
 module.exports = authJwt;

@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       sender: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true, // Allow null for system messages
       },
       receiver: {
         type: DataTypes.UUID,
@@ -41,6 +41,20 @@ module.exports = (sequelize, DataTypes) => {
           key: "id",
         },
       },
+      isSystemMessage: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
+      systemEventType: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      read: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      }
     },
     {
       timestamps: true,

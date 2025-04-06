@@ -1,6 +1,7 @@
 const userService = require("../services/user.service");
 const { UnauthorizedError } = require("../exceptions/errors");
 const { successResponse } = require("../utils/response");
+const fileUpload = require("../middleware/fileUpload");
 
 exports.allAccess = (req, res) => {
   res.status(200).send("Public Content.");
@@ -60,6 +61,126 @@ exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await userService.getAllUsers(userId);
     successResponse(res, "Users fetched successfully", users);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update user profile information
+ */
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new UnauthorizedError("Authentication required");
+
+    const { fullname, gender, birthdate, email, phoneNumber } = req.body;
+    
+    const updatedUser = await userService.updateUserProfile(userId, {
+      fullname,
+      gender,
+      birthdate,
+      email,
+      phoneNumber
+    });
+    
+    successResponse(res, "Profile updated successfully", {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      fullname: updatedUser.fullname,
+      phoneNumber: updatedUser.phoneNumber,
+      gender: updatedUser.gender,
+      birthdate: updatedUser.birthdate,
+      avatar: updatedUser.avatar,
+      banner: updatedUser.banner,
+      status: updatedUser.status
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update user avatar
+ */
+exports.updateAvatar = [
+  fileUpload.avatarUpload.single("avatar"),
+  async (req, res, next) => {
+    try {
+      const userId = req.userId;
+      if (!userId) throw new UnauthorizedError("Authentication required");
+      
+      if (!req.file) {
+        return res.status(400).json({
+          statusCode: 0,
+          message: "No avatar image uploaded"
+        });
+      }
+      
+      const updatedUser = await userService.updateUserAvatar(userId, req.file);
+      
+      successResponse(res, "Avatar updated successfully", {
+        id: updatedUser.id,
+        avatar: updatedUser.avatar
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+];
+
+/**
+ * Update user banner
+ */
+exports.updateBanner = [
+  fileUpload.bannerUpload.single("banner"),
+  async (req, res, next) => {
+    try {
+      const userId = req.userId;
+      if (!userId) throw new UnauthorizedError("Authentication required");
+      
+      if (!req.file) {
+        return res.status(400).json({
+          statusCode: 0,
+          message: "No banner image uploaded"
+        });
+      }
+      
+      const updatedUser = await userService.updateUserBanner(userId, req.file);
+      
+      successResponse(res, "Banner updated successfully", {
+        id: updatedUser.id,
+        banner: updatedUser.banner
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+];
+
+/**
+ * Update user status
+ */
+exports.updateStatus = async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new UnauthorizedError("Authentication required");
+    
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Status is required"
+      });
+    }
+    
+    const updatedUser = await userService.updateUserStatus(userId, status);
+    
+    successResponse(res, "Status updated successfully", {
+      id: updatedUser.id,
+      status: updatedUser.status
+    });
   } catch (error) {
     next(error);
   }

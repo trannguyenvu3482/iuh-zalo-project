@@ -9,154 +9,206 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { assignRolesToUser } = require("../services/auth.service");
 const { successResponse } = require("../utils/response");
+const authService = require("../services/auth.service");
 
 const pendingLogins = {};
 
-exports.signup = async (req, res) => {
+/**
+ * Request OTP for phone verification
+ */
+exports.requestOTP = async (req, res, next) => {
   try {
-    console.log(User);
+    const { phoneNumber } = req.body;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({ 
+        statusCode: 0,
+        message: "Phone number is required"
+      });
+    }
+    
+    authService.generateOTP(phoneNumber);
+    
+    return successResponse(
+      res,
+      "OTP sent successfully. Please verify within 5 minutes.",
+      { sent: true }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
-    const user = await User.create({
-      username: req.body.username,
-      email: req.body.email,
-      password: bcrypt.hashSync(req.body.password, 10),
-      fullname: req.body.fullname,
-      phoneNumber: req.body.phoneNumber,
+/**
+ * Verify OTP
+ */
+exports.verifyOTP = async (req, res, next) => {
+  try {
+    const { phoneNumber, otp } = req.body;
+    
+    if (!phoneNumber || !otp) {
+      return res.status(400).json({ 
+        statusCode: 0,
+        message: "Phone number and OTP are required"
+      });
+    }
+    
+    const verified = authService.verifyOTP(phoneNumber, otp);
+    
+    return successResponse(
+      res,
+      "OTP verified successfully",
+      { verified }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Register a new user after OTP verification
+ */
+exports.signup = async (req, res, next) => {
+  try {
+    const { username, email, password, fullname, phoneNumber, roles: requestRoles } = req.body;
+    
+    if (!username || !email || !password || !fullname || !phoneNumber) {
+      return res.status(400).json({ 
+        statusCode: 0,
+        message: "All fields are required"
+      });
+    }
+    
+    const user = await authService.registerUser({
+      username,
+      email,
+      password,
+      fullname,
+      phoneNumber,
+      roles: requestRoles
     });
-
-    await assignRolesToUser(user, req.body.roles);
-    const roles = await user.getRoles();
-
-    res.send({
-      code: 1,
-      message: "User registered successfully!",
-      data: {
+    
+    const userRoles = await user.getRoles();
+    
+    return successResponse(
+      res,
+      "User registered successfully!",
+      {
         id: user.id,
         username: user.username,
         email: user.email,
-        roles: roles.map((role) => role.name),
-        updated_at: user.updated_at,
-        created_at: user.created_at,
+        fullname: user.fullname,
+        roles: userRoles.map((role) => role.name),
       },
-    });
-  } catch (err) {
-    console.log(err);
-
-    res.status(500).send({ message: err.message });
+      201
+    );
+  } catch (error) {
+    next(error);
   }
 };
 
-exports.signin = (req, res) => {
-  User.findOne({
-    where: {
-      phoneNumber: req.body.username,
-    },
-  })
-    .then((user) => {
-      if (!user) {
-        return res
-          .status(404)
-          .send({ statusCode: 404, message: "User Not found." });
-      }
-
-      var passwordIsValid = bcrypt.compareSync(
-        req.body.password,
-        user.password
-      );
-
-      if (!passwordIsValid) {
-        return res.status(401).send({
-          accessToken: null,
-          statusCode: 401,
-          message: "Invalid Password!",
-        });
-      }
-
-      const token = jwt.sign({ id: user.id }, config.secret, {
-        algorithm: "HS256",
-        allowInsecureKeySizes: true,
-        expiresIn: 86400, // 24 hours
-      });
-
-      var authorities = [];
-      user.getRoles().then((roles) => {
-        for (let i = 0; i < roles.length; i++) {
-          authorities.push("ROLE_" + roles[i].name.toUpperCase());
-        }
-        res.status(200).send({
-          statusCode: 1,
-          message: "Login successful!",
-          data: {
-            user: {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              roles: authorities,
-            },
-            accessToken: token,
-          },
-        });
-      });
-    })
-    .catch((err) => {
-      res.status(500).send({ message: err.message });
-    });
-};
-
-exports.generateQR = async (req, res) => {
-  // Generate a unique token (session ID)
-  const sessionId = crypto.randomBytes(16).toString("hex");
-
-  // Save it with a pending status and a timestamp (with expiry logic in production)
-  pendingLogins[sessionId] = { status: "pending", createdAt: Date.now() };
-
-  // The mobile app will call this URL after scanning
-  const callbackUrl = `http://localhost:8080/auth/qr-callback?sessionId=${sessionId}`;
-
+/**
+ * Sign in with phone number and password
+ */
+exports.signin = async (req, res, next) => {
   try {
-    // Generate QR code data URL
-    const qrCodeDataUrl = await QRCode.toDataURL(callbackUrl);
-    res.json({ qrCode: qrCodeDataUrl, sessionId });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to generate QR code" });
-  }
-};
-
-exports.scanQR = async (req, res) => {
-  const { sessionId, accessToken } = req.body;
-  if (!sessionId) {
-    return res.status(400).json({ error: "Invalid or expired sessionId" });
-  }
-
-  // Here you would add further checks if needed (e.g., verifying the userId)
-  jwt.verify(accessToken, config.secret, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({
-        message: "Invalid access token!",
+    const { phoneNumber, password } = req.body;
+    
+    if (!phoneNumber || !password) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Phone number and password are required"
       });
     }
+    
+    const authData = await authService.authenticateUser(phoneNumber, password);
+    
+    return successResponse(
+      res,
+      "Login successful!",
+      authData
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
-    // Mark the login session as completed and attach user info
-    pendingLogins[sessionId] = {
-      status: "completed",
-      completedAt: Date.now(),
-    };
+/**
+ * Generate QR code for passwordless login
+ */
+exports.generateQR = async (req, res, next) => {
+  try {
+    const { sessionId, qrData } = await authService.generateQRSession();
+    
+    // Generate QR code from the data
+    const qrCodeDataUrl = await QRCode.toDataURL(qrData);
+    
+    return successResponse(
+      res,
+      "QR code generated successfully",
+      { qrCode: qrCodeDataUrl, sessionId }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
-    // Get the user info from the decoded id
-    User.findByPk(decoded.id).then((user) => {
-      res.json({
-        code: 1,
-        message: "Login with QR code successful!",
-        data: {
-          user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            fullname: user.fullname,
-            token: accessToken,
-          },
-        },
+/**
+ * Process QR code scan from mobile app
+ */
+exports.scanQR = async (req, res, next) => {
+  try {
+    const { sessionId, userId } = req.body;
+    
+    if (!sessionId || !userId) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Session ID and user ID are required"
       });
-    });
-  });
+    }
+    
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Invalid user ID format. Must be a UUID."
+      });
+    }
+    
+    const authData = await authService.processQRLogin(sessionId, userId);
+    
+    return successResponse(
+      res,
+      "QR login successful!",
+      authData
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Check QR session status (for polling from web)
+ */
+exports.checkQRStatus = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    
+    if (!sessionId) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Session ID is required"
+      });
+    }
+    
+    const status = authService.checkQRSessionStatus(sessionId);
+    
+    return successResponse(
+      res,
+      "QR status retrieved",
+      status
+    );
+  } catch (error) {
+    next(error);
+  }
 };
