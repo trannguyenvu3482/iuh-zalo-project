@@ -25,11 +25,14 @@ exports.createPrivateMessage = async (
   replyToId = null
 ) => {
   try {
+    console.log(`Creating private message: senderId=${senderId}, receiverId=${receiverId}`);
+    
     const sender = await User.findByPk(senderId);
     const receiver = await User.findByPk(receiverId);
     if (!sender || !receiver)
       throw new NotFoundError("Sender or receiver not found");
 
+    // Check if users are friends
     const areFriends = await Friendship.findOne({
       where: {
         [Op.or]: [
@@ -38,23 +41,30 @@ exports.createPrivateMessage = async (
         ],
       },
     });
-    if (!areFriends) throw new ForbiddenError("You can only message friends");
+    
+    console.log(`Friendship check: ${!!areFriends}`);
+    
+    // Skip friendship check if in development mode
+    const skipFriendshipCheck = process.env.NODE_ENV === 'development' && process.env.SKIP_FRIENDSHIP_CHECK === 'true';
+    
+    if (!areFriends && !skipFriendshipCheck) {
+      throw new ForbiddenError("You can only message friends");
+    }
 
-    let conversation = await Conversation.findOne({
-      where: { type: "PRIVATE" },
-      include: [
-        {
-          model: User,
-          as: "members",
-          where: { id: { [Op.in]: [senderId, receiverId] } },
-          through: { attributes: [] },
-        },
-      ],
-      having: db.Sequelize.literal('COUNT(DISTINCT "members"."id") = 2'),
-      group: ["conversations.id"],
+    // First, find conversation IDs where both users are members
+    const memberOf = await ConversationMember.findAll({
+      where: { userId: senderId },
+      attributes: ['conversationId']
     });
-
-    if (!conversation) {
+    
+    const conversationIds = memberOf.map(m => m.conversationId);
+    console.log(`Found ${conversationIds.length} conversations for sender`);
+    
+    let conversation;
+    
+    if (conversationIds.length === 0) {
+      // Create new conversation if none exists
+      console.log("No existing conversations, creating new one");
       conversation = await Conversation.create({
         id: uuidv4(),
         type: "PRIVATE",
@@ -65,6 +75,40 @@ exports.createPrivateMessage = async (
         { userId: senderId, conversationId: conversation.id, role: "MEMBER" },
         { userId: receiverId, conversationId: conversation.id, role: "MEMBER" },
       ]);
+    } else {
+      // Find private conversation with both users
+      const existingConversation = await Conversation.findOne({
+        where: { 
+          id: { [Op.in]: conversationIds },
+          type: "PRIVATE" 
+        },
+        include: [
+          {
+            model: User,
+            as: "members",
+            where: { id: receiverId },
+            through: { attributes: [] },
+          },
+        ]
+      });
+      
+      if (!existingConversation) {
+        // Create new conversation if none exists with both users
+        console.log("No existing conversation with both users, creating new one");
+        conversation = await Conversation.create({
+          id: uuidv4(),
+          type: "PRIVATE",
+          name,
+          avatar,
+        });
+        await ConversationMember.bulkCreate([
+          { userId: senderId, conversationId: conversation.id, role: "MEMBER" },
+          { userId: receiverId, conversationId: conversation.id, role: "MEMBER" },
+        ]);
+      } else {
+        console.log(`Found existing conversation: ${existingConversation.id}`);
+        conversation = existingConversation;
+      }
     }
 
     // Validate replyToId if provided
@@ -87,6 +131,12 @@ exports.createPrivateMessage = async (
       replyToId,
     });
 
+    // Update conversation timestamp
+    await Conversation.update(
+      { updated_at: new Date() },
+      { where: { id: conversation.id } }
+    );
+
     // Include the replied-to message in the response
     if (message.replyToId) {
       await message.reload({ include: [{ model: Message, as: "replyTo" }] });
@@ -94,6 +144,7 @@ exports.createPrivateMessage = async (
 
     return { message, conversationId: conversation.id };
   } catch (error) {
+    console.error("Error creating private message:", error);
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to create private message", 500);
   }
@@ -133,6 +184,12 @@ exports.createGroupMessage = async (
       file: file ? file.path : null, // Adjust to file.location if using S3
       replyToId,
     });
+
+    // Update conversation timestamp
+    await Conversation.update(
+      { updated_at: new Date() },
+      { where: { id: conversationId } }
+    );
 
     // Include the replied-to message in the response
     if (message.replyToId) {

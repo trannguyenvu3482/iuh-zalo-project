@@ -1,4 +1,3 @@
-import React from 'react'
 import { useLocation } from 'react-router-dom'
 import businessIcon from '../assets/icons/business-btn.png'
 import chatIcon from '../assets/icons/chat-btn.png'
@@ -8,6 +7,7 @@ import settingsIcon from '../assets/icons/settings-btn.png'
 import todoIcon from '../assets/icons/todo-btn.png'
 import zCloudIcon from '../assets/icons/zcloud-btn.png'
 import Avatar from './Avatar'
+import FriendRequestsMenu from './FriendRequestsMenu'
 
 const TOP_TAB_BUTTONS = [
   { name: 'Chats', icon: chatIcon, link: '/', active: true },
@@ -93,6 +93,9 @@ const SidebarControls = () => {
           ))}
         </div>
       </div>
+
+      {/* Add Friend Requests Menu */}
+      <FriendRequestsMenu />
     </div>
   )
 }

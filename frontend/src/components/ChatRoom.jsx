@@ -1,41 +1,71 @@
-import React from 'react'
+import PropTypes from 'prop-types'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { formatLastActivity } from '../utils/dateUtils'
 
-const ChatRoom = ({ id, ...props }) => {
+const ChatRoom = ({
+  id,
+  name = 'Conversation',
+  avatar = null,
+  lastMessage = null,
+  lastActivity = null,
+  type = 'PRIVATE',
+  ...props
+}) => {
   const location = useLocation()
   const navigate = useNavigate()
+
   return (
     <li
       onClick={() => navigate(`/chat/${id}`)}
       {...props}
-      className={`flex h-[74px] cursor-pointer select-none items-stretch gap-4 px-3.5 py-3.5 hover:bg-gray-100 ${
+      className={`flex h-[74px] cursor-pointer select-none items-start justify-between px-3.5 py-3.5 hover:bg-gray-100 ${
         location.pathname === `/chat/${id}`
           ? 'bg-blue-200 hover:!bg-blue-200'
           : ''
       }`}
     >
-      <img
-        src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?q=80&w=2680&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-        alt=""
-        className="aspect-square h-12 w-12 rounded-full object-cover"
-      />
+      {/* Left side - Avatar and message content */}
+      <div className="flex items-center gap-3">
+        <img
+          src={avatar || 'https://avatar.iran.liara.run/public/44'}
+          alt={name}
+          className="aspect-square h-12 w-12 rounded-full object-cover"
+        />
 
-      <div className="overflow-hidden">
-        <div className="flex items-center justify-between gap-1">
-          <h3 className="line-clamp-1 w-[180px] overflow-hidden text-ellipsis text-sm font-medium text-gray-900">
-            Test Group
+        <div className="overflow-hidden">
+          <h3 className="line-clamp-1 overflow-hidden text-ellipsis text-sm font-medium text-gray-900">
+            {name}
+            {type === 'GROUP' && (
+              <span className="ml-1 text-xs text-gray-500">(Group)</span>
+            )}
           </h3>
-          <div className="flex flex-row items-center">
-            <span className="text-xs">2 ngày</span>
-          </div>
-        </div>
 
-        <p className="mt-0.5 line-clamp-1 text-sm text-gray-600">
-          Nguyễn Trọng Tiến đổi tên nhóm thanh
-        </p>
+          <p className="mt-0.5 line-clamp-1 text-sm text-gray-600">
+            {lastMessage?.content || `[Thiệp] Gửi lời chào đến ${name}`}
+          </p>
+        </div>
+      </div>
+
+      {/* Right side - Time */}
+      <div className="flex-shrink-0 pl-2">
+        <span className="text-xs text-gray-500">
+          {formatLastActivity(lastActivity)}
+        </span>
       </div>
     </li>
   )
+}
+
+ChatRoom.propTypes = {
+  id: PropTypes.string.isRequired,
+  name: PropTypes.string,
+  avatar: PropTypes.string,
+  lastMessage: PropTypes.shape({
+    content: PropTypes.string,
+    senderId: PropTypes.string,
+  }),
+  lastActivity: PropTypes.string,
+  type: PropTypes.oneOf(['PRIVATE', 'GROUP']),
 }
 
 export default ChatRoom

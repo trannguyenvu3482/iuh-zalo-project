@@ -1,7 +1,6 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import ConversationItem from "../../components/ConversationItem";
 
@@ -128,7 +127,7 @@ const Messages = () => {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
       {/* Tabs */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200">
         <View className="flex-row gap-4">
@@ -215,7 +214,7 @@ const Messages = () => {
           </View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -256,7 +256,10 @@ const SearchResultsPanel = () => {
   };
 
   return (
-    <SafeAreaView className="absolute top-0 left-0 right-0 bottom-0 bg-white z-50 mt-14">
+    <SafeAreaView
+      className="absolute top-[110px] left-0 right-0 bottom-0 bg-white z-40"
+      edges={["bottom"]}
+    >
       <ScrollView className="flex-1">
         <View className="px-4 pb-2">
           {/* Tab Switcher */}
