@@ -44,6 +44,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const db = require("./app/models");
 const Role = db.Role;
+const messageService = require('./app/services/message.service');
+const { setIo: setMessageIo } = require('./app/controllers/message.controller');
+const { setIo: setConversationIo } = require('./app/controllers/conversation.controller');
+const { setIo: setFriendIo } = require("./app/controllers/friend.controller");
 
 db.sequelize.sync().then(() => {
   console.log("Database synced");
@@ -59,10 +63,6 @@ require("./app/routes/user.routes")(app);
 require("./app/routes/message.routes")(app);
 
 // Initialize Socket.IO for all controllers that need it
-const { setIo: setMessageIo } = require("./app/controllers/message.controller");
-const { setIo: setConversationIo } = require("./app/controllers/conversation.controller");
-const { setIo: setFriendIo } = require("./app/controllers/friend.controller");
-
 setMessageIo(io);
 setConversationIo(io);
 setFriendIo(io);
@@ -83,34 +83,60 @@ io.on("connection", (socket) => {
   });
 
   socket.on("chat message", (msg) => {
-    io.emit("chat message", msg);
+    const { conversationId, receiverId, message, senderId, senderName } = msg;
+
+    if (conversationId) {
+      // For group conversations, emit to the conversation room
+      io.to(`conversation_${conversationId}`).emit("new_message", {
+        content: message,
+        senderId: senderId || socket.handshake.query.userId,
+        senderName: senderName,
+        conversationId,
+        timestamp: new Date().toISOString()
+      });
+    } else if (receiverId) {
+      // For private messages, emit to both sender and receiver
+      const senderUserId = senderId || socket.handshake.query.userId;
+      io.to(`user_${senderUserId}`).to(`user_${receiverId}`).emit("new_message", {
+        content: message,
+        senderId: senderUserId,
+        senderName: senderName,
+        receiverId,
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
   socket.on("typing_start", ({ conversationId }) => {
+    const userId = socket.handshake.query.userId;
     socket.to(`conversation_${conversationId}`).emit("user_typing", {
-      userId: socket.userId,
+      userId: userId,
+      userName: "User", // Ideally, fetch user name from database
       conversationId
     });
   });
 
   socket.on("typing_end", ({ conversationId }) => {
+    const userId = socket.handshake.query.userId;
     socket.to(`conversation_${conversationId}`).emit("user_stopped_typing", {
-      userId: socket.userId,
+      userId: userId,
       conversationId
     });
   });
 
   socket.on("message_read", async ({ messageId, conversationId }) => {
     try {
+      const userId = socket.handshake.query.userId;
       // Update message read status in database
-      await messageService.markMessageAsRead(messageId, socket.userId);
-      
+      await messageService.markMessageAsRead(messageId, userId);
+
       // Notify other users in the conversation
       socket.to(`conversation_${conversationId}`).emit("message_read_update", {
         messageId,
-        userId: socket.userId
+        userId: userId
       });
     } catch (error) {
+      console.error("Error marking message as read:", error);
       socket.emit("error", { message: "Failed to mark message as read" });
     }
   });
@@ -128,8 +154,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("reconnect_attempt", () => {
-    if (socket.userId) {
-      db.ConversationMember.findAll({ where: { userId: socket.userId } })
+    const userId = socket.handshake.query.userId;
+    if (userId) {
+      db.ConversationMember.findAll({ where: { userId } })
         .then((members) => {
           members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
         })

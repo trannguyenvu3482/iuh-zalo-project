@@ -15,29 +15,48 @@ const {
 const { Sequelize } = require("sequelize");
 const sequelize = db.sequelize;
 
-exports.getConversationMessages = async (conversationId, userId) => {
+exports.getConversationMessages = async (conversationId, userId, limit = 20, offset = 0) => {
   try {
+    // Verify user is a member of the conversation
     const conversation = await Conversation.findOne({
       where: { id: conversationId },
       include: [{ model: User, as: "members", where: { id: userId } }],
     });
+    
     if (!conversation)
       throw new NotFoundError(
         "Conversation does not exist or user is not a member"
       );
 
+    // Get total message count for pagination info
+    const totalCount = await Message.count({
+      where: { conversationId }
+    });
+    
+    // Get messages with pagination
     const messages = await Message.findAll({
       where: { conversationId },
-      order: [["created_at", "ASC"]],
+      order: [["created_at", "DESC"]], // Newest messages first
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       include: [
         {
           model: Message,
           as: "replyTo",
           attributes: ["id", "message", "sender", "created_at"],
         },
-      ], // Include replied-to message
+      ]
     });
-    return messages;
+    
+    return {
+      messages: messages.reverse(), // Reverse back to ASC order for the client
+      pagination: {
+        total: totalCount,
+        offset: parseInt(offset),
+        limit: parseInt(limit),
+        hasMore: parseInt(offset) + messages.length < totalCount
+      }
+    };
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to fetch messages", 500);
@@ -690,36 +709,53 @@ exports.removeGroupMember = async (conversationId, adminId, memberIdToRemove) =>
  */
 exports.getUserConversations = async (userId) => {
   try {
-    // Get all conversations the user is a member of
+    // First, get the conversation IDs the user is a member of
+    const memberOf = await ConversationMember.findAll({
+      where: { userId },
+      attributes: ['conversationId']
+    });
+    
+    const conversationIds = memberOf.map(m => m.conversationId);
+    
+    if (conversationIds.length === 0) {
+      return [];
+    }
+    
+    // Get conversations with ALL members in a single query
     const conversations = await Conversation.findAll({
-      include: [
-        { 
-          model: User, 
-          as: "members", 
-          attributes: ["id", "username", "fullname", "avatar", "status"],
-          through: { attributes: ["role"] }
-        }
-      ],
-      where: {
-        "$members.id$": userId
-      }
+      where: { 
+        id: { [Op.in]: conversationIds } 
+      },
+      include: [{ 
+        model: User, 
+        as: "members", 
+        attributes: ["id", "username", "fullname", "avatar", "status"],
+        through: { attributes: ["role"] }
+      }],
+      order: [['updated_at', 'DESC']] // Order by most recent first
     });
 
     // Format the result with necessary information
-    const results = conversations.map(conversation => {
+    return conversations.map(conversation => {
       // Filter out the current user from members
       const otherMembers = conversation.members.filter(
         member => member.id !== userId
       );
       
-      // For private chats, we want the other user's info
-      const conversationName = conversation.type === "PRIVATE" && !conversation.name && otherMembers.length > 0
-        ? otherMembers[0].fullname
-        : conversation.name;
+      // For private chats, use the other user's info if available
+      const conversationName = 
+        conversation.type === "PRIVATE" && 
+        !conversation.name && 
+        otherMembers.length > 0
+          ? otherMembers[0].fullname
+          : conversation.name || "Unnamed Conversation";
         
-      const conversationAvatar = conversation.type === "PRIVATE" && !conversation.avatar && otherMembers.length > 0
-        ? otherMembers[0].avatar 
-        : conversation.avatar;
+      const conversationAvatar = 
+        conversation.type === "PRIVATE" && 
+        !conversation.avatar && 
+        otherMembers.length > 0
+          ? otherMembers[0].avatar 
+          : conversation.avatar;
       
       // Find user's role in this conversation
       const userMember = conversation.members.find(m => m.id === userId);
@@ -732,7 +768,8 @@ exports.getUserConversations = async (userId) => {
         avatar: conversationAvatar,
         type: conversation.type,
         created_at: conversation.created_at,
-        members: conversation.members.map(m => ({
+        updated_at: conversation.updated_at,
+        members: otherMembers.map(m => ({
           id: m.id,
           username: m.username,
           fullname: m.fullname,
@@ -743,8 +780,6 @@ exports.getUserConversations = async (userId) => {
         userRole
       };
     });
-    
-    return results;
   } catch (error) {
     console.error("Error fetching user conversations:", error);
     if (error instanceof AppError) throw error;

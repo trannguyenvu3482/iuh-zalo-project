@@ -3,7 +3,7 @@ import instance from "../service/axios";
 const BASE_URL = "/auth";
 const login = async (phoneNumber, password) => {
   return await instance.post(`${BASE_URL}/signin`, {
-    username: phoneNumber,
+    phoneNumber,
     password,
   });
 };
