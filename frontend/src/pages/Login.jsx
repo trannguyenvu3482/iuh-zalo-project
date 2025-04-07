@@ -1,80 +1,78 @@
-import { useMutation } from '@tanstack/react-query'
-import { useSnackbar } from 'notistack'
-import React, { useState } from 'react'
-import { Helmet } from 'react-helmet-async'
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
-import { useNavigate } from 'react-router-dom'
-import { login } from '../api/apiAuth'
-import HamburgerIcon from '../assets/icons/hamburger.png'
-import lock from '../assets/icons/lock.png'
-import ZaloPCLogo from '../assets/icons/zalo-pc.png'
-import ZaloLogo from '../assets/imgs/logo.png'
-import { LoadingSpinner } from '../components'
-import { useUserStore } from '../zustand/userStore'
+import { useMutation } from '@tanstack/react-query';
+import { useSnackbar } from 'notistack';
+import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import { useNavigate } from 'react-router-dom';
+import { login } from '../api/apiAuth';
+import HamburgerIcon from '../assets/icons/hamburger.png';
+import lock from '../assets/icons/lock.png';
+import ZaloPCLogo from '../assets/icons/zalo-pc.png';
+import ZaloLogo from '../assets/imgs/logo.png';
+import { LoadingSpinner } from '../components';
+import { useUserStore } from '../zustand/userStore';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
-  const navigate = useNavigate()
-  const { setIsAuthenticated, setUser, setAccessToken } = useUserStore()
+  const navigate = useNavigate();
+  const { setIsAuthenticated, setUser, setAccessToken } = useUserStore();
+  const { enqueueSnackbar } = useSnackbar();
+  const { t, i18n } = useTranslation();
 
-  const [isUsingQRLogin, setIsUsingQRLogin] = useState(true)
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [password, setPassword] = useState('')
-  const [isOpen, setIsOpen] = useState(false)
-  const { enqueueSnackbar } = useSnackbar()
+  const [isUsingQRLogin, setIsUsingQRLogin] = useState(true);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
 
-  // React Query Mutation for Login
-  const { mutate, isPending, error, data } = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: ({ username, password }) => login(username, password),
     onSuccess: (response) => {
       if (response.statusCode === 401) {
-        throw new Error('Mật khẩu không chính xác')
+        throw new Error(t('invalidPassword'));
       } else if (response.statusCode === 404) {
-        throw new Error('Số điện thoại không tồn tại')
+        throw new Error(t('phoneNotFound'));
       }
 
-      const { accessToken, user } = response.data
-      setUser(user)
-      setAccessToken(accessToken)
-      setIsAuthenticated(true)
-      enqueueSnackbar('Đăng nhập thành công', { variant: 'success' })
-      setTimeout(() => navigate('/'), 1000)
+      const { accessToken, user } = response.data;
+      setUser(user);
+      setAccessToken(accessToken);
+      setIsAuthenticated(true);
+      enqueueSnackbar(t('loginSuccess'), { variant: 'success' });
+      setTimeout(() => navigate('/'), 1000);
     },
     onError: (err) => {
-      console.log(err)
-
       const errorMessage =
-        err.message === 'Mật khẩu không chính xác' ||
-        err.message === 'Số điện thoại không tồn tại'
+        err.message === t('invalidPassword') || err.message === t('phoneNotFound')
           ? err.message
-          : 'Đăng nhập thất bại. Vui lòng thử lại.'
-      enqueueSnackbar(errorMessage, { variant: 'error' })
+          : t('loginFailed');
+      enqueueSnackbar(errorMessage, { variant: 'error' });
     },
-  })
+  });
 
   const handleLoginWithPassword = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!isValidPhoneNumber(phoneNumber)) {
-      enqueueSnackbar('Số điện thoại không hợp lệ', { variant: 'error' })
-      return
+      enqueueSnackbar(t('invalidPhone'), { variant: 'error' });
+      return;
     }
 
-    const username = phoneNumber.replace('+84', '0')
-    mutate({ username, password })
-  }
+    const username = phoneNumber.replace('+84', '0');
+    mutate({ username, password });
+  };
 
   const isValidPhone = (phoneNumber) => {
     try {
-      return isValidPhoneNumber(phoneNumber)
+      return isValidPhoneNumber(phoneNumber);
     } catch (error) {
-      return false
+      return false;
     }
-  }
+  };
 
   return (
     <>
       <Helmet>
-        <title>Zalo - Đăng nhập</title>
+        <title>Zalo - {t('loginWithPassword')}</title>
       </Helmet>
 
       {isPending ? (
@@ -84,15 +82,15 @@ const Login = () => {
           <div className="flex flex-col items-center justify-center pt-16">
             <img className="h-auto w-[105px]" src={ZaloLogo} />
             <div className="mt-4 text-center">
-              <p>Đăng nhập tài khoản Zalo</p>
-              <p>để kết nối với ứng dụng Zalo Web</p>
+              <p>{t('title')}</p>
+              <p>{t('subtitle')}</p>
             </div>
 
             <div className="mt-4 w-[540px] max-w-[540px] rounded-xl bg-white">
               <div className="top flex w-full items-center rounded-tl-xl rounded-tr-xl">
                 <div className="relative flex min-h-14 flex-1 items-center justify-center border-b border-[#f0f0f0] px-6">
                   <h1 className="font-semibold">
-                    Đăng nhập {isUsingQRLogin ? 'qua mã QR' : 'với mật khẩu'}
+                    {isUsingQRLogin ? t('loginWithQR') : t('loginWithPassword')}
                   </h1>
                   <div className="absolute right-4">
                     {isUsingQRLogin && (
@@ -109,13 +107,13 @@ const Login = () => {
                     <div className="menu absolute right-4 top-[46px] z-10 flex w-[200px] flex-col items-center justify-center rounded-md border border-[#f0f0f0] bg-white px-1 py-2 shadow-xl">
                       <button
                         onClick={() => {
-                          setIsUsingQRLogin(false)
-                          setPhoneNumber('')
-                          setIsOpen(false)
+                          setIsUsingQRLogin(false);
+                          setPhoneNumber('');
+                          setIsOpen(false);
                         }}
                         className="cursor-pointer text-sm"
                       >
-                        Đăng nhập với mật khẩu
+                        {t('loginWithPassword')}
                       </button>
                     </div>
                   )}
@@ -130,13 +128,11 @@ const Login = () => {
                         src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Example"
                         alt=""
                       />
-                      <p className="mt-1 text-blue-600">
-                        Chỉ dùng để đăng nhập
-                      </p>
-                      <p className="mt-1">Zalo trên máy tính</p>
+                      <p className="mt-1 text-blue-600">{t('onlyForLogin')}</p>
+                      <p className="mt-1">{t('zaloPCFooter')}</p>
                     </div>
                   ) : (
-                    <form>
+                    <form onSubmit={handleLoginWithPassword}>
                       <PhoneInput
                         className="mt-[42px] border-b p-2"
                         numberInputProps={{
@@ -148,7 +144,7 @@ const Login = () => {
                           },
                         }}
                         international
-                        placeholder="Số điện thoại"
+                        placeholder={t('phonePlaceholder')}
                         countryCallingCodeEditable={false}
                         defaultCountry="VN"
                         value={phoneNumber}
@@ -159,34 +155,35 @@ const Login = () => {
                         <input
                           type="password"
                           className="background-transparent outline-none"
+                          placeholder={t('passwordPlaceholder')}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
                       </div>
                       <button
                         disabled={!isValidPhone(phoneNumber)}
-                        onClick={handleLoginWithPassword}
+                        type="submit"
                         className="mt-8 flex w-full flex-1 items-center justify-center rounded-md bg-[#0191f4] px-1 py-3 text-sm text-white hover:bg-[#007bff] disabled:opacity-50"
                       >
-                        Đăng nhập với mật khẩu
+                        {t('loginWithPassword')}
                       </button>
 
                       <button
                         onClick={() => alert('Chức năng chưa phát triển...')}
                         className="flex w-full flex-1 items-center justify-center rounded-md px-1 py-3 text-sm hover:opacity-70"
                       >
-                        Quên mật khẩu
+                        {t('forgotPassword')}
                       </button>
                       <button
-                        type="submit"
+                        type="button"
                         onClick={() => {
-                          setIsUsingQRLogin(true)
-                          setIsOpen(false)
-                          setPhoneNumber('')
+                          setIsUsingQRLogin(true);
+                          setIsOpen(false);
+                          setPhoneNumber('');
                         }}
                         className="mt-4 flex w-full flex-1 items-center justify-center rounded-md px-1 py-3 text-sm font-semibold text-[#0190f3] hover:opacity-70"
                       >
-                        Đăng nhập qua mã QR
+                        {t('loginWithQR')}
                       </button>
                     </form>
                   )}
@@ -197,34 +194,35 @@ const Login = () => {
                 <img src={ZaloPCLogo} alt="" />
                 <div className="ml-3 flex w-full items-center justify-between gap-4">
                   <div className="flex w-[300px] flex-col">
-                    <p className="text-sm font-bold">
-                      Nâng cao hiệu quả công việc với Zalo PC
-                    </p>
-                    <p className="text-sm">
-                      Gửi file lớn lên đến 1 GB, chụp màn hình, gọi video và
-                      nhiều tiện ích hơn nữa
-                    </p>
+                    <p className="text-sm font-bold">{t('zaloPCHeader')}</p>
+                    <p className="text-sm">{t('zaloPCDesc')}</p>
                   </div>
                   <button className="flex flex-1 items-center justify-center rounded-md bg-[#0167ff] px-1 py-2 font-semibold text-white">
-                    Tải ngay
+                    {t('downloadNow')}
                   </button>
                 </div>
               </div>
             </div>
 
             <div className="mx-4 mb-2 mt-24 flex-row items-center justify-between rounded-xl border-[#c0c0c0] px-2">
-              <a href="#" className="mr-2 text-xs font-bold text-blue-500">
+              <button
+                onClick={() => i18n.changeLanguage('vi')}
+                className="mr-2 text-xs font-bold text-blue-500"
+              >
                 Tiếng Việt
-              </a>
-              <a href="#" className="text-xs text-blue-500">
+              </button>
+              <button
+                onClick={() => i18n.changeLanguage('en')}
+                className="text-xs text-blue-500"
+              >
                 English
-              </a>
+              </button>
             </div>
           </div>
         </div>
       )}
     </>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

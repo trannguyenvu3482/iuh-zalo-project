@@ -6,6 +6,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import router from './router'
+import './i18n';
 
 const queryClient = new QueryClient()
 
