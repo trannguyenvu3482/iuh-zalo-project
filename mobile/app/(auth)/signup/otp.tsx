@@ -19,6 +19,7 @@ export default function OTPScreen() {
   const [timer, setTimer] = useState(60);
   const inputRef = useRef<TextInput>(null);
   const [isResendDisabled, setIsResendDisabled] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,6 +55,29 @@ export default function OTPScreen() {
     if (cleaned.length === OTP_LENGTH) {
       // TODO: Implement OTP verification
       console.log("Verify OTP:", cleaned);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== OTP_LENGTH) return;
+
+    setIsVerifying(true); // Bắt đầu xác thực OTP
+    try {
+      // TODO: Thay thế bằng API xác thực OTP thực tế
+      console.log("Verifying OTP:", otp);
+      const isValidOtp = otp === "123456"; // Giả lập OTP hợp lệ là "123456"
+
+      if (isValidOtp) {
+        console.log("OTP verified successfully");
+        router.push("/(auth)/signup/createName"); // Chuyển đến trang createName
+      } else {
+        alert("Mã OTP không hợp lệ. Vui lòng thử lại.");
+      }
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      alert("Đã xảy ra lỗi khi xác thực OTP. Vui lòng thử lại.");
+    } finally {
+      setIsVerifying(false); // Kết thúc xác thực OTP
     }
   };
 
@@ -131,7 +155,8 @@ export default function OTPScreen() {
             title="Tiếp tục"
             className="py-2.5"
             textStyle="text-base"
-            disabled={otp.length !== OTP_LENGTH}
+            disabled={otp.length !== OTP_LENGTH || isVerifying}
+            onPress={handleVerifyOtp}
           />
 
           {/* Timer and Resend */}
