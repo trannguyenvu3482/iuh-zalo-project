@@ -13,9 +13,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 5
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
   <component name="ProjectId" id="2vFNxH5FV7yd0XdMO437czsWxAA" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -28,7 +28,7 @@
     "git-widget-placeholder": "Phat",
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "D:/HocTap/HK8/Cong_Nghe_Moi/BaiTapLon_CNM/iuh-zalo-project",
+    "last_opened_file_path": "D:/HocTap/HK8/Cong_Nghe_Moi/BaiTapLon_CNM/iuh-zalo-project/backend",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -54,6 +54,7 @@
       <option name="presentableId" value="Default" />
       <updated>1743737107010</updated>
       <workItem from="1743737108251" duration="3264000" />
+      <workItem from="1744038412905" duration="197000" />
     </task>
     <servers />
   </component>
