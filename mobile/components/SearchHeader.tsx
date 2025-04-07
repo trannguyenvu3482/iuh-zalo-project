@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import QRCodeButton from "./QRCodeButton";
 
@@ -84,17 +83,17 @@ const SearchHeader = ({
           </TouchableOpacity>
         );
       default:
-        return null;
+        return <></>;
     }
   };
 
   return (
-    <SafeAreaView
-      className={`flex-row items-center justify-between px-4 bg-primary border-b border-gray-200 ${isSearchActive ? "py-2" : "py-3"}`}
+    <View
+      className={`flex-row items-center justify-between px-4 bg-primary border-b border-gray-200 ${isSearchActive ? "pt-3 pb-4" : "py-3"} z-50`}
     >
-      <View className="flex-row items-center flex-1">
+      <>
         {isSearchActive ? (
-          <>
+          <View className="flex-row items-center flex-1">
             <TouchableOpacity
               onPress={handleBackPress}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -105,18 +104,15 @@ const SearchHeader = ({
             <View className="flex-1 flex-row items-center bg-gray-100 rounded-lg px-3 mr-2">
               <Ionicons name="search" size={18} color="black" />
               <TextInput
-                style={{
-                  paddingVertical: 4,
-                }}
                 placeholder="Tìm kiếm"
                 placeholderTextColor="#9CA3AF"
-                className="text-gray-800 ml-2 text-lg"
+                className="py-2 flex-1 text-gray-800 ml-2"
                 autoFocus
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
             </View>
-          </>
+          </View>
         ) : (
           <TouchableOpacity
             onPress={handleSearchPress}
@@ -128,9 +124,9 @@ const SearchHeader = ({
             </Text>
           </TouchableOpacity>
         )}
-      </View>
+      </>
       {renderRightButtons()}
-    </SafeAreaView>
+    </View>
   );
 };
 

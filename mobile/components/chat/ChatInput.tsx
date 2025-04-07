@@ -13,11 +13,17 @@ import {
 import EmojiModal from "react-native-emoji-modal";
 
 import ImageSelector from "./ImageSelector";
+import ReplyBar from "./ReplyBar";
+import VoiceRecorder from "./VoiceRecorder";
+import { Message } from "./types";
 
 interface ChatInputProps {
   message: string;
   onMessageChange: (text: string) => void;
   onSend: () => void;
+  onSendVoice?: (uri: string, duration: number) => void;
+  replyingTo: Message | null;
+  onCancelReply: () => void;
 }
 
 // Mock data for pictures
@@ -46,10 +52,14 @@ export default function ChatInput({
   message,
   onMessageChange,
   onSend,
+  onSendVoice,
+  replyingTo,
+  onCancelReply,
 }: ChatInputProps) {
   const [showEmojiModal, setShowEmojiModal] = useState(false);
   const [showPictureGrid, setShowPictureGrid] = useState(false);
   const [selectedPictures, setSelectedPictures] = useState<string[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
@@ -63,12 +73,16 @@ export default function ChatInput({
           setShowPictureGrid(false);
           return true;
         }
+        if (isRecording) {
+          setIsRecording(false);
+          return true;
+        }
         return false;
       },
     );
 
     return () => backHandler.remove();
-  }, [showEmojiModal, showPictureGrid]);
+  }, [showEmojiModal, showPictureGrid, isRecording]);
 
   const handleEmojiSelect = (emoji: string | null) => {
     if (emoji) {
@@ -90,10 +104,37 @@ export default function ChatInput({
     setSelectedPictures((prev) => prev.filter((id) => id !== pictureId));
   };
 
+  const handleStartRecording = () => {
+    setIsRecording(true);
+  };
+
+  const handleFinishRecording = (uri: string, duration: number) => {
+    setIsRecording(false);
+    if (onSendVoice) {
+      onSendVoice(uri, duration);
+    }
+  };
+
+  const handleCancelRecording = () => {
+    setIsRecording(false);
+  };
+
   const hasContent = message.trim().length > 0 || selectedPictures.length > 0;
+
+  // If recording is active, show the voice recorder
+  if (isRecording) {
+    return (
+      <VoiceRecorder
+        onCancel={handleCancelRecording}
+        onFinishRecording={handleFinishRecording}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
+      {replyingTo && <ReplyBar message={replyingTo} onClose={onCancelReply} />}
+
       {selectedPictures.length > 0 && (
         <View className="bg-white border-t border-gray-200 px-4 py-2">
           <ScrollView
@@ -162,7 +203,7 @@ export default function ChatInput({
                 color="#666"
               />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleStartRecording}>
               <Ionicons name="mic-outline" size={24} color="#666" />
             </TouchableOpacity>
             <TouchableOpacity

@@ -27,15 +27,18 @@ const handleError = (error, res) => {
 
 exports.getConversationMessages = async (req, res, next) => {
   const { conversationId } = req.params;
+  const { limit = 20, offset = 0 } = req.query;
   const userId = req?.userId;
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    const messages = await conversationService.getConversationMessages(
+    const result = await conversationService.getConversationMessages(
       conversationId,
-      userId
+      userId,
+      limit,
+      offset
     );
-    successResponse(res, "Messages fetched successfully", messages);
+    successResponse(res, "Messages fetched successfully", result);
   } catch (error) {
     next(error);
   }

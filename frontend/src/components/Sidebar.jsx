@@ -1,9 +1,9 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { format, subDays } from 'date-fns'
 import { useSnackbar } from 'notistack'
-import React, { useEffect, useState } from 'react'
-import { Scrollbars } from 'react-custom-scrollbars-2'
+import { useEffect, useState } from 'react'
 import { searchConversationsByName } from '../api/apiConversation'
+import { getAllConversations } from '../api/apiMessage'
 import { searchUserByPhoneNumber } from '../api/apiUser'
 import addFriendIcon from '../assets/icons/add-friend-btn.png'
 import chevronDown from '../assets/icons/chevron-down.png'
@@ -47,6 +47,19 @@ const Sidebar = () => {
       enqueueSnackbar(err.message || 'Tìm kiếm thất bại', { variant: 'error' })
     },
   })
+
+  // Fetch conversations
+  const { data: conversationsResponse, isLoading: isLoadingConversations } =
+    useQuery({
+      queryKey: ['conversations'],
+      queryFn: getAllConversations,
+      staleTime: 60000, // 1 minute
+    })
+
+  // Ensure conversations is always an array
+  const conversations = Array.isArray(conversationsResponse?.data)
+    ? conversationsResponse.data
+    : []
 
   useEffect(() => {
     const handleSearch = async () => {
@@ -157,20 +170,11 @@ const Sidebar = () => {
                   </div>
 
                   {searchResult && !error ? (
-                    <Scrollbars
-                      autoHeight
-                      autoHeightMax="calc(100vh - 64px)"
-                      thumbSize={200}
-                    >
-                      <ul className="chat-list max-h-screen max-w-full border-t border-gray-200">
-                        <p className="px-3 pt-4 text-sm font-semibold text-gray-700">
-                          Tìm bạn qua số điện thoại
-                        </p>
-                        <ConversationPreviewCard
-                          conversation={searchResult?.data?.user}
-                        />
-                      </ul>
-                    </Scrollbars>
+                    <div className="overflow-y-auto">
+                      <ConversationPreviewCard
+                        conversation={searchResult?.data?.user}
+                      />
+                    </div>
                   ) : (
                     <>
                       <div className="mt-16 flex h-full flex-col items-center">
@@ -252,17 +256,40 @@ const Sidebar = () => {
               </div>
 
               {/* Chat list */}
-              <Scrollbars
-                autoHeight
-                autoHeightMax="calc(100vh - 64px)"
-                thumbSize={200}
-              >
-                <ul className="chat-list max-h-screen max-w-full border-t border-gray-200">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((item, index) => (
-                    <ChatRoom id={item} key={index} />
-                  ))}
-                </ul>
-              </Scrollbars>
+              <div className="max-h-[calc(100vh-64px)] overflow-y-auto border-t border-gray-200">
+                {isLoadingConversations ? (
+                  <div className="flex h-40 items-center justify-center">
+                    <LoadingSpinner />
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div className="flex h-40 items-center justify-center">
+                    <p className="text-gray-500">No conversations yet</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {conversations.map((conversation) => (
+                      <ChatRoom
+                        key={conversation.id}
+                        id={conversation.id}
+                        name={
+                          conversation.type === 'PRIVATE'
+                            ? conversation.members[0]?.fullname ||
+                              'Unnamed Contact'
+                            : conversation.name || 'Group Chat'
+                        }
+                        avatar={
+                          conversation.type === 'PRIVATE'
+                            ? conversation.members[0]?.avatar
+                            : conversation.avatar
+                        }
+                        lastMessage={conversation.lastMessage}
+                        lastActivity={conversation.created_at}
+                        type={conversation.type}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </>
