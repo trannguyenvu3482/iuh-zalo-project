@@ -49,6 +49,12 @@ const { setIo: setMessageIo } = require('./app/controllers/message.controller');
 const { setIo: setConversationIo } = require('./app/controllers/conversation.controller');
 const { setIo: setFriendIo } = require("./app/controllers/friend.controller");
 
+// Import the call handlers
+const { setupCallHandlers } = require('./socket/callHandlers');
+
+// Import token routes
+const tokenRoutes = require('./routes/tokenRoutes');
+
 db.sequelize.sync().then(() => {
   console.log("Database synced");
 });
@@ -61,6 +67,9 @@ require("./app/routes/auth.routes")(app);
 require("./app/routes/friend.routes")(app);
 require("./app/routes/user.routes")(app);
 require("./app/routes/message.routes")(app);
+
+// Use token routes for generating Agora tokens
+app.use('/api/token', tokenRoutes);
 
 // Initialize Socket.IO for all controllers that need it
 setMessageIo(io);
@@ -75,7 +84,19 @@ io.on("connection", (socket) => {
       members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
     });
     socket.join(`user_${userId}`);
+    
+    // Set up call handlers with user information
+    setupCallHandlers(io, socket, { id: userId });
   }
+
+  // Explicitly handle join events (important for call functionality)
+  socket.on("join", (room) => {
+    console.log(`User ${socket.handshake.query.userId} joining room: ${room}`);
+    socket.join(room);
+    
+    // Log all rooms this socket is in
+    console.log(`Socket ${socket.id} is now in rooms:`, Array.from(socket.rooms));
+  });
 
   socket.on("joinQRRoom", (token) => {
     console.log("Client joining room:", token);
