@@ -10,6 +10,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { SocketProvider } from './contexts/SocketContext'
 import './index.css'
 import router from './router'
+import './i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: {
