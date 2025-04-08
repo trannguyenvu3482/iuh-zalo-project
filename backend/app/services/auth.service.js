@@ -9,6 +9,16 @@ const crypto = require("crypto");
 // In-memory OTP storage (in production, use Redis for distributed storage)
 const otpStore = {};
 const qrSessions = {};
+const qrSessionSockets = {};
+let io; // Socket.io instance
+
+/**
+ * Initialize the service with Socket.IO instance
+ * @param {Object} socketIo - Socket.IO server instance
+ */
+const initializeSocketIO = (socketIo) => {
+  io = socketIo;
+};
 
 /**
  * Generate a random OTP
@@ -123,6 +133,7 @@ exports.authenticateUser = async (phoneNumber, password) => {
       username: user.username,
       email: user.email,
       fullname: user.fullname,
+      avatar: user.avatar,
       roles: roles.map(role => role.name),
     },
     accessToken: token
@@ -151,7 +162,7 @@ exports.generateQRSession = async () => {
   qrSessions[sessionId] = {
     status: "pending",
     createdAt: Date.now(),
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
+    expiresAt: Date.now() + 60 * 1000, // 1 minute
   };
   
   const apiUrl = process.env.API_URL || 'http://localhost:8081';
@@ -162,7 +173,7 @@ exports.generateQRSession = async () => {
     sessionId: sessionId,
     instructions: "Scan with Zalo app to log in",
     apiEndpoint: `${apiUrl}/api/auth/scan-qr`,
-    expiresAt: Date.now() + 5 * 60 * 1000,
+    expiresAt: Date.now() + 60 * 1000, // 1 minute
   });
   
   return { sessionId, qrData };
@@ -183,43 +194,68 @@ exports.processQRLogin = async (sessionId, userId) => {
   
   if (Date.now() > session.expiresAt) {
     delete qrSessions[sessionId];
+    delete qrSessionSockets[sessionId];
     throw new ValidationError("QR session expired.");
   }
   
   try {
-    // Get user data - explicitly casting to UUID
-    const user = await User.findOne({ 
-      where: { id: userId }
-    });
-    
+    const user = await User.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundError("User not found.");
     }
     
-    // Update session status
-    qrSessions[sessionId] = {
-      ...session,
-      status: "completed",
-      userId,
-      completedAt: Date.now(),
-    };
-    
-    // Generate token
     const token = this.generateToken(user.id);
     const roles = await user.getRoles();
     
-    return {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullname: user.fullname,
-        roles: roles.map(role => role.name),
-      },
+    const userData = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullname: user.fullname,
+      roles: roles.map(role => role.name),
+    };
+
+    const responseData = {
+      status: "completed",
+      user: userData,
       accessToken: token
     };
+
+    if (io) {
+      const roomName = `qr_${sessionId}`;
+      const roomClients = io.sockets.adapter.rooms.get(roomName)?.size || 0;
+      console.log(`Before emitting to ${roomName}, clients: ${roomClients}`);
+      
+      if (roomClients > 0) {
+        io.to(roomName).emit('qr:status', responseData);
+        console.log(`Emitted qr:status to ${roomName} with ${roomClients} clients`);
+      } else {
+        const targetSocketId = qrSessionSockets[sessionId];
+        if (targetSocketId) {
+          const targetSocket = io.sockets.sockets.get(targetSocketId);
+          if (targetSocket) {
+            console.log(`Room empty, emitting directly to socket ${targetSocketId}`);
+            targetSocket.emit('qr:status', responseData);
+          } else {
+            console.log(`Socket ${targetSocketId} not found for session ${sessionId}`);
+          }
+        } else {
+          console.log(`No socket mapped for session ${sessionId}`);
+        }
+      }
+    }
+
+    // Clean up immediately after emitting
+    delete qrSessions[sessionId];
+    delete qrSessionSockets[sessionId];
+
+    return responseData;
   } catch (error) {
     console.error('QR Login Error:', error);
+    if (io) {
+      const roomName = `qr_${sessionId}`;
+      io.to(roomName).emit('qr:error', { message: error.message });
+    }
     throw error;
   }
 };
@@ -229,31 +265,17 @@ exports.processQRLogin = async (sessionId, userId) => {
  * @param {string} sessionId 
  * @returns {Object} Session status
  */
-exports.checkQRSessionStatus = (sessionId) => {
+exports.checkQRSessionStatus = async (sessionId) => {
   const session = qrSessions[sessionId];
-  
   if (!session) {
-    throw new ValidationError("Invalid or expired QR session.");
+    return { status: 'pending' };
   }
-  
   if (Date.now() > session.expiresAt) {
     delete qrSessions[sessionId];
-    throw new ValidationError("QR session expired.");
+    delete qrSessionSockets[sessionId];
+    return { status: 'expired' };
   }
-  
-  if (session.status === "completed") {
-    const result = {
-      status: "completed",
-      user: session.user,
-      accessToken: session.token
-    };
-    
-    // Clean up completed session
-    delete qrSessions[sessionId];
-    return result;
-  }
-  
-  return { status: session.status };
+  return { status: 'pending' }; // Only pending until processed
 };
 
 /**
@@ -274,4 +296,12 @@ exports.assignRolesToUser = async (user, roles) => {
   } else {
     await user.setRoles([1]); // default user role
   }
+};
+
+// Export the initialize function
+module.exports = {
+  ...exports,
+  initializeSocketIO,
+  qrSessions,
+  qrSessionSockets,
 };

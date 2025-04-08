@@ -195,18 +195,36 @@ exports.checkQRStatus = async (req, res, next) => {
     const { sessionId } = req.params;
     
     if (!sessionId) {
-      return res.status(400).json({
+      return res.status(400).json({ 
         statusCode: 0,
         message: "Session ID is required"
       });
     }
     
-    const status = authService.checkQRSessionStatus(sessionId);
+    // Get the QR session status
+    const statusData = authService.checkQRSessionStatus(sessionId);
+    
+    console.log('QR status data:', JSON.stringify(statusData));
+    
+    // Ensure consistent response format
+    if (statusData.status === "completed") {
+      return successResponse(
+        res,
+        "QR login successful!",
+        {
+          status: "completed",
+          user: statusData.user,
+          accessToken: statusData.accessToken
+        }
+      );
+    }
     
     return successResponse(
       res,
       "QR status retrieved",
-      status
+      {
+        status: statusData.status
+      }
     );
   } catch (error) {
     next(error);

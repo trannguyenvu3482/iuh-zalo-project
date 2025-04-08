@@ -6,4 +6,12 @@ const searchUserByPhoneNumber = (phoneNumber) => {
   return instance.get(`${BASE_URL}/search?phoneNumber=${phoneNumber}`);
 };
 
-export { searchUserByPhoneNumber };
+const getUserInfo = () => {
+  return instance.get(`${BASE_URL}/me`);
+};
+
+const updateUserProfile = (userData) => {
+  return instance.put(`${BASE_URL}/profile`, userData);
+};
+
+export { getUserInfo, searchUserByPhoneNumber, updateUserProfile };

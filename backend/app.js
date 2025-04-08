@@ -55,6 +55,10 @@ const { setupCallHandlers } = require('./socket/callHandlers');
 // Import token routes
 const tokenRoutes = require('./routes/tokenRoutes');
 
+// Import the QR handlers
+const { setupQRHandlers } = require('./socket/qrHandlers');
+const { initializeSocketIO } = require('./app/services/auth.service');
+
 db.sequelize.sync().then(() => {
   console.log("Database synced");
 });
@@ -75,9 +79,16 @@ app.use('/api/token', tokenRoutes);
 setMessageIo(io);
 setConversationIo(io);
 setFriendIo(io);
+initializeSocketIO(io); // Initialize auth service with Socket.IO
 
 io.on("connection", (socket) => {
   console.log("A user connected");
+  setupQRHandlers(io, socket);
+
+  socket.onAny((event, ...args) => {
+    console.log(`Received event from ${socket.id}: ${event}`, args);
+  });
+
   const userId = socket.handshake.query.userId;
   if (userId) {
     db.ConversationMember.findAll({ where: { userId } }).then((members) => {
@@ -87,6 +98,7 @@ io.on("connection", (socket) => {
     
     // Set up call handlers with user information
     setupCallHandlers(io, socket, { id: userId });
+    // Set up QR handlers
   }
 
   // Explicitly handle join events (important for call functionality)

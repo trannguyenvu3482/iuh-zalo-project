@@ -121,50 +121,40 @@ export const SocketProvider = ({ children }) => {
 
   // Initialize socket when user is authenticated
   useEffect(() => {
-    if (!isAuthenticated || !user) {
-      // Disconnect socket if user is not authenticated
-      socketService.disconnectSocket()
-      setIsConnected(false)
-      console.log('Socket disconnected: user not authenticated')
-      return
-    }
+    const socket = socketService.getSocket() // Always initialize socket
 
-    console.log('Initializing socket connection for user:', user.id)
-
-    // Initialize socket connection
-    const socket = socketService.initializeSocket()
-
-    // Handle connection events
-    const handleConnect = () => {
+    socket.on('connect', () => {
       console.log('Socket connected successfully')
       setIsConnected(true)
-    }
+    })
 
-    const handleDisconnect = () => {
+    socket.on('disconnect', () => {
       console.log('Socket disconnected')
       setIsConnected(false)
-    }
+    })
 
-    const handleConnectError = (error) => {
+    socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error)
       setIsConnected(false)
-    }
+    })
 
-    socket.on('connect', handleConnect)
-    socket.on('disconnect', handleDisconnect)
-    socket.on('connect_error', handleConnectError)
-
-    // Set initial connected state
     setIsConnected(socket.connected)
     console.log('Initial socket connection state:', socket.connected)
 
-    // Cleanup on unmount
-    return () => {
-      socket.off('connect', handleConnect)
-      socket.off('disconnect', handleDisconnect)
-      socket.off('connect_error', handleConnectError)
+    // Only set up authenticated listeners if user is authenticated
+    if (isAuthenticated && user) {
+      console.log(
+        'Setting up authenticated socket listeners for user:',
+        user.id,
+      )
     }
-  }, [isAuthenticated, user])
+
+    return () => {
+      socket.off('connect')
+      socket.off('disconnect')
+      socket.off('connect_error')
+    }
+  }, [isAuthenticated, user]) // Keep dependencies
 
   // Utility function to show notification
   const showMessageNotification = (message) => {

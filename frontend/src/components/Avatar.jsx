@@ -2,6 +2,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import PropTypes from 'prop-types'
 import { memo, useEffect, useState } from 'react'
 import { FiExternalLink } from 'react-icons/fi'
+import { useUserStore } from '../zustand/userStore.js'
 import ProfileDialog from './Sidebar/ProfileDialog.jsx'
 
 // Optimized Avatar component with lazy loading and fallback
@@ -123,17 +124,33 @@ AvatarImage.propTypes = {
   fallbackSrc: PropTypes.string,
 }
 
-const AvatarComponent = () => {
+const Avatar = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const { user } = useUserStore()
+
+  // Function to handle dialog reopening
+  const handleProfileUpdate = () => {
+    // Close the dialog first
+    setIsOpen(false)
+
+    // Force a complete window refresh
+    window.location.reload()
+  }
+
+  console.log(user)
 
   return (
     <div className="text-right">
-      <ProfileDialog isOpen={isOpen} close={() => setIsOpen(false)} />
+      <ProfileDialog
+        isOpen={isOpen}
+        close={() => setIsOpen(false)}
+        onProfileUpdate={handleProfileUpdate}
+      />
       <Menu>
         <MenuButton className="inline-flex items-center gap-2 text-sm/6 font-semibold text-white focus:outline-none data-[focus]:outline-1 data-[focus]:outline-white">
           <AvatarImage
             className="h-[48px] w-[48px] rounded-full border border-gray-100"
-            src="https://s120-ava-talk.zadn.vn/b/a/c/2/7/120/e67b9b28aa1641d0fb5241e27aee9087.jpg"
+            src={user.avatar}
             alt=""
           />
         </MenuButton>
@@ -184,4 +201,4 @@ const AvatarComponent = () => {
   )
 }
 
-export default AvatarComponent
+export default Avatar
