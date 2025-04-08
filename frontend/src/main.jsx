@@ -5,8 +5,6 @@ import { createRoot } from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
 import { RouterProvider } from 'react-router-dom'
 import SocketInitializer from './components/SocketInitializer'
-import { AgoraProvider } from './components/video-call/AgoraContext'
-import { AuthProvider } from './contexts/AuthContext'
 import { SocketProvider } from './contexts/SocketContext'
 import './index.css'
 import router from './router'
@@ -28,14 +26,10 @@ createRoot(document.getElementById('root')).render(
     <HelmetProvider>
       <SnackbarProvider maxSnack={3} autoHideDuration={3000}>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <SocketProvider>
-              <AgoraProvider>
-                <SocketInitializer />
-                <RouterProvider router={router} />
-              </AgoraProvider>
-            </SocketProvider>
-          </AuthProvider>
+          <SocketProvider>
+            <SocketInitializer />
+            <RouterProvider router={router} />
+          </SocketProvider>
         </QueryClientProvider>
       </SnackbarProvider>
     </HelmetProvider>

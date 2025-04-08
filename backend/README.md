@@ -28,6 +28,10 @@ DB_NAME=your-db-name
 # Supabase
 SUPABASE_URL=your-project-url.supabase.co
 SUPABASE_KEY=your-supabase-anon-key
+
+# Agora
+AGORA_APP_ID=your_app_id_here
+AGORA_APP_CERTIFICATE=your_app_certificate_here
 ```
 
 3. Set up Supabase:
@@ -135,6 +139,30 @@ The updated schema includes:
 - Nickname support for conversation members
 - System message support (for events like adding members, leaving groups, etc.)
 - Various improvements to the messaging system
+
+## Agora Token Server Setup
+
+The video calling functionality requires an Agora token server to generate secure tokens for video calls. Follow these steps to set it up:
+
+1. Create an account on [Agora.io](https://www.agora.io/) if you don't have one
+2. Create a new project in the Agora Console
+3. Get your App ID and App Certificate from the project settings
+4. Add these credentials to your `.env` file:
+
+```
+AGORA_APP_ID=your_app_id_here
+AGORA_APP_CERTIFICATE=your_app_certificate_here
+```
+
+5. The token server is automatically set up at the endpoint: `/api/token/rtc/:channel/:uid`
+6. Test it by making a GET request to: `http://localhost:8080/api/token/rtc/test/1234`
+
+### Secure Token Flow
+
+1. When a call is initiated, the client requests a token from the token server
+2. The token server generates a secure, time-limited token using the Agora credentials
+3. The client uses this token to connect to the Agora service
+4. For security, tokens expire after 24 hours
 
 ## License
 

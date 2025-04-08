@@ -12,7 +12,6 @@ import { useSocket } from '../contexts/SocketContext'
 import { useUserStore } from '../zustand/userStore'
 import ChatMessage from './ChatMessage'
 import SystemMessage from './SystemMessage'
-import { useAgora } from './video-call/AgoraContext'
 
 const MESSAGES_PER_PAGE = 20
 
@@ -42,7 +41,6 @@ const ChatWindow = ({ conversation }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const scrollPositionRef = useRef(null)
   const [prevLocalMessagesLength, setPrevLocalMessagesLength] = useState(0)
-  const { startCall } = useAgora()
 
   // Store the active conversation ID in a ref to avoid unnecessary re-renders
   const activeConversationIdRef = useRef(conversationId)
@@ -399,6 +397,7 @@ const ChatWindow = ({ conversation }) => {
   const getReceiverInfo = () => {
     if (conversation?.type === 'GROUP') {
       return {
+        id: conversation?.id,
         name: conversation?.name || 'Group Chat',
         avatar:
           conversation?.avatar || 'https://avatar.iran.liara.run/public/45',
@@ -408,6 +407,7 @@ const ChatWindow = ({ conversation }) => {
       // First check if members array exists and has entries
       if (!conversation?.members || conversation.members.length === 0) {
         return {
+          id: conversation?.id,
           name: conversation?.name || 'Unknown Contact',
           avatar:
             conversation?.avatar || 'https://avatar.iran.liara.run/public/44',
@@ -422,6 +422,7 @@ const ChatWindow = ({ conversation }) => {
       const otherMember = otherMembers.length > 0 ? otherMembers[0] : null
 
       return {
+        id: otherMember?.id || conversation?.id,
         name: otherMember?.fullname || conversation?.name || 'Contact',
         avatar:
           otherMember?.avatar ||
@@ -536,16 +537,60 @@ const ChatWindow = ({ conversation }) => {
     clearTimeout(typingTimeoutRef.current)
   }
 
-  // Add a function to handle starting calls
+  // Method to handle video/audio call initiation
   const handleStartCall = (isVideo = true) => {
-    if (!receiverInfo || !receiverInfo.id) {
-      enqueueSnackbar('Cannot start call: receiver information not found', {
-        variant: 'error',
-      })
-      return
-    }
+    // Import the call utilities
+    import('../utils/callUtils')
+      .then(({ ensureCallFunctionalityAvailable, initiateCall }) => {
+        console.log('Attempting to start call')
+        console.log('Socket connected:', isConnected)
+        console.log('Receiver info:', receiverInfo)
 
-    startCall(receiverInfo, isVideo)
+        if (!receiverInfo || !receiverInfo.id) {
+          enqueueSnackbar('Cannot start call: receiver information not found', {
+            variant: 'error',
+          })
+          return
+        }
+
+        // Ensure the global function is available or use our fallback
+        ensureCallFunctionalityAvailable()
+
+        try {
+          // Use the global initiateAgoraCall function if available, otherwise use our direct implementation
+          if (window.initiateAgoraCall) {
+            console.log('Using window.initiateAgoraCall function')
+            const result = window.initiateAgoraCall(receiverInfo.id, isVideo)
+
+            // If call initialization failed or CallManager is not showing the UI
+            if (!result) {
+              throw new Error('Call initialization failed')
+            }
+
+            // Force remount of CallManager if available
+            if (window.remountCallManager) {
+              window.remountCallManager()
+            }
+          } else {
+            console.log('Using direct call implementation')
+            const callStarted = initiateCall(receiverInfo.id, isVideo)
+            if (!callStarted) {
+              throw new Error('Call initialization failed')
+            }
+          }
+        } catch (error) {
+          console.error('Error starting call:', error)
+          enqueueSnackbar('Call failed to start. Please try again.', {
+            variant: 'error',
+          })
+        }
+      })
+      .catch((error) => {
+        console.error('Error importing call utilities:', error)
+        enqueueSnackbar('Call functionality not available', {
+          variant: 'error',
+        })
+      })
   }
 
   return (
