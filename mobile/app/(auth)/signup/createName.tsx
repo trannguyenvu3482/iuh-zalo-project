@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, router, useLocalSearchParams } from "expo-router";
 
 const CreateName = () => {
   const router = useRouter();
+  const { phone = "Không xác định", countryCode = "+84" } = useLocalSearchParams();
   const [name, setName] = useState("");
   const [isValid, setIsValid] = useState(false);
 
@@ -18,6 +19,7 @@ const CreateName = () => {
     if (isValid) {
       router.push({
         pathname: "/(auth)/signup/birthdayAndGender",
+        params: { name, phone, countryCode }, // Truyền tên vào params
       });
     }
   };

@@ -3,15 +3,18 @@ import { View, Text, TextInput, TouchableOpacity, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, router} from "expo-router";
+
 
 const BirthdayAndGender: React.FC = () => {
+  
   const [birthday, setBirthday] = useState<string>("");
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [gender, setGender] = useState<string>("");
   const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false); // Modal thông báo thành công
   const router = useRouter();
-
+  const { phone = "Không xác định", countryCode = "+84" } = useLocalSearchParams();
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       const formattedDate = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`;
@@ -30,6 +33,21 @@ const BirthdayAndGender: React.FC = () => {
     setShowDatePicker(false);
   };
 
+  const handleContinue = () => {
+    
+    // Hiển thị modal thông báo thành công
+    setShowSuccessModal(true);
+
+    // Sau 2 giây, chuyển sang màn hình createAvatar
+    setTimeout(() => {
+      setShowSuccessModal(false);
+      router.push({
+        pathname: "/(auth)/signup/createAvatar",
+      });
+      
+    }, 2000);
+  };
+
   return (
     <View className="flex-1 bg-white p-6">
       <TouchableOpacity
@@ -39,7 +57,7 @@ const BirthdayAndGender: React.FC = () => {
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
 
-      <Text className="text-xl font-bold text-center text-black mt-12 mb-6">
+      <Text className="text-3xl font-bold text-center text-black mt-12 mb-6 ">
         Thêm thông tin cá nhân
       </Text>
 
@@ -97,11 +115,23 @@ const BirthdayAndGender: React.FC = () => {
         </Modal>
       )}
 
+      {showSuccessModal && (
+        <Modal transparent={true} animationType="fade" visible={showSuccessModal}>
+          <View className="flex-1 justify-center bg-black/50">
+            <View className="bg-white mx-6 rounded-lg p-6 items-center">
+              <Ionicons name="checkmark-circle" size={48} color="green" />
+              <Text className="text-lg font-bold mt-4">Tạo tài khoản mới thành công</Text>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       <TouchableOpacity
         className={`py-3 rounded-lg items-center ${
           birthday && gender ? "bg-blue-500" : "bg-gray-300"
         }`}
         disabled={!birthday || !gender}
+        onPress={handleContinue}
       >
         <Text className="text-white font-bold">Tiếp tục</Text>
       </TouchableOpacity>

@@ -135,7 +135,7 @@ const Signup = () => {
               </TouchableOpacity>
               <Text className="text-gray-800">
                 Tôi đồng ý với các{" "}
-                <TouchableOpacity style={{ marginTop: 9 }}>
+                <TouchableOpacity style={{ marginTop: 1 }}>
                   <Text className="text-blue-500">điều khoản sử dụng Zalo</Text>
                 </TouchableOpacity>
               </Text>
@@ -161,7 +161,7 @@ const Signup = () => {
               </TouchableOpacity>
               <Text className="text-gray-800">
                 Tôi đồng ý với{" "}
-                <TouchableOpacity style={{ marginTop: 9 }}>
+                <TouchableOpacity style={{ marginTop: 1 }}>
                   <Text className="text-blue-500">
                     điều khoản Mạng xã hội của Zalo
                   </Text>
