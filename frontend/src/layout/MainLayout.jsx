@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types'
 import { Helmet } from 'react-helmet-async'
 import { Outlet } from 'react-router-dom'
-import { Sidebar } from '../components'
+import Sidebar from '../components/sidebar/Sidebar'
 
 const MainLayout = ({ children }) => {
   return (

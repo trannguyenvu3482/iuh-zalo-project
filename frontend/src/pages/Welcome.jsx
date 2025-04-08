@@ -2,14 +2,19 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import WelcomeSwiper from '../components/WelcomeSwiper'
+import { disconnectSocket } from '../service/socket'
 import { useUserStore } from '../zustand/userStore'
 const Welcome = () => {
-  const { logout } = useUserStore()
+  const { setUser, setAccessToken, setIsAuthenticated } = useUserStore()
   const navigate = useNavigate()
 
   const handleLogout = () => {
-    logout()
-    navigate('/')
+    setUser(null)
+    setAccessToken(null)
+    setIsAuthenticated(false)
+    disconnectSocket()
+    console.log('Logout triggered')
+    navigate('/login')
   }
 
   return (

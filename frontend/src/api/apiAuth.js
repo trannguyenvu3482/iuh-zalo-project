@@ -26,4 +26,25 @@ const getAccount = async () => {
 //   });
 // };
 
-export { getAccount, login, logout };
+// QR Code Login APIs
+const generateQR = async () => {
+  return await instance.get(`${BASE_URL}/generate-qr`);
+};
+
+const checkQRStatus = async (sessionId) => {
+  if (!sessionId) {
+    throw new Error('Session ID is required');
+  }
+  console.log('Checking QR status for session:', sessionId);
+  try {
+    const response = await instance.get(`${BASE_URL}/qr-status/${sessionId}`);
+    console.log('QR status raw response:', response);
+    return response;
+  } catch (error) {
+    console.error('QR status check error:', error.response || error);
+    throw error;
+  }
+};
+
+export { checkQRStatus, generateQR, getAccount, login, logout };
+
