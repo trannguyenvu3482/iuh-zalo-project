@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useLocalSearchParams, useRouter, router} from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Keyboard,
@@ -15,6 +15,8 @@ import { Button } from "~/components/Button";
 const OTP_LENGTH = 6;
 
 export default function OTPScreen() {
+  const router = useRouter();
+  const { phone = "Không xác định", countryCode = "+84" } = useLocalSearchParams();
   const [otp, setOtp] = useState("");
   const [timer, setTimer] = useState(60);
   const inputRef = useRef<TextInput>(null);
@@ -108,8 +110,7 @@ export default function OTPScreen() {
               Nhập mã xác thực
             </Text>
             <Text className="text-base text-center">
-              <Text className="text-gray-400">Đang gọi đến số</Text> 0903 252
-              508.{" "}
+              <Text className="text-gray-400">Đang gọi đến số</Text> {countryCode}{phone}.{" "}
               <Text className="text-gray-400">
                 Nghe máy để nhận mã xác thực gồm 6 chữ số.
               </Text>
