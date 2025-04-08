@@ -1,7 +1,0 @@
-{
-    "i18n-ally.localesPaths": [
-        "backend/uploads/messages",
-        "frontend/src/i18n",
-        "frontend/src/i18n/locales"
-    ]
-}
