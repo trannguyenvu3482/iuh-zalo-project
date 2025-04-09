@@ -1,17 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { useState } from "react";
-import { Text, TouchableOpacity, View, Alert } from "react-native";
+import { useRef, useState } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+import PhoneInput from "react-native-phone-number-input";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Picker } from "@react-native-picker/picker";
 
 import { Button } from "~/components/Button";
 import Header from "~/components/Header";
-import TextInput from "~/components/TextInput";
-
+import PhoneNumberInput from "~/components/auth/PhoneNumberInput";
 const countryCodes = [
   "+84", // Việt Nam
-  "+1",  // Hoa Kỳ
+  "+1", // Hoa Kỳ
   "+44", // Anh
   "+91", // Ấn Độ
   "+81", // Nhật Bản
@@ -22,7 +21,7 @@ const countryCodes = [
   "+65", // Singapore
   "+66", // Thái Lan
   "+86", // Trung Quốc
-  "+7",  // Nga
+  "+7", // Nga
   "+34", // Tây Ban Nha
   "+39", // Ý
   "+62", // Indonesia
@@ -36,47 +35,17 @@ const Signup = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [socialAccepted, setSocialAccepted] = useState(false);
   const router = useRouter();
-
-  // Hàm kiểm tra số điện thoại hợp lệ
-  const validatePhoneNumber = (phoneNumber: string, code: string) => {
-    const phoneRegexes: { [key: string]: RegExp } = {
-      "+84": /^[0-9]{9}$/, // Việt Nam: 9 chữ số
-      "+1": /^[0-9]{10}$/, // Hoa Kỳ: 10 chữ số
-      "+44": /^[0-9]{10}$/, // Anh: 10 chữ số
-      "+91": /^[0-9]{10}$/, // Ấn Độ: 10 chữ số
-      "+81": /^[0-9]{10}$/, // Nhật Bản: 10 chữ số
-      "+82": /^[0-9]{9,10}$/, // Hàn Quốc: 9-10 chữ số
-      "+33": /^[0-9]{9}$/, // Pháp: 9 chữ số
-      "+49": /^[0-9]{10}$/, // Đức: 10 chữ số
-      "+61": /^[0-9]{9}$/, // Úc: 9 chữ số
-      "+65": /^[0-9]{8}$/, // Singapore: 8 chữ số
-      "+66": /^[0-9]{9}$/, // Thái Lan: 9 chữ số
-      "+86": /^[0-9]{11}$/, // Trung Quốc: 11 chữ số
-      "+7": /^[0-9]{10}$/, // Nga: 10 chữ số
-      "+34": /^[0-9]{9}$/, // Tây Ban Nha: 9 chữ số
-      "+39": /^[0-9]{10}$/, // Ý: 10 chữ số
-      "+62": /^[0-9]{9,10}$/, // Indonesia: 9-10 chữ số
-      "+60": /^[0-9]{9,10}$/, // Malaysia: 9-10 chữ số
-      "+63": /^[0-9]{10}$/, // Philippines: 10 chữ số
-    };
-
-    const regex = phoneRegexes[code];
-    return regex ? regex.test(phoneNumber) : false;
-  };
+  const phoneInputRef = useRef<PhoneInput>(null);
 
   const handleContinue = () => {
-    if (!isFormValid) return;
+    if (!phoneInputRef.current?.isValidNumber) return;
 
-  // Chuyển sang màn hình tiếp theo và truyền số điện thoại qua URL
+    // Chuyển sang màn hình tiếp theo và truyền số điện thoại qua URL
     router.push({
       pathname: "/(auth)/signup/captcha",
       params: { phone, countryCode },
     });
   };
-
-  // Kiểm tra tính hợp lệ của biểu mẫu
-  const isPhoneValid = validatePhoneNumber(phone, countryCode);
-  const isFormValid = phone.length > 0 && isPhoneValid && termsAccepted && socialAccepted;
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -89,8 +58,9 @@ const Signup = () => {
         </View>
 
         <View className="w-full gap-6">
-          <View className="flex-row items-center border border-blue-500 rounded-lg overflow-hidden">
-            <View className="w-20 bg-gray-100 border-r border-blue-500 flex-row items-center justify-center">
+          <View className="flex-row items-center rounded-lg overflow-hidden">
+            <PhoneNumberInput phoneInputRef={phoneInputRef} />
+            {/* <View className="w-20 bg-gray-100 border-r border-blue-500 flex-row items-center justify-center">
               <Picker
                 selectedValue={countryCode}
                 onValueChange={(itemValue) => setCountryCode(itemValue)}
@@ -111,7 +81,7 @@ const Signup = () => {
               value={phone}
               onChangeText={setPhone}
               className="flex-1 text-black px-4"
-            />
+            /> */}
           </View>
 
           <View className="gap-4">

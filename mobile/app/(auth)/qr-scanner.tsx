@@ -3,7 +3,15 @@ import { Camera, CameraView } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
+
+interface QRData {
+  type: string;
+  sessionId: string;
+  instructions: string;
+  apiEndpoint: string;
+  expiresAt: number;
+}
 
 export default function QRScanner() {
   const router = useRouter();
@@ -27,8 +35,43 @@ export default function QRScanner() {
     data: string;
   }) => {
     setScanned(true);
-    // Navigate to QR result page with the scanned data
-    router.push("/qr-result");
+    try {
+      // Parse the QR data
+      const qrData: QRData = JSON.parse(data);
+
+      // Validate that this is a Zalo QR login code
+      if (qrData.type !== "ZALO_QR_LOGIN") {
+        Alert.alert(
+          "Invalid QR Code",
+          "This is not a valid Zalo login QR code.",
+        );
+        setScanned(false);
+        return;
+      }
+
+      // Check if the QR code has expired
+      if (qrData.expiresAt < Date.now()) {
+        Alert.alert(
+          "Expired QR Code",
+          "This QR code has expired. Please refresh and try again.",
+        );
+        setScanned(false);
+        return;
+      }
+
+      // Navigate to QR result page with the scanned data
+      router.push({
+        pathname: "/qr-result",
+        params: { sessionId: qrData.sessionId },
+      });
+    } catch (error) {
+      console.error("Error parsing QR code:", error);
+      Alert.alert(
+        "Invalid QR Code",
+        "Could not read the QR code. Please try again.",
+      );
+      setScanned(false);
+    }
   };
 
   const handleImagePick = async () => {

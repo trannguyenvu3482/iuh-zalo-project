@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Image, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function CreateAvatarScreen() {
   const [avatar, setAvatar] = useState<string | null>(null); // Lưu đường dẫn ảnh đại diện
@@ -70,10 +70,7 @@ export default function CreateAvatarScreen() {
         </TouchableOpacity>
 
         {/* Nút bỏ qua */}
-        <TouchableOpacity
-          onPress={handleSkip}
-          className="mt-4 items-center"
-        >
+        <TouchableOpacity onPress={handleSkip} className="mt-4 items-center">
           <Text className="text-blue-500 font-semibold text-base">Bỏ qua</Text>
         </TouchableOpacity>
       </View>

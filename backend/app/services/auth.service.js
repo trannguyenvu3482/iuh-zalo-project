@@ -116,12 +116,12 @@ exports.authenticateUser = async (phoneNumber, password) => {
   const user = await User.findOne({ where: { phoneNumber } });
   
   if (!user) {
-    throw new NotFoundError("User not found.");
+    throw new NotFoundError("Số điện thoại hoặc mật khẩu không chính xác.");
   }
   
   const passwordIsValid = bcrypt.compareSync(password, user.password);
   if (!passwordIsValid) {
-    throw new UnauthorizedError("Invalid password.");
+    throw new UnauthorizedError("Số điện thoại hoặc mật khẩu không chính xác.");
   }
   
   const token = this.generateToken(user.id);

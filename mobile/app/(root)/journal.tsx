@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type MediaButton = {
   id: string;
@@ -100,7 +99,7 @@ const posts: Post[] = [
 
 const Journal = () => {
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <ScrollView>
         {/* Status Input */}
         <View className="flex-row items-center px-4 py-3 bg-white">
@@ -235,7 +234,7 @@ const Journal = () => {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
