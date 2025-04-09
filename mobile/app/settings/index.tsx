@@ -3,6 +3,8 @@ import { router } from "expo-router";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useUserStore } from "~/store/userStore";
+
 interface MenuItem {
   id: string;
   icon: React.ReactNode;
@@ -100,6 +102,12 @@ export default function SettingsScreen() {
       route: "/settings/switch",
     },
   ];
+  const { logout } = useUserStore();
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/");
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -142,7 +150,7 @@ export default function SettingsScreen() {
           </View>
         ))}
         <TouchableOpacity
-          onPress={() => router.replace("/")}
+          onPress={handleLogout}
           className="bg-primary py-4 px-8 m-4 rounded-lg"
         >
           <Text className="text-white text-center text-xl font-bold">

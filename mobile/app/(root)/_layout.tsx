@@ -1,15 +1,22 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { useState } from "react";
 import { Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import SearchHeader from "../../components/SearchHeader";
 import SearchResultsPanel from "../../components/SearchResultsPanel";
+import { useUserStore } from "../../store/userStore";
 
 const TabLayout = () => {
+  const { isAuthenticated } = useUserStore();
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // If the user is not authenticated, redirect to the login page
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <SafeAreaView className="flex-1">

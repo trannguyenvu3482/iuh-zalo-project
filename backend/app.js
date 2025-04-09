@@ -16,9 +16,9 @@ initSupabase().catch(err => {
 });
 
 // Configure CORS options from environment variables
-const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+const clientUrls = process.env.CLIENT_URL || ["http://localhost:3000", "http://localhost:3001"];
 const corsOptions = { 
-  origin: clientUrl, 
+  origin: clientUrls, 
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
@@ -27,7 +27,7 @@ const corsOptions = {
 // Setup Socket.IO with same CORS config
 const io = socketIo(server, {
   cors: {
-    origin: clientUrl,
+    origin: clientUrls,
     methods: ["GET", "POST"],
     credentials: true
   },

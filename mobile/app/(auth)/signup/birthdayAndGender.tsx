@@ -1,20 +1,20 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { useLocalSearchParams, useRouter, router} from "expo-router";
-
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Modal, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const BirthdayAndGender: React.FC = () => {
-  
   const [birthday, setBirthday] = useState<string>("");
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [gender, setGender] = useState<string>("");
   const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false); // Modal thông báo thành công
   const router = useRouter();
-  const { phone = "Không xác định", countryCode = "+84" } = useLocalSearchParams();
+  const { phone = "Không xác định", countryCode = "+84" } =
+    useLocalSearchParams();
+
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       const formattedDate = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`;
@@ -22,7 +22,8 @@ const BirthdayAndGender: React.FC = () => {
       const age = today.getFullYear() - selectedDate.getFullYear();
       const isBirthdayPassed =
         today.getMonth() > selectedDate.getMonth() ||
-        (today.getMonth() === selectedDate.getMonth() && today.getDate() >= selectedDate.getDate());
+        (today.getMonth() === selectedDate.getMonth() &&
+          today.getDate() >= selectedDate.getDate());
 
       if (age > 14 || (age === 14 && isBirthdayPassed)) {
         setBirthday(formattedDate);
@@ -34,7 +35,6 @@ const BirthdayAndGender: React.FC = () => {
   };
 
   const handleContinue = () => {
-    
     // Hiển thị modal thông báo thành công
     setShowSuccessModal(true);
 
@@ -44,7 +44,6 @@ const BirthdayAndGender: React.FC = () => {
       router.push({
         pathname: "/(auth)/signup/createAvatar",
       });
-      
     }, 2000);
   };
 
@@ -97,7 +96,7 @@ const BirthdayAndGender: React.FC = () => {
       </View>
 
       {showWarningModal && (
-        <Modal transparent={true} animationType="fade" visible={showWarningModal}>
+        <Modal transparent animationType="fade" visible={showWarningModal}>
           <View className="flex-1 justify-center bg-black/50">
             <View className="bg-white mx-6 rounded-lg p-6 items-center">
               <Text className="text-lg font-bold mb-4">Cảnh báo</Text>
@@ -116,11 +115,13 @@ const BirthdayAndGender: React.FC = () => {
       )}
 
       {showSuccessModal && (
-        <Modal transparent={true} animationType="fade" visible={showSuccessModal}>
+        <Modal transparent animationType="fade" visible={showSuccessModal}>
           <View className="flex-1 justify-center bg-black/50">
             <View className="bg-white mx-6 rounded-lg p-6 items-center">
               <Ionicons name="checkmark-circle" size={48} color="green" />
-              <Text className="text-lg font-bold mt-4">Tạo tài khoản mới thành công</Text>
+              <Text className="text-lg font-bold mt-4">
+                Tạo tài khoản mới thành công
+              </Text>
             </View>
           </View>
         </Modal>

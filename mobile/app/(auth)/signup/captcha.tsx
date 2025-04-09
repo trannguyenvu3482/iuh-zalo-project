@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -26,7 +26,6 @@ const CHANGE_IMAGE_AT = 3;
 
 export default function CaptchaScreen() {
   const router = useRouter();
-  const { phone = "Không xác định", countryCode = "+84" } = useLocalSearchParams();
   const [isVerified, setIsVerified] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
@@ -45,7 +44,6 @@ export default function CaptchaScreen() {
       // Chuyển đến màn hình OTP và truyền tham số
       router.push({
         pathname: "/(auth)/signup/otp",
-        params: { phone, countryCode }, // Truyền tham số phone và countryCode
       });
     }
   }, [isVerified]);
