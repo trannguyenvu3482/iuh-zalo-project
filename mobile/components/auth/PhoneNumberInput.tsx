@@ -26,7 +26,7 @@ const PhoneInputField = ({
         width: "100%",
         borderWidth: 2,
         borderColor: "red",
-        borderRadius: 50,
+        borderRadius: 10,
         backgroundColor: "#f5f5f5",
         display: "flex",
         flexDirection: "row",
@@ -42,13 +42,16 @@ const PhoneInputField = ({
       textContainerStyle={{
         backgroundColor: "#f5f5f5",
         borderRadius: 50,
-        height: "100%",
         paddingLeft: 0,
+        height: 50,
       }}
       placeholder="Nhập số điện thoại"
       filterProps={{
         autoFocus: true,
         placeholder: "Nhập tên quốc gia",
+      }}
+      textInputStyle={{
+        height: 50,
       }}
     />
   );

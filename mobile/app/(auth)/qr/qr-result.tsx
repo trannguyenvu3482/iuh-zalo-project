@@ -10,8 +10,8 @@ import {
   View,
 } from "react-native";
 
-import { scanQR } from "../../api/apiAuth";
-import { useUserStore } from "../../store/userStore";
+import { scanQR } from "../../../api/apiAuth";
+import { useUserStore } from "../../../store/userStore";
 
 export default function QRResult() {
   const router = useRouter();

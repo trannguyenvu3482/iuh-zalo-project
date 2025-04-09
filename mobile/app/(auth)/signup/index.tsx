@@ -8,43 +8,27 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "~/components/Button";
 import Header from "~/components/Header";
 import PhoneNumberInput from "~/components/auth/PhoneNumberInput";
-const countryCodes = [
-  "+84", // Việt Nam
-  "+1", // Hoa Kỳ
-  "+44", // Anh
-  "+91", // Ấn Độ
-  "+81", // Nhật Bản
-  "+82", // Hàn Quốc
-  "+33", // Pháp
-  "+49", // Đức
-  "+61", // Úc
-  "+65", // Singapore
-  "+66", // Thái Lan
-  "+86", // Trung Quốc
-  "+7", // Nga
-  "+34", // Tây Ban Nha
-  "+39", // Ý
-  "+62", // Indonesia
-  "+60", // Malaysia
-  "+63", // Philippines
-];
-
+import { useSignupStore } from "~/store/signupStore";
 const Signup = () => {
-  const [phone, setPhone] = useState("");
-  const [countryCode, setCountryCode] = useState("+84"); // Mã quốc gia mặc định là Việt Nam
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [socialAccepted, setSocialAccepted] = useState(false);
   const router = useRouter();
   const phoneInputRef = useRef<PhoneInput>(null);
+  const { setPhoneAndPassword } = useSignupStore();
+  const isFormValid = phoneInputRef.current?.isValidNumber(
+    phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()?.number,
+  );
 
   const handleContinue = () => {
-    if (!phoneInputRef.current?.isValidNumber) return;
+    if (!isFormValid) return;
 
-    // Chuyển sang màn hình tiếp theo và truyền số điện thoại qua URL
-    router.push({
-      pathname: "/(auth)/signup/captcha",
-      params: { phone, countryCode },
-    });
+    setPhoneAndPassword(
+      phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()
+        ?.formattedNumber || "",
+      "",
+      "",
+    );
+    router.push("/(auth)/signup/captcha");
   };
 
   return (
@@ -58,31 +42,7 @@ const Signup = () => {
         </View>
 
         <View className="w-full gap-6">
-          <View className="flex-row items-center rounded-lg overflow-hidden">
-            <PhoneNumberInput phoneInputRef={phoneInputRef} />
-            {/* <View className="w-20 bg-gray-100 border-r border-blue-500 flex-row items-center justify-center">
-              <Picker
-                selectedValue={countryCode}
-                onValueChange={(itemValue) => setCountryCode(itemValue)}
-                style={{
-                  width: "100%",
-                  height: 50,
-                  backgroundColor: "transparent",
-                }}
-                dropdownIconColor="blue"
-              >
-                {countryCodes.map((code) => (
-                  <Picker.Item key={code} label={code} value={code} />
-                ))}
-              </Picker>
-            </View>
-            <TextInput
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
-              className="flex-1 text-black px-4"
-            /> */}
-          </View>
+          <PhoneNumberInput phoneInputRef={phoneInputRef} />
 
           <View className="gap-4">
             {/* Điều khoản sử dụng Zalo */}
@@ -103,12 +63,12 @@ const Signup = () => {
                   )}
                 </View>
               </TouchableOpacity>
-              <Text className="text-gray-800">
-                Tôi đồng ý với các{" "}
-                <TouchableOpacity style={{ marginTop: 1 }}>
+              <View className="flex-row items-center">
+                <Text className="text-gray-800">Tôi đồng ý với các </Text>
+                <TouchableOpacity>
                   <Text className="text-blue-500">điều khoản sử dụng Zalo</Text>
                 </TouchableOpacity>
-              </Text>
+              </View>
             </View>
 
             {/* Điều khoản Mạng xã hội của Zalo */}
@@ -129,14 +89,14 @@ const Signup = () => {
                   )}
                 </View>
               </TouchableOpacity>
-              <Text className="text-gray-800">
-                Tôi đồng ý với{" "}
-                <TouchableOpacity style={{ marginTop: 1 }}>
+              <View className="flex-row items-center">
+                <Text className="text-gray-800">Tôi đồng ý với </Text>
+                <TouchableOpacity>
                   <Text className="text-blue-500">
                     điều khoản Mạng xã hội của Zalo
                   </Text>
                 </TouchableOpacity>
-              </Text>
+              </View>
             </View>
           </View>
 

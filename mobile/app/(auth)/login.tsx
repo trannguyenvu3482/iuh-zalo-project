@@ -10,11 +10,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { login } from "../../api/apiAuth";
-import { useUserStore } from "../../store/userStore";
-
+import { login } from "~/api/apiAuth";
 import Header from "~/components/Header";
 import TextInput from "~/components/TextInput";
+import { useUserStore } from "~/store/userStore";
 
 const Login = () => {
   const [phone, setPhone] = useState("");

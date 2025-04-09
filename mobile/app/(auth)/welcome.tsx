@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Image, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Swiper from "react-native-swiper";
@@ -9,7 +9,6 @@ import { images } from "~/constants/images";
 
 export default function Welcome() {
   const swiperRef = useRef<Swiper>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
 
   return (
     <SafeAreaView className="flex-1 justify-end px-4 items-center py-5">

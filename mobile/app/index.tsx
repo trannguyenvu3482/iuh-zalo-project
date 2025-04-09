@@ -2,7 +2,7 @@ import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
-import { useUserStore } from "../store/userStore";
+import { useUserStore } from "~/store/userStore";
 
 export default function Index() {
   const { isAuthenticated } = useUserStore();
