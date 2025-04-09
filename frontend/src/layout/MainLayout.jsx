@@ -1,20 +1,29 @@
-import React from "react";
-import { Helmet } from "react-helmet-async";
-import { Outlet } from "react-router-dom";
-import { Sidebar } from "../components";
+import PropTypes from 'prop-types'
+import { Helmet } from 'react-helmet-async'
+import { Outlet } from 'react-router-dom'
+import Sidebar from '../components/sidebar/Sidebar'
 
-const MainLayout = () => {
+const MainLayout = ({ children }) => {
   return (
     <div className="flex max-h-screen">
       <Helmet>
-        <title>Zalo - Vũ Trần</title>
+        <title>Zalo</title>
       </Helmet>
       <Sidebar />
       <main className="w-full overflow-hidden">
+        {children}
         <Outlet />
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default MainLayout;
+MainLayout.propTypes = {
+  children: PropTypes.node,
+}
+
+MainLayout.defaultProps = {
+  children: null,
+}
+
+export default MainLayout

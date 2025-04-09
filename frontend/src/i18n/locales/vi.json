@@ -1,0 +1,24 @@
+{
+    "title": "Đăng nhập tài khoản Zalo",
+    "subtitle": "để kết nối với ứng dụng Zalo Web",
+    "loginWithPassword": "Đăng nhập bằng mật khẩu",
+    "loginWithQR": "Đăng nhập bằng mã QR",
+    "onlyForLogin": "Chỉ dùng để đăng nhập",
+    "zaloPCFooter": "Zalo trên máy tính",
+    "zaloPCHeader": "Nâng cao hiệu quả công việc với Zalo PC",
+    "zaloPCDesc": "Gửi file lớn lên đến 1 GB, chụp màn hình, gọi video và nhiều tiện ích hơn nữa",
+    "downloadNow": "Tải ngay",
+    "forgotPassword": "Quên mật khẩu?",
+    "phonePlaceholder": "Nhập số điện thoại",
+    "passwordPlaceholder": "Nhập mật khẩu",
+    "loginFailed": "Đăng nhập thất bại. Vui lòng thử lại.",
+    "loginSuccess": "Đăng nhập thành công!",
+    "invalidPassword": "Mật khẩu không đúng",
+    "phoneNotFound": "Số điện thoại không tồn tại",
+    "invalidPhone": "Số điện thoại không hợp lệ",
+    "qrGenerationFailed": "Không thể tạo mã QR",
+    "refreshQR": "Tạo mã QR mới",
+    "qrExpired": "Mã QR đã hết hạn",
+    "scanQRInstructions": "Mở ứng dụng Zalo trên điện thoại và quét mã QR này"
+  }
+  
