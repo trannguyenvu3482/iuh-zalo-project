@@ -90,12 +90,12 @@ const Signup = () => {
 
         <View className="w-full gap-6">
           <View className="flex-row items-center border border-blue-500 rounded-lg overflow-hidden">
-            <View className="w-20 bg-gray-100 border-r border-blue-500 flex-row items-center justify-center">
+            <View className="w-30 bg-gray-100 border-r border-blue-500 flex-row items-center justify-center">
               <Picker
                 selectedValue={countryCode}
                 onValueChange={(itemValue) => setCountryCode(itemValue)}
                 style={{
-                  width: "100%",
+                  width: 110,
                   height: 50,
                   backgroundColor: "transparent",
                 }}
@@ -114,9 +114,9 @@ const Signup = () => {
             />
           </View>
 
-          <View className="gap-4">
+          <View className="">
             {/* Điều khoản sử dụng Zalo */}
-            <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center h-8">
               <TouchableOpacity
                 onPress={() => setTermsAccepted(!termsAccepted)}
                 className="flex-row items-center"
@@ -133,16 +133,16 @@ const Signup = () => {
                   )}
                 </View>
               </TouchableOpacity>
-              <Text className="text-gray-800">
+              <Text className="text-gray-800 ml-2">
                 Tôi đồng ý với các{" "}
-                <TouchableOpacity style={{ marginTop: 1 }}>
+              </Text>
+                <TouchableOpacity className="">
                   <Text className="text-blue-500">điều khoản sử dụng Zalo</Text>
                 </TouchableOpacity>
-              </Text>
             </View>
 
             {/* Điều khoản Mạng xã hội của Zalo */}
-            <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center height-5">
               <TouchableOpacity
                 onPress={() => setSocialAccepted(!socialAccepted)}
                 className="flex-row items-center"
@@ -159,14 +159,14 @@ const Signup = () => {
                   )}
                 </View>
               </TouchableOpacity>
-              <Text className="text-gray-800">
+              <Text className="text-gray-800 ml-2">
                 Tôi đồng ý với{" "}
-                <TouchableOpacity style={{ marginTop: 1 }}>
+              </Text>
+                <TouchableOpacity>
                   <Text className="text-blue-500">
                     điều khoản Mạng xã hội của Zalo
                   </Text>
                 </TouchableOpacity>
-              </Text>
             </View>
           </View>
 

@@ -8,11 +8,20 @@ const CreateName = () => {
   const [name, setName] = useState("");
   const [isValid, setIsValid] = useState(false);
 
-  // Hàm kiểm tra tính hợp lệ của tên
   const validateName = (text: string) => {
-    const isValidName = text.length >= 2 && text.length <= 40 && /^[^\d]+$/.test(text);
+    // Regex: Tên phải từ 2-40 ký tự, không chứa số, không ký tự đặc biệt, có ít nhất 2 chữ
+    const isValidName = text.length >= 2 &&
+                        text.length <= 40 &&
+                        /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểễệỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]+(\s[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểễệỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]+)+$/.test(text);
+  
+    // Viết hoa chữ cái đầu của mỗi từ, giữ nguyên khoảng trắng
+    const capitalizeName = text
+      .split(/\s+/) // Tách các từ bằng khoảng trắng (bao gồm cả khoảng trắng thừa)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" "); // Ghép lại với khoảng trắng
+  
     setIsValid(isValidName);
-    setName(text);
+    setName(capitalizeName);
   };
 
   const handleNext = () => {
@@ -42,15 +51,15 @@ const CreateName = () => {
 
       {/* Gợi ý */}
       <View className="mt-4">
-        <Text className={`text-sm ${name.length >= 2 ? "text-gray-600" : "text-red-500"}`}>
+        <Text>
           • Dài từ 2 đến 40 ký tự
         </Text>
-        <Text className={`text-sm ${/^[^\d]+$/.test(name) ? "text-gray-600" : "text-red-500"}`}>
+        <Text>
           • Không chứa số
         </Text>
-        <Text className="text-sm text-blue-500">
+        <Text className="">
           • Cần tuân thủ{" "}
-          <Text className="underline">quy định đặt tên Zalo</Text>
+          <Text className=" text-blue-500">quy định đặt tên Zalo</Text>
         </Text>
       </View>
 
