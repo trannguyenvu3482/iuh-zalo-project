@@ -27,11 +27,8 @@ interface SignupState {
   isComplete: boolean;
 
   // Methods to update state
-  setPhoneAndPassword: (
-    phoneNumber: string,
-    password: string,
-    confirmPassword: string,
-  ) => void;
+  setPhone: (phoneNumber: string) => void;
+  setPassword: (password: string) => void;
   setVerificationId: (verificationId: string) => void;
   setOtp: (otp: string) => void;
   setFullName: (fullName: string) => void;
@@ -67,13 +64,19 @@ export const useSignupStore = create<SignupState>()(
       data: initialState,
       isComplete: false,
 
-      setPhoneAndPassword: (phoneNumber, password, confirmPassword) =>
+      setPhone: (phoneNumber) =>
         set((state) => ({
           data: {
             ...state.data,
             phoneNumber,
+          },
+        })),
+
+      setPassword: (password) =>
+        set((state) => ({
+          data: {
+            ...state.data,
             password,
-            confirmPassword,
           },
         })),
 

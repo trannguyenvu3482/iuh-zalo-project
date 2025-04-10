@@ -1,6 +1,17 @@
 import axiosInstance from "../lib/axios";
 
+import { SignupData } from "~/store/signupStore";
+
 const BASE_URL = "/auth";
+
+/**
+ * Signup with phone number and password
+ * @param data Signup data
+ * @returns Authentication data with status
+ */
+const signup = async (data: SignupData) => {
+  return await axiosInstance.post(`${BASE_URL}/signup`, data);
+};
 
 /**
  * Login with phone number and password
@@ -70,4 +81,4 @@ const scanQR = async (sessionId: string, userId: string) => {
   });
 };
 
-export { checkQRStatus, generateQR, getAccount, login, logout, scanQR };
+export { checkQRStatus, generateQR, getAccount, login, logout, scanQR, signup };
