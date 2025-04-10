@@ -13,10 +13,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import ChatBubble from "../../components/chat/ChatBubble";
-import ChatHeader from "../../components/chat/ChatHeader";
-import ChatInput from "../../components/chat/ChatInput";
-import { Message, Reaction, VoiceData } from "../../components/chat/types";
+import ChatBubble from "~/components/chat/ChatBubble";
+import ChatHeader from "~/components/chat/ChatHeader";
+import ChatInput from "~/components/chat/ChatInput";
+import { Message, Reaction, VoiceData } from "~/components/chat/types";
 
 type ExtendedMessage = Message & {
   voice?: VoiceData;

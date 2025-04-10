@@ -1,23 +1,45 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, Modal, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Modal,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import { scanQR } from "../../../api/apiAuth";
+import { useUserStore } from "../../../store/userStore";
 
 export default function QRResult() {
   const router = useRouter();
+  const { sessionId } = useLocalSearchParams();
+  const { user } = useUserStore();
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(true);
   const [countdown, setCountdown] = useState(5);
 
-  // Sample data - replace with real data later
-  const userData = {
-    name: "Đông Nhi",
-    phone: "0708119786",
-    ip: "192.168.1.100",
-    location: "Hồ Chí Minh, Việt Nam",
-    device: "iPhone 12 Pro Max",
-    avatar:
-      "https://p16-sign-sg.tiktokcdn.com/tos-alisg-avt-0068/277800c6380fe2ec40459775013b1c9d~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=1618fbe7&x-expires=1743789600&x-signature=8ocZ32EWjEyVM8pQXNHaCSZdgJM%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=my", // Sample avatar URL - replace with real avatar
+  // Device info for display (we would get actual data from device info APIs)
+  const deviceInfo = {
+    ip: "192.168.1.100", // In a real app, we would get the real IP
+    location: "Hồ Chí Minh, Việt Nam", // This would be derived from IP or location services
+    device: "Web Browser", // This would come from the QR data
   };
+
+  useEffect(() => {
+    // Validate we have session ID and user
+    if (!sessionId) {
+      Alert.alert("Error", "Missing session information");
+      router.back();
+    }
+
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to authorize a QR login");
+      router.back();
+    }
+  }, [sessionId, user]);
 
   useEffect(() => {
     if (showModal && countdown > 0) {
@@ -28,16 +50,33 @@ export default function QRResult() {
     }
   }, [showModal, countdown]);
 
-  const handleAccept = () => {
-    // TODO: Handle accept logic
-    console.log("Accepting login request");
-    router.back();
+  const handleAccept = async () => {
+    if (!user?.id || !sessionId) {
+      Alert.alert("Error", "Missing required data for authorization");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Call the API to approve the QR login
+      await scanQR(String(sessionId), user.id);
+      Alert.alert("Success", "Login authorized successfully", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (error) {
+      console.error("Error authorizing login:", error);
+      Alert.alert("Error", "Failed to authorize login. Please try again.", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReject = () => {
-    // TODO: Handle reject logic
-    console.log("Rejecting login request");
-    router.back();
+    Alert.alert("Login Rejected", "You've rejected the login request", [
+      { text: "OK", onPress: () => router.back() },
+    ]);
   };
 
   const handleModalAccept = () => {
@@ -96,14 +135,19 @@ export default function QRResult() {
             <View className="bg-gray-50 rounded-lg p-4">
               <View className="flex-row items-center mb-4">
                 <Image
-                  source={{ uri: userData.avatar }}
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://ui-avatars.com/api/?name=" +
+                        encodeURIComponent(user?.name || "User"),
+                  }}
                   className="w-10 h-10 rounded-full mr-3"
                 />
                 <View>
                   <Text className="text-gray-800 text-lg font-semibold">
-                    {userData.name}
+                    {user?.name || "Unknown User"}
                   </Text>
-                  <Text className="text-gray-500">{userData.phone}</Text>
+                  <Text className="text-gray-500">{user?.email || ""}</Text>
                 </View>
               </View>
               <View className="h-[1px] bg-gray-200 mb-4" />
@@ -114,7 +158,7 @@ export default function QRResult() {
                   color="#6B7280"
                   className="mr-3"
                 />
-                <Text className="text-black">{userData.device}</Text>
+                <Text className="text-black">{deviceInfo.device}</Text>
               </View>
             </View>
 
@@ -127,7 +171,7 @@ export default function QRResult() {
                   color="#6B7280"
                   className="mr-3"
                 />
-                <Text className="text-gray-800">IP: {userData.ip}</Text>
+                <Text className="text-gray-800">IP: {deviceInfo.ip}</Text>
               </View>
             </View>
 
@@ -140,7 +184,20 @@ export default function QRResult() {
                   color="#6B7280"
                   className="mr-3"
                 />
-                <Text className="text-gray-800">{userData.location}</Text>
+                <Text className="text-gray-800">{deviceInfo.location}</Text>
+              </View>
+            </View>
+
+            {/* Session ID (for debugging) */}
+            <View className="bg-gray-50 rounded-lg p-4">
+              <View className="flex-row items-center">
+                <Ionicons
+                  name="key-outline"
+                  size={20}
+                  color="#6B7280"
+                  className="mr-3"
+                />
+                <Text className="text-gray-800">Session: {sessionId}</Text>
               </View>
             </View>
           </View>
@@ -151,14 +208,16 @@ export default function QRResult() {
       <View className="mt-auto px-4 pb-8 gap-4">
         <TouchableOpacity
           onPress={handleAccept}
-          className="bg-red-500 py-4 rounded-full"
+          disabled={loading}
+          className={`bg-red-500 py-4 rounded-full ${loading ? "opacity-70" : ""}`}
         >
           <Text className="text-white text-center font-semibold">
-            Chấp nhận
+            {loading ? "Đang xử lý..." : "Chấp nhận"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleReject}
+          disabled={loading}
           className="bg-gray-300 py-4 rounded-full"
         >
           <Text className="text-gray-800 text-center font-semibold">
