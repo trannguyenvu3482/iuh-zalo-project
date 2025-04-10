@@ -12,21 +12,38 @@ import { useSignupStore } from "~/store/signupStore";
 const Signup = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [socialAccepted, setSocialAccepted] = useState(false);
+  const [phone, setPhone] = useState("");
   const router = useRouter();
   const phoneInputRef = useRef<PhoneInput>(null);
-  const { setPhoneAndPassword } = useSignupStore();
-  const isFormValid = phoneInputRef.current?.isValidNumber(
-    phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()?.number,
+  const { setPhone: setPhoneStore } = useSignupStore();
+
+  console.log(phone);
+  console.log(
+    phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()
+      .formattedNumber,
   );
 
-  const handleContinue = () => {
-    if (!isFormValid) return;
+  const isFormValid = () => {
+    const phone = phoneInputRef.current?.isValidNumber(
+      phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()
+        .formattedNumber,
+    );
+    const terms = termsAccepted;
+    const social = socialAccepted;
 
-    setPhoneAndPassword(
+    if (!phone) return false;
+    if (!terms) return false;
+    if (!social) return false;
+
+    return true;
+  };
+
+  const handleContinue = () => {
+    if (!isFormValid()) return;
+
+    setPhoneStore(
       phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()
         ?.formattedNumber || "",
-      "",
-      "",
     );
     router.push("/(auth)/signup/captcha");
   };
@@ -42,7 +59,11 @@ const Signup = () => {
         </View>
 
         <View className="w-full gap-6">
-          <PhoneNumberInput phoneInputRef={phoneInputRef} />
+          <PhoneNumberInput
+            phoneInputRef={phoneInputRef}
+            value={phone}
+            setValue={setPhone}
+          />
 
           <View className="gap-4">
             {/* Điều khoản sử dụng Zalo */}
@@ -103,8 +124,8 @@ const Signup = () => {
           <Button
             onPress={handleContinue}
             title="Tiếp tục"
-            type={isFormValid ? "primary" : "secondary"}
-            disabled={!isFormValid}
+            type={isFormValid() ? "primary" : "secondary"}
+            disabled={!isFormValid()}
             className="mt-4"
           />
         </View>

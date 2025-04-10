@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -30,6 +31,7 @@ export default function CaptchaScreen() {
   const [attempts, setAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [position] = useState(new Animated.ValueXY({ x: 0, y: 0 }));
+  const [isImageLoading, setIsImageLoading] = useState(true);
   const imageLeftPosition = position.x.interpolate({
     inputRange: [0, TRACK_WIDTH],
     outputRange: [0, -TRACK_WIDTH],
@@ -68,6 +70,7 @@ export default function CaptchaScreen() {
 
   const resetCaptcha = () => {
     setIsVerified(false);
+    setIsImageLoading(true);
     setImageId(Math.floor(Math.random() * 1000));
     setTargetPosition(
       Math.floor(
@@ -112,10 +115,10 @@ export default function CaptchaScreen() {
   };
 
   const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !isLocked,
-    onMoveShouldSetPanResponder: () => !isLocked,
+    onStartShouldSetPanResponder: () => !isLocked && !isImageLoading,
+    onMoveShouldSetPanResponder: () => !isLocked && !isImageLoading,
     onPanResponderMove: (_, gesture) => {
-      if (isLocked) return;
+      if (isLocked || isImageLoading) return;
       const newX = Math.max(
         0,
         Math.min(gesture.moveX - SLIDER_WIDTH / 2, TRACK_WIDTH - SLIDER_WIDTH),
@@ -123,7 +126,7 @@ export default function CaptchaScreen() {
       position.setValue({ x: newX, y: 0 });
     },
     onPanResponderRelease: (_, gesture) => {
-      if (isLocked) return;
+      if (isLocked || isImageLoading) return;
       const finalX = gesture.moveX - SLIDER_WIDTH / 2;
 
       if (Math.abs(finalX - targetPosition) < THRESHOLD) {
@@ -137,6 +140,11 @@ export default function CaptchaScreen() {
       }
     },
   });
+
+  // Function to handle image loading completion
+  const handleImageLoaded = () => {
+    setIsImageLoading(false);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -157,18 +165,27 @@ export default function CaptchaScreen() {
         {/* Image Area */}
         <View className="items-center mb-8">
           <View className="w-full rounded-lg overflow-hidden relative">
+            {isImageLoading && (
+              <View className="absolute inset-0 z-20 items-center justify-center bg-gray-100">
+                <ActivityIndicator size="large" color="#0066ff" />
+                <Text className="mt-2 text-gray-600">Đang tải hình ảnh...</Text>
+              </View>
+            )}
+
             <Image
               source={{
-                uri: `https://picsum.photos/seed/${imageId}/400/${IMAGE_HEIGHT}`,
+                uri: `https://picsum.photos/seed/${imageId}/500/${IMAGE_HEIGHT}`,
               }}
               style={{ width: "100%", height: IMAGE_HEIGHT }}
               className="rounded-lg"
+              onLoad={handleImageLoaded}
             />
             {/* Reset Button */}
             <TouchableOpacity
               onPress={resetCaptcha}
-              className="absolute top-3 right-3 rounded-full p-2"
+              className="absolute top-3 right-3 rounded-full p-2 z-10"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              disabled={isImageLoading}
             >
               <Ionicons name="refresh-outline" size={20} color="white" />
             </TouchableOpacity>
@@ -185,6 +202,7 @@ export default function CaptchaScreen() {
                 borderWidth: 2,
                 borderColor: "rgba(255, 255, 255, 0.8)",
                 overflow: "hidden",
+                opacity: isImageLoading ? 0 : 1,
               }}
             >
               <Image
@@ -198,6 +216,7 @@ export default function CaptchaScreen() {
                   top: -CENTER_Y,
                   left: -targetPosition,
                 }}
+                onLoad={handleImageLoaded}
               />
               <View className="absolute inset-0 bg-black/50" />
             </View>
@@ -216,6 +235,7 @@ export default function CaptchaScreen() {
                   borderColor: "white",
                   overflow: "hidden",
                   zIndex: 10,
+                  opacity: isImageLoading ? 0 : 1,
                 },
                 {
                   transform: [
@@ -251,6 +271,7 @@ export default function CaptchaScreen() {
                     ],
                   },
                 ]}
+                onLoad={handleImageLoaded}
               />
               {isVerified && (
                 <View className="absolute inset-0 items-center justify-center bg-green-500/50">
@@ -271,7 +292,11 @@ export default function CaptchaScreen() {
                 position: "absolute",
                 width: SLIDER_WIDTH * 1.5,
                 height: "100%",
-                backgroundColor: isVerified ? "#22c55e" : "#0066ff",
+                backgroundColor: isVerified
+                  ? "#22c55e"
+                  : isImageLoading
+                    ? "#9ca3af"
+                    : "#0066ff",
                 borderRadius: 9999,
                 shadowColor: "#000",
                 shadowOffset: {
@@ -286,11 +311,15 @@ export default function CaptchaScreen() {
             ]}
           >
             <View className="flex-1 items-center justify-center">
-              <Ionicons
-                name={isVerified ? "checkmark" : "arrow-forward"}
-                size={24}
-                color="white"
-              />
+              {isImageLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons
+                  name={isVerified ? "checkmark" : "arrow-forward"}
+                  size={24}
+                  color="white"
+                />
+              )}
             </View>
           </Animated.View>
         </View>
