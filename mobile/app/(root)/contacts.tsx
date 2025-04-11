@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type ContactSection = {
   id: string;
@@ -144,7 +143,7 @@ const Contacts = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       {/* Tabs */}
       <View className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200">
         <View className="flex-row flex-1">
@@ -216,7 +215,7 @@ const Contacts = () => {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

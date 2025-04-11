@@ -1,80 +1,81 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Image, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useSignupStore } from "~/store/signupStore";
 
 export default function CreateAvatarScreen() {
-  const [avatar, setAvatar] = useState<string | null>(null); // Lưu đường dẫn ảnh đại diện
+  const { setAvatar: setAvatarStore } = useSignupStore();
+  const fullName = useSignupStore((state) => state.data.fullName);
+  const [avatar, setAvatar] = useState<string>(
+    `https://ui-avatars.com/api/?name=${fullName}&font-size=0.25&background=86ab56&color=fff&size=128`,
+  );
   const router = useRouter();
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
     });
 
     if (!result.canceled) {
-      setAvatar(result.assets[0].uri); // Lưu đường dẫn ảnh đã chọn
+      setAvatar(result.assets[0].uri);
     }
   };
 
   const handleUpdate = () => {
-    // TODO: Thực hiện logic cập nhật ảnh đại diện
     console.log("Avatar updated:", avatar);
-    router.push("/(root)/messages"); // Điều hướng đến trang chính
+    setAvatarStore(avatar);
+    router.push("/(auth)/signup/createPassword");
   };
 
   const handleSkip = () => {
-    router.push("/(root)/messages"); // Điều hướqua và điều hướng đến trang chính
+    router.push("/(auth)/signup/createPassword");
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 items-center justify-center px-4">
+      <View className="flex-1 items-center px-4 pt-16 pb-8">
         {/* Tiêu đề */}
-        <Text className="text-xl font-semibold text-gray-800 mb-2">
-          Cập nhật ảnh đại diện
-        </Text>
-        <Text className="text-sm text-gray-500 mb-8 text-center">
-          Đặt ảnh đại diện để mọi người dễ nhận ra bạn
-        </Text>
+        <View className="items-center flex-1">
+          <Text className="text-2xl font-bold text-gray-800 mb-2">
+            Cập nhật ảnh đại diện
+          </Text>
+          <Text className="text-base text-gray-500 mb-8 text-center">
+            Đặt ảnh đại diện để mọi người dễ nhận ra bạn
+          </Text>
 
-        {/* Vòng tròn ảnh đại diện */}
-        <TouchableOpacity
-          onPress={handlePickImage}
-          className="w-32 h-32 rounded-full bg-gray-200 items-center justify-center mb-8"
-        >
-          {avatar ? (
+          {/* Vòng tròn ảnh đại diện */}
+          <TouchableOpacity
+            onPress={handlePickImage}
+            className="w-32 h-32 rounded-full items-center justify-center mb-8"
+          >
             <Image
               source={{ uri: avatar }}
               className="w-full h-full rounded-full"
             />
-          ) : (
-            <View className="items-center justify-center">
-              <Ionicons name="camera-outline" size={32} color="gray" />
-              <Text className="text-sm text-gray-500 mt-2">Chọn ảnh</Text>
+            <View className="items-center justify-center bg-gray-200 rounded-full w-10 h-10 absolute bottom-0 right-0">
+              <Ionicons name="camera-outline" size={20} color="gray" />
             </View>
-          )}
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
 
         {/* Nút cập nhật */}
         <TouchableOpacity
           onPress={handleUpdate}
-          className="w-full bg-blue-500 py-3 rounded-lg items-center"
+          className="w-full bg-primary py-3 rounded-full items-center"
         >
-          <Text className="text-white font-semibold text-base">Cập nhật</Text>
+          <Text className="text-white font-bold text-base">Cập nhật</Text>
         </TouchableOpacity>
 
         {/* Nút bỏ qua */}
-        <TouchableOpacity
-          onPress={handleSkip}
-          className="mt-4 items-center"
-        >
-          <Text className="text-blue-500 font-semibold text-base">Bỏ qua</Text>
+        <TouchableOpacity onPress={handleSkip} className="mt-4 items-center">
+          <Text className="font-semibold text-base">Bỏ qua</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
