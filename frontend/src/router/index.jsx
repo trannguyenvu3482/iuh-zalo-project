@@ -12,6 +12,7 @@ const WelcomePage = lazy(() => import('../pages/Welcome'))
 const ChatsPage = lazy(() => import('../pages/Chats'))
 const ErrorPagePage = lazy(() => import('../pages/ErrorPage'))
 const VideoCallPage = lazy(() => import('../pages/VideoCallPage'))
+const ContactsPage = lazy(() => import('../pages/Contacts'))
 
 // Main app routes
 const router = createBrowserRouter([
@@ -51,6 +52,16 @@ const router = createBrowserRouter([
           <Suspense fallback={<LoadingSpinner />}>
             <PrivateRoute>
               <ChatsPage />
+            </PrivateRoute>
+          </Suspense>
+        ),
+      },
+      {
+        path: '/contacts',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <PrivateRoute>
+              <ContactsPage />
             </PrivateRoute>
           </Suspense>
         ),
