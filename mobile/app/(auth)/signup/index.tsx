@@ -15,9 +15,7 @@ const Signup = () => {
   const router = useRouter();
   const phoneInputRef = useRef<PhoneInput>(null);
   const { setPhoneAndPassword } = useSignupStore();
-  const isFormValid = phoneInputRef.current?.isValidNumber(
-    phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()?.number,
-  );
+  const isFormValid = true;
 
   const handleContinue = () => {
     if (!isFormValid) return;
