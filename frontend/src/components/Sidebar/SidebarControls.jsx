@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import businessIcon from '../../assets/icons/business-btn.png'
 import chatIcon from '../../assets/icons/chat-btn.png'
 import cloudIcon from '../../assets/icons/cloud-btn.png'
@@ -11,7 +11,7 @@ import { Avatar } from '../index'
 
 const TOP_TAB_BUTTONS = [
   { name: 'Chats', icon: chatIcon, link: '/', active: true },
-  { name: 'Contacts', icon: contactsIcon, link: '/contacts', active: false },
+  { name: 'Contacts', icon: contactsIcon, link: '/contacts', active: true },
   { name: 'To-Do', icon: todoIcon, link: '/todo', active: false },
 ]
 
@@ -20,6 +20,7 @@ const BOTTOM_TAB_BUTTONS = [
   { name: 'Business', icon: businessIcon, link: '/business', active: false },
   { name: 'Settings', icon: settingsIcon, link: '/settings', active: false },
 ]
+
 const SidebarControls = () => {
   const location = useLocation()
 
@@ -31,23 +32,21 @@ const SidebarControls = () => {
           <Avatar />
         </div>
 
-        {/* Button groups */}
         <div className="mt-6 flex flex-col items-center justify-center gap-2">
           {TOP_TAB_BUTTONS.map((button, index) => (
-            <button
-              key={index}
-              className={`flex flex-col items-center justify-center rounded-md p-3 hover:bg-blue-800 ${
-                location.pathname === button.link ? 'bg-blue-800' : ''
-              }`}
-            >
-              <div>
+            <Link to={button.link} key={index}>
+              <button
+                className={`flex flex-col items-center justify-center rounded-md p-3 hover:bg-blue-800 ${
+                  location.pathname === button.link ? 'bg-blue-800' : ''
+                }`}
+              >
                 <img
                   className="box-content flex h-[25px] w-[25px] items-center justify-center object-contain"
                   src={button.icon}
                   alt=""
                 />
-              </div>
-            </button>
+              </button>
+            </Link>
           ))}
         </div>
       </div>
@@ -55,41 +54,36 @@ const SidebarControls = () => {
       {/* BOTTOM TABS */}
       <div className="pb-3">
         <div className="flex flex-col items-center justify-center gap-1.5">
-          {/* Zcloud */}
           <div className="border-b pb-1">
-            <button
-              className={`flex flex-col items-center justify-center rounded-md p-3 hover:bg-blue-800`}
-            >
-              <div>
+            <Link to="/zcloud">
+              <button className="flex flex-col items-center justify-center rounded-md p-3 hover:bg-blue-800">
                 <img
                   className="box-content flex h-[25px] w-[25px] items-center justify-center object-contain"
                   src={zCloudIcon}
                   alt=""
                 />
-              </div>
-            </button>
+              </button>
+            </Link>
           </div>
 
           {BOTTOM_TAB_BUTTONS.map((button, index) => (
-            <button
-              key={index}
-              className={`flex flex-col items-center justify-center rounded-md p-3 hover:bg-blue-800 ${
-                location.pathname === button.link ? 'bg-blue-800' : ''
-              }`}
-            >
-              <div>
+            <Link to={button.link} key={index}>
+              <button
+                className={`flex flex-col items-center justify-center rounded-md p-3 hover:bg-blue-800 ${
+                  location.pathname === button.link ? 'bg-blue-800' : ''
+                }`}
+              >
                 <img
                   className="box-content flex h-[25px] w-[25px] items-center justify-center object-contain"
                   src={button.icon}
                   alt=""
                 />
-              </div>
-            </button>
+              </button>
+            </Link>
           ))}
         </div>
       </div>
 
-      {/* Add Friend Requests Menu */}
       <FriendRequestsMenu />
     </div>
   )
