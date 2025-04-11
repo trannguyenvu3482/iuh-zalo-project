@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Keyboard,
@@ -11,18 +11,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "~/components/Button";
+import { useSignupStore } from "~/store/signupStore";
 
 const OTP_LENGTH = 6;
 
 export default function OTPScreen() {
   const router = useRouter();
-  const { phone = "Không xác định", countryCode = "+84" } =
-    useLocalSearchParams();
   const [otp, setOtp] = useState("");
   const [timer, setTimer] = useState(60);
   const inputRef = useRef<TextInput>(null);
   const [isResendDisabled, setIsResendDisabled] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
+  const phone = useSignupStore((state) => state.data.phoneNumber);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -66,7 +66,6 @@ export default function OTPScreen() {
 
     setIsVerifying(true); // Bắt đầu xác thực OTP
     try {
-      // TODO: Thay thế bằng API xác thực OTP thực tế
       console.log("Verifying OTP:", otp);
       const isValidOtp = otp === "123456"; // Giả lập OTP hợp lệ là "123456"
 
@@ -111,9 +110,7 @@ export default function OTPScreen() {
               Nhập mã xác thực
             </Text>
             <Text className="text-base text-center">
-              <Text className="text-gray-400">Đang gọi đến số</Text>{" "}
-              {countryCode}
-              {phone}.{" "}
+              <Text className="text-gray-400">Đang gọi đến số</Text> {phone}.{" "}
               <Text className="text-gray-400">
                 Nghe máy để nhận mã xác thực gồm 6 chữ số.
               </Text>
@@ -189,7 +186,7 @@ export default function OTPScreen() {
               <Text className="text-base font-medium text-gray-400">
                 Bạn vẫn không nhận được mã?{" "}
                 <Text className="text-primary">Gửi OTP qua SMS</Text> hoặc{" "}
-                <Text className="text-primary">qua Email</Text>
+                {/* <Text className="text-primary">qua Email</Text> */}
               </Text>
             </TouchableOpacity>
           </View>

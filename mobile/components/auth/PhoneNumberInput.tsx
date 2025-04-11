@@ -3,10 +3,13 @@ import PhoneInput from "react-native-phone-number-input";
 
 const PhoneInputField = ({
   phoneInputRef,
+  value,
+  setValue,
 }: {
   phoneInputRef: React.RefObject<PhoneInput>;
+  value: string;
+  setValue: (value: string) => void;
 }) => {
-  const [value, setValue] = useState("");
   const [formattedValue, setFormattedValue] = useState("");
 
   return (
