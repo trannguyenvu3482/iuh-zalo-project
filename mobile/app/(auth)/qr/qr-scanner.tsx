@@ -61,7 +61,7 @@ export default function QRScanner() {
 
       // Navigate to QR result page with the scanned data
       router.push({
-        pathname: "/qr-result",
+        pathname: "/(auth)/qr/qr-result",
         params: { sessionId: qrData.sessionId },
       });
     } catch (error) {

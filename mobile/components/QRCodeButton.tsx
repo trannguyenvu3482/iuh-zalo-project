@@ -25,7 +25,7 @@ const QRCodeButton = ({
         return;
       }
     }
-    router.push("/(auth)/qr-scanner");
+    router.push("/(auth)/qr/qr-scanner");
   };
 
   return (
