@@ -8,6 +8,7 @@ const AuthLayout = () => {
         contentStyle: { backgroundColor: "white" },
       }}
     >
+      <Stack.Screen name="welcome" />
       <Stack.Screen name="login" />
     </Stack>
   );

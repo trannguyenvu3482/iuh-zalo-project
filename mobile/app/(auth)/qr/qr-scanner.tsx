@@ -1,22 +1,29 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Camera, CameraView } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 
 interface QRData {
-  type: string;
-  sessionId: string;
-  instructions: string;
-  apiEndpoint: string;
-  expiresAt: number;
+  t: string; // type
+  s: string; // sessionId
+  e: number; // expiresAt
+  a: string; // apiEndpoint
+  d: {
+    // device info
+    i: string; // ip
+    p: string; // platform
+    t: string; // device type
+    e: string; // environment
+  };
 }
 
 export default function QRScanner() {
   const router = useRouter();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
+  const [isFlashOn, setIsFlashOn] = useState(false);
 
   useEffect(() => {
     const getBarCodeScannerPermissions = async () => {
@@ -27,6 +34,11 @@ export default function QRScanner() {
     getBarCodeScannerPermissions();
   }, []);
 
+  // Reset scanner state when component mounts or when returning to this screen
+  useFocusEffect(() => {
+    setScanned(false);
+  });
+
   const handleBarCodeScanned = ({
     type,
     data,
@@ -34,13 +46,15 @@ export default function QRScanner() {
     type: string;
     data: string;
   }) => {
+    if (scanned) return; // Prevent multiple scans
     setScanned(true);
+
     try {
       // Parse the QR data
       const qrData: QRData = JSON.parse(data);
 
       // Validate that this is a Zalo QR login code
-      if (qrData.type !== "ZALO_QR_LOGIN") {
+      if (qrData.t !== "ZALO") {
         Alert.alert(
           "Invalid QR Code",
           "This is not a valid Zalo login QR code.",
@@ -50,7 +64,7 @@ export default function QRScanner() {
       }
 
       // Check if the QR code has expired
-      if (qrData.expiresAt < Date.now()) {
+      if (qrData.e < Date.now()) {
         Alert.alert(
           "Expired QR Code",
           "This QR code has expired. Please refresh and try again.",
@@ -62,7 +76,11 @@ export default function QRScanner() {
       // Navigate to QR result page with the scanned data
       router.push({
         pathname: "/(auth)/qr/qr-result",
-        params: { sessionId: qrData.sessionId },
+        params: {
+          sessionId: qrData.s,
+          apiEndpoint: qrData.a,
+          deviceInfo: JSON.stringify(qrData.d),
+        },
       });
     } catch (error) {
       console.error("Error parsing QR code:", error);
@@ -104,6 +122,10 @@ export default function QRScanner() {
     }
   };
 
+  const toggleFlash = useCallback(() => {
+    setIsFlashOn((prev) => !prev);
+  }, []);
+
   if (hasPermission === null) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
@@ -135,6 +157,7 @@ export default function QRScanner() {
         }}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         autofocus="on"
+        flash={isFlashOn ? "on" : "off"}
       >
         <View className="flex-1">
           {/* Top Bar */}
@@ -205,11 +228,15 @@ export default function QRScanner() {
               </View>
               <Text className="text-white mt-2">Ảnh có sẵn</Text>
             </TouchableOpacity>
-            <TouchableOpacity className="items-center">
+            <TouchableOpacity className="items-center" onPress={toggleFlash}>
               <View className="w-12 h-12 bg-white/10 rounded-full items-center justify-center">
-                <Ionicons name="qr-code-outline" size={24} color="white" />
+                <Ionicons
+                  name={isFlashOn ? "flash" : "flash-outline"}
+                  size={24}
+                  color="white"
+                />
               </View>
-              <Text className="text-white mt-2">Gần đây</Text>
+              <Text className="text-white mt-2">Bật đèn</Text>
             </TouchableOpacity>
           </View>
         </View>
