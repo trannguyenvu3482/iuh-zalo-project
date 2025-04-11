@@ -14,15 +14,15 @@ import { useUserStore } from "../../store/userStore";
 const API_URLS = {
   // For development on emulators
   EMULATOR: {
-    ANDROID: "http://10.0.2.2:8081/api", // Special IP that Android emulator uses to access host machine
-    IOS: "http://172.20.10.3:8081/api", // iOS simulator can access localhost of host machine
+    ANDROID: "http://192.168.1.8:8081/api", // Special IP that Android emulator uses to access host machine
+    IOS: "http://192.168.1.8:8081/api", // iOS simulator can access localhost of host machine
   },
   // For web or Expo Go (web works with localhost, Expo Go needs network IP)
   WEB: "http://localhost:8081/api",
   // Production or hosted API
   PRODUCTION: "https://main-gradually-octopus.ngrok-free.app/api/v1",
   // Backup API URL if the main one fails, get from computer IP
-  BACKUP: "http://172.20.10.3:8081/api",
+  BACKUP: "http://192.168.1.8:8081/api",
 };
 
 // Get API URL from environment variables or use fallback

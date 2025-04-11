@@ -77,7 +77,7 @@ const CreatePassword = () => {
     setIsSubmitting(true);
 
     // Simulate API call delay
-    setTimeout(() => {
+      setTimeout(() => {
       setIsSubmitting(false);
       setPasswordStore(password);
       console.log(getSignupData());
