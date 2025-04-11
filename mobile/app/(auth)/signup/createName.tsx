@@ -13,18 +13,17 @@ const CreateName = () => {
   const { setFullName } = useSignupStore();
   // Hàm kiểm tra tính hợp lệ của tên
   const validateName = (text: string) => {
-    // Regex: Tên phải từ 2-40 ký tự, không chứa số, không ký tự đặc biệt, có ít nhất 2 chữ
-    const isValidName = text.length >= 2 &&
-                        text.length <= 40 &&
-                        /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểễệỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]+(\s[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểễệỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]+)+$/.test(text);
-  
     // Viết hoa chữ cái đầu của mỗi từ
     const formattedName = text
       .split(/\s+/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(" ");
-  
-    setIsValid(isValidName);
+
+    setIsValid(
+      formattedName.length >= 2 &&
+        formattedName.length <= 40 &&
+        VIETNAMESE_NAME_REGEX.test(formattedName),
+    );
     setName(formattedName);
   };
 

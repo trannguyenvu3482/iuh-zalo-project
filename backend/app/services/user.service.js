@@ -10,7 +10,7 @@ exports.searchUserByPhone = async (phoneNumber, userId) => {
   try {
     const user = await User.findOne({
       where: { phoneNumber },
-      attributes: ["id", "username", "phoneNumber", "fullname"],
+      attributes: ["id", "phoneNumber", "fullName", "avatar"],
     });
     if (!user) throw new NotFoundError("User not found");
     if (user.id === userId) throw new ValidationError("Cannot search yourself");
@@ -34,7 +34,14 @@ exports.searchUserByPhone = async (phoneNumber, userId) => {
 exports.getUserById = async (userId, queryId) => {
   try {
     const user = await User.findByPk(queryId, {
-      attributes: ["id", "username", "phoneNumber", "fullname", "email"],
+      attributes: [
+        "id",
+        "phoneNumber",
+        "fullName",
+        "avatar",
+        "banner",
+        "status",
+      ],
     });
     if (!user) throw new NotFoundError("User not found");
     if (user.id === userId) throw new ValidationError("Cannot search yourself");
@@ -59,18 +66,16 @@ exports.getMyProfile = async (userId) => {
   try {
     const user = await User.findByPk(userId, {
       attributes: [
-        "id", 
-        "username", 
-        "phoneNumber", 
-        "fullname", 
-        "email", 
-        "gender", 
-        "birthdate", 
-        "avatar", 
-        "banner", 
+        "id",
+        "phoneNumber",
+        "fullName",
+        "gender",
+        "birthdate",
+        "avatar",
+        "banner",
         "status",
-        "created_at", 
-        "updated_at"
+        "created_at",
+        "updated_at",
       ],
     });
     if (!user) throw new NotFoundError("User not found");
@@ -85,7 +90,7 @@ exports.getMyProfile = async (userId) => {
 exports.getAllUsers = async (userId) => {
   try {
     const users = await User.findAll({
-      attributes: ["id", "username", "phoneNumber", "fullname", "email"],
+      attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
     });
     if (!users) throw new NotFoundError("User not found");
 
@@ -103,14 +108,14 @@ exports.getAllUsers = async (userId) => {
  * @returns {Object} Updated user
  */
 exports.updateUserProfile = async (userId, profileData) => {
-  const { fullname, gender, birthdate, email, phoneNumber } = profileData;
-  
+  const { fullName, gender, birthdate, phoneNumber } = profileData;
+
   // Find the user
   const user = await User.findOne({ where: { id: userId } });
   if (!user) {
     throw new NotFoundError("User not found");
   }
-  
+
   // Validate phoneNumber uniqueness if changed
   if (phoneNumber && phoneNumber !== user.phoneNumber) {
     const existingPhone = await User.findOne({ where: { phoneNumber } });
@@ -118,25 +123,16 @@ exports.updateUserProfile = async (userId, profileData) => {
       throw new ValidationError("Phone number is already in use");
     }
   }
-  
-  // Validate email uniqueness if changed
-  if (email && email !== user.email) {
-    const existingEmail = await User.findOne({ where: { email } });
-    if (existingEmail) {
-      throw new ValidationError("Email is already in use");
-    }
-  }
-  
+
   // Update user data
-  user.fullname = fullname || user.fullname;
+  user.fullName = fullName || user.fullName;
   user.gender = gender || user.gender;
   user.birthdate = birthdate || user.birthdate;
-  user.email = email || user.email;
   user.phoneNumber = phoneNumber || user.phoneNumber;
-  
+
   // Save changes
   await user.save();
-  
+
   return user;
 };
 
@@ -150,15 +146,15 @@ exports.updateUserStatus = async (userId, status) => {
   if (!["active", "inactive"].includes(status)) {
     throw new ValidationError("Invalid status. Must be 'active' or 'inactive'");
   }
-  
+
   const user = await User.findOne({ where: { id: userId } });
   if (!user) {
     throw new NotFoundError("User not found");
   }
-  
+
   user.status = status;
   await user.save();
-  
+
   return user;
 };
 
@@ -170,46 +166,49 @@ exports.updateUserStatus = async (userId, status) => {
  */
 exports.updateUserAvatar = async (userId, file) => {
   try {
-    const supabaseStorage = require('../utils/supabase');
+    const supabaseStorage = require("../utils/supabase");
     const user = await User.findOne({ where: { id: userId } });
-    
+
     if (!user) {
       throw new NotFoundError("User not found");
     }
-    
+
     if (!file) {
       throw new ValidationError("No avatar file provided");
     }
-    
+
     // Check if user already has an avatar that's not the default
-    if (user.avatar && !user.avatar.includes('default-avatar')) {
+    if (user.avatar && !user.avatar.includes("default-avatar")) {
       // Get the file path from the URL
-      const existingPath = supabaseStorage.getPathFromUrl(user.avatar, 'avatars');
-      
+      const existingPath = supabaseStorage.getPathFromUrl(
+        user.avatar,
+        "avatars"
+      );
+
       if (existingPath) {
         // Delete the old avatar
         try {
-          await supabaseStorage.deleteFile(existingPath, 'avatars');
+          await supabaseStorage.deleteFile(existingPath, "avatars");
         } catch (error) {
           console.warn(`Failed to delete old avatar: ${error.message}`);
           // Continue with upload even if deletion fails
         }
       }
     }
-    
+
     // Upload the new avatar to Supabase
     const result = await supabaseStorage.uploadFile(
       file.buffer,
       file.originalname,
-      'avatars',
-      'users',
+      "avatars",
+      "users",
       file.mimetype
     );
-    
+
     // Update user with new avatar URL
     user.avatar = result.url;
     await user.save();
-    
+
     return user;
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -225,46 +224,49 @@ exports.updateUserAvatar = async (userId, file) => {
  */
 exports.updateUserBanner = async (userId, file) => {
   try {
-    const supabaseStorage = require('../utils/supabase');
+    const supabaseStorage = require("../utils/supabase");
     const user = await User.findOne({ where: { id: userId } });
-    
+
     if (!user) {
       throw new NotFoundError("User not found");
     }
-    
+
     if (!file) {
       throw new ValidationError("No banner file provided");
     }
-    
+
     // Check if user already has a banner that's not the default
-    if (user.banner && !user.banner.includes('default-banner')) {
+    if (user.banner && !user.banner.includes("default-banner")) {
       // Get the file path from the URL
-      const existingPath = supabaseStorage.getPathFromUrl(user.banner, 'banners');
-      
+      const existingPath = supabaseStorage.getPathFromUrl(
+        user.banner,
+        "banners"
+      );
+
       if (existingPath) {
         // Delete the old banner
         try {
-          await supabaseStorage.deleteFile(existingPath, 'banners');
+          await supabaseStorage.deleteFile(existingPath, "banners");
         } catch (error) {
           console.warn(`Failed to delete old banner: ${error.message}`);
           // Continue with upload even if deletion fails
         }
       }
     }
-    
+
     // Upload the new banner to Supabase
     const result = await supabaseStorage.uploadFile(
       file.buffer,
       file.originalname,
-      'banners',
-      'users',
+      "banners",
+      "users",
       file.mimetype
     );
-    
+
     // Update user with new banner URL
     user.banner = result.url;
     await user.save();
-    
+
     return user;
   } catch (error) {
     if (error instanceof AppError) throw error;

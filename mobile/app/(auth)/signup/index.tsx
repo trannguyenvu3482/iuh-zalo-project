@@ -12,34 +12,23 @@ import { useSignupStore } from "~/store/signupStore";
 const Signup = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [socialAccepted, setSocialAccepted] = useState(false);
-  const [phone, setPhone] = useState("");
   const router = useRouter();
   const phoneInputRef = useRef<PhoneInput>(null);
   const { setPhone: setPhoneStore } = useSignupStore();
+  const [formattedValue, setFormattedValue] = useState("");
 
-  console.log(phone);
   console.log(
     phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()
       .formattedNumber,
   );
 
-  const isFormValid = () => {
-    const phone = phoneInputRef.current?.isValidNumber(
-      phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()
-        .formattedNumber,
-    );
-    const terms = termsAccepted;
-    const social = socialAccepted;
-
-    if (!phone) return false;
-    if (!terms) return false;
-    if (!social) return false;
-
-    return true;
-  };
+  const isFormValid =
+    phoneInputRef.current?.isValidNumber(formattedValue) &&
+    termsAccepted &&
+    socialAccepted;
 
   const handleContinue = () => {
-    if (!isFormValid()) return;
+    if (!isFormValid) return;
 
     setPhoneStore(
       phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()
@@ -61,8 +50,8 @@ const Signup = () => {
         <View className="w-full gap-6">
           <PhoneNumberInput
             phoneInputRef={phoneInputRef}
-            value={phone}
-            setValue={setPhone}
+            formattedValue={formattedValue}
+            setFormattedValue={setFormattedValue}
           />
 
           <View className="gap-4">
@@ -124,8 +113,8 @@ const Signup = () => {
           <Button
             onPress={handleContinue}
             title="Tiếp tục"
-            type={isFormValid() ? "primary" : "secondary"}
-            disabled={!isFormValid()}
+            type={isFormValid ? "primary" : "secondary"}
+            disabled={!isFormValid}
             className="mt-4"
           />
         </View>

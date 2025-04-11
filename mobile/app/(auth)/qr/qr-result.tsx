@@ -15,18 +15,21 @@ import { useUserStore } from "../../../store/userStore";
 
 export default function QRResult() {
   const router = useRouter();
-  const { sessionId } = useLocalSearchParams();
+  const {
+    sessionId,
+    apiEndpoint,
+    deviceInfo: deviceInfoString,
+  } = useLocalSearchParams();
   const { user } = useUserStore();
+
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(true);
   const [countdown, setCountdown] = useState(5);
 
-  // Device info for display (we would get actual data from device info APIs)
-  const deviceInfo = {
-    ip: "192.168.1.100", // In a real app, we would get the real IP
-    location: "Hồ Chí Minh, Việt Nam", // This would be derived from IP or location services
-    device: "Web Browser", // This would come from the QR data
-  };
+  // Parse device info from QR code
+  const deviceInfo = deviceInfoString
+    ? JSON.parse(deviceInfoString as string)
+    : null;
 
   useEffect(() => {
     // Validate we have session ID and user
@@ -59,7 +62,8 @@ export default function QRResult() {
     setLoading(true);
     try {
       // Call the API to approve the QR login
-      await scanQR(String(sessionId), user.id);
+      const response = await scanQR(String(sessionId), user.id);
+
       Alert.alert("Success", "Login authorized successfully", [
         { text: "OK", onPress: () => router.back() },
       ]);
@@ -136,69 +140,48 @@ export default function QRResult() {
               <View className="flex-row items-center mb-4">
                 <Image
                   source={{
-                    uri:
-                      user?.avatar ||
-                      "https://ui-avatars.com/api/?name=" +
-                        encodeURIComponent(user?.name || "User"),
+                    uri: user?.avatar,
                   }}
                   className="w-10 h-10 rounded-full mr-3"
                 />
                 <View>
                   <Text className="text-gray-800 text-lg font-semibold">
-                    {user?.name || "Unknown User"}
+                    {user?.fullName || "Unknown User"}
                   </Text>
-                  <Text className="text-gray-500">{user?.email || ""}</Text>
                 </View>
               </View>
               <View className="h-[1px] bg-gray-200 mb-4" />
-              <View className="flex-row items-center">
-                <Ionicons
-                  name="phone-portrait-outline"
-                  size={20}
-                  color="#6B7280"
-                  className="mr-3"
-                />
-                <Text className="text-black">{deviceInfo.device}</Text>
-              </View>
-            </View>
-
-            {/* IP Address */}
-            <View className="bg-gray-50 rounded-lg p-4">
-              <View className="flex-row items-center">
-                <Ionicons
-                  name="globe-outline"
-                  size={20}
-                  color="#6B7280"
-                  className="mr-3"
-                />
-                <Text className="text-gray-800">IP: {deviceInfo.ip}</Text>
-              </View>
-            </View>
-
-            {/* Location */}
-            <View className="bg-gray-50 rounded-lg p-4">
-              <View className="flex-row items-center">
-                <Ionicons
-                  name="location-outline"
-                  size={20}
-                  color="#6B7280"
-                  className="mr-3"
-                />
-                <Text className="text-gray-800">{deviceInfo.location}</Text>
-              </View>
-            </View>
-
-            {/* Session ID (for debugging) */}
-            <View className="bg-gray-50 rounded-lg p-4">
-              <View className="flex-row items-center">
-                <Ionicons
-                  name="key-outline"
-                  size={20}
-                  color="#6B7280"
-                  className="mr-3"
-                />
-                <Text className="text-gray-800">Session: {sessionId}</Text>
-              </View>
+              {deviceInfo && (
+                <>
+                  <View className="flex-row items-center">
+                    <Ionicons
+                      name="desktop-outline"
+                      size={20}
+                      color="#6B7280"
+                      className="mr-3"
+                    />
+                    <Text className="text-black">{deviceInfo.p}</Text>
+                  </View>
+                  <View className="flex-row items-center mt-2">
+                    <Ionicons
+                      name="globe-outline"
+                      size={20}
+                      color="#6B7280"
+                      className="mr-3"
+                    />
+                    <Text className="text-gray-800">IP: {deviceInfo.i}</Text>
+                  </View>
+                  <View className="flex-row items-center mt-2">
+                    <Ionicons
+                      name="earth-outline"
+                      size={20}
+                      color="#6B7280"
+                      className="mr-3"
+                    />
+                    <Text className="text-gray-800">{deviceInfo.e}</Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
         </View>

@@ -53,6 +53,7 @@ const Login = () => {
           ? err.message
           : t('loginFailed')
       enqueueSnackbar(errorMessage, { variant: 'error' })
+      console.log(err)
     },
   })
 

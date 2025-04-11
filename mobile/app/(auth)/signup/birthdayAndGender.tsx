@@ -28,7 +28,7 @@ const BirthdayAndGender: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
-  const { setBirthday: setBirthdayStore, setGender: setGenderStore } =
+  const { setBirthdate: setBirthdateStore, setGender: setGenderStore } =
     useSignupStore();
 
   // Check if form is valid
@@ -75,7 +75,7 @@ const BirthdayAndGender: React.FC = () => {
     setTimeout(() => {
       setShowSuccessModal(false);
       setIsLoading(false);
-      setBirthdayStore(birthDate);
+      setBirthdateStore(birthDate);
       setGenderStore(gender);
       router.push("/(auth)/signup/createAvatar");
     }, 2000);

@@ -10,7 +10,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { userAPI } from "~/api";
+import { signup } from "~/api/apiAuth";
 import { useSignupStore } from "~/store/signupStore";
+import { useUserStore } from "~/store/userStore";
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
 
 const CreatePassword = () => {
   const router = useRouter();
@@ -21,8 +26,10 @@ const CreatePassword = () => {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { setPassword: setPasswordStore } = useSignupStore();
-  const { getSignupData } = useSignupStore();
+  const { setPassword: setPasswordStore, getSignupData } = useSignupStore();
+  const hasAvatar = useSignupStore((state) => state.data.hasAvatar);
+  const { setUser, setToken } = useUserStore();
+
   // Check if password meets requirements
   const hasMinLength = password.length >= 8;
   const hasLetter = /[a-zA-Z]/.test(password);
@@ -71,17 +78,58 @@ const CreatePassword = () => {
     return "bg-green-500";
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid) return;
 
     setIsSubmitting(true);
+    try {
+      // 1. Get all signup data except avatar
+      const signupData = getSignupData();
+      const { avatar, ...userData } = signupData;
 
-    // Simulate API call delay
-    setTimeout(() => {
+      console.log("signupData", signupData);
+
+      // 2. Create user with basic data
+      const response = await signup({
+        fullName: userData.fullName,
+        phoneNumber: userData.phoneNumber,
+        password,
+        gender: userData.gender,
+        birthdate: userData.birthdate,
+        avatar: !hasAvatar ? avatar : undefined,
+      });
+
+      console.log("response sign", response.data);
+
+      const { user, token } = response.data;
+
+      // 3. Upload avatar if exists and not default
+      if (hasAvatar) {
+        console.log("IS USING SELF AVATAR");
+
+        // Create form data
+        const formData = new FormData();
+        formData.append("avatar", {
+          uri: signupData.avatar,
+          type: "image/jpeg",
+          name: "avatar.jpg",
+        } as any);
+
+        // Upload avatar
+        const avatarResponse = await userAPI.updateUserAvatar(formData, token);
+        console.log("avatarResponse", avatarResponse);
+      }
+
+      // Navigate to main app
+      setUser(user);
+      setToken(token);
+      router.replace("/(root)/messages");
+    } catch (error) {
+      console.error("Signup error:", error);
+      setError("Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.");
+    } finally {
       setIsSubmitting(false);
-      setPasswordStore(password);
-      console.log(getSignupData());
-    }, 1500);
+    }
   };
 
   return (
