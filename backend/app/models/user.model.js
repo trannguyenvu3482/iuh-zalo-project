@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
       avatar: {
         type: DataTypes.STRING(255),
         allowNull: true,
-        defaultValue: "https://via.placeholder.com/150?text=User",
+        defaultValue: "https://picsum.photos/200/300",
         // validate: {
         //   isUrl: {
         //     msg: "Avatar must be a valid URL",
@@ -57,7 +57,7 @@ module.exports = (sequelize, DataTypes) => {
       banner: {
         type: DataTypes.STRING(255),
         allowNull: true,
-        defaultValue: "https://via.placeholder.com/1200x300?text=Banner",
+        defaultValue: "https://picsum.photos/1280/720",
         // validate: {
         //   isUrl: {
         //     msg: "Banner must be a valid URL",

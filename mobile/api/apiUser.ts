@@ -15,7 +15,8 @@ const searchUserByPhoneNumber = async (phoneNumber: string) => {
  * Get current user information
  */
 const getUserInfo = async () => {
-  return await axiosInstance.get(`${BASE_URL}/me`);
+  const response = await axiosInstance.get(`${BASE_URL}/me`);
+  return response.data;
 };
 
 /**
@@ -49,9 +50,30 @@ const updateUserBanner = async (banner: any, token?: string) => {
   });
 };
 
+/**
+ * Search for a user by phone number (public endpoint, no authentication required)
+ */
+const searchUserByPhoneNumberPublic = async (phoneNumber: string) => {
+  return await axiosInstance.get(`${BASE_URL}/search-phone`, {
+    params: { phoneNumber },
+  });
+};
+
+/**
+ * Change user password
+ */
+const changePassword = async (oldPassword: string, newPassword: string) => {
+  return await axiosInstance.put(`${BASE_URL}/change-password`, {
+    oldPassword,
+    newPassword,
+  });
+};
+
 export {
+  changePassword,
   getUserInfo,
   searchUserByPhoneNumber,
+  searchUserByPhoneNumberPublic,
   updateUserAvatar,
   updateUserBanner,
   updateUserProfile,

@@ -65,7 +65,7 @@ export default function QRResult() {
       const response = await scanQR(String(sessionId), user.id);
 
       Alert.alert("Success", "Login authorized successfully", [
-        { text: "OK", onPress: () => router.back() },
+        { text: "OK", onPress: () => router.replace("/(root)/messages") },
       ]);
     } catch (error) {
       console.error("Error authorizing login:", error);

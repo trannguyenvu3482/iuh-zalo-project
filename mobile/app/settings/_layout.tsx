@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 
 export default function SettingsLayout() {
   return (
-    <Stack>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="index"
         options={{
@@ -34,6 +34,12 @@ export default function SettingsLayout() {
           headerTitleStyle: {
             fontSize: 17,
           },
+        }}
+      />
+      <Stack.Screen
+        name="change-password"
+        options={{
+          title: "Đổi mật khẩu",
         }}
       />
       {/* Add more screens as needed */}

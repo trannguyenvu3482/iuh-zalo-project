@@ -9,6 +9,8 @@ const {
   UnauthorizedError,
 } = require("../exceptions/errors");
 const crypto = require("crypto");
+const { AppError } = require("../exceptions/errors");
+const smsService = require("./sms.service");
 
 // In-memory OTP storage (in production, use Redis for distributed storage)
 const otpStore = {};
@@ -25,24 +27,31 @@ const initializeSocketIO = (socketIo) => {
 };
 
 /**
- * Generate a random OTP
- * @returns {string} 6-digit OTP
+ * Generate a random OTP and send it via SMS
+ * @param {string} phoneNumber - Phone number to send OTP to
+ * @returns {Promise<boolean>} Success status
  */
-exports.generateOTP = (phoneNumber) => {
-  // Generate a 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+exports.generateOTP = async (phoneNumber) => {
+  try {
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // Store OTP with expiration (5 minutes)
-  otpStore[phoneNumber] = {
-    code: otp,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-    attempts: 0,
-  };
+    // Store OTP with expiration (5 minutes)
+    otpStore[phoneNumber] = {
+      code: otp,
+      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
+      attempts: 0,
+    };
 
-  // In production, send SMS with the OTP
-  console.log(`OTP for ${phoneNumber}: ${otp}`);
+    // Send OTP via SMS
+    const message = `[Zalo] Mật khẩu OTP của bạn là: ${otp}. Mật khẩu hợp lệ trong 5 phút.`;
+    await smsService.sendSMS(phoneNumber, message);
 
-  return true;
+    return true;
+  } catch (error) {
+    console.error("OTP generation error:", error);
+    throw new AppError("Failed to generate and send OTP", 500);
+  }
 };
 
 /**
@@ -153,6 +162,11 @@ exports.authenticateUser = async (phoneNumber, password) => {
       email: user.email,
       fullName: user.fullName,
       avatar: user.avatar,
+      phoneNumber: user.phoneNumber,
+      gender: user.gender,
+      birthdate: user.birthdate,
+      banner: user.banner,
+      status: user.status,
       roles: roles.map((role) => role.name),
     },
     accessToken: token,
@@ -340,6 +354,38 @@ exports.assignRolesToUser = async (user, roles) => {
     await user.setRoles(foundRoles);
   } else {
     await user.setRoles([1]); // default user role
+  }
+};
+
+/**
+ * Update user password
+ * @param {string} userId - ID of the user
+ * @param {string} currentPassword - Current password for verification
+ * @param {string} newPassword - New password to set
+ * @returns {boolean} Success status
+ */
+exports.updatePassword = async (userId, currentPassword, newPassword) => {
+  try {
+    // Find the user
+    const user = await User.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    // Verify current password
+    const passwordIsValid = bcrypt.compareSync(currentPassword, user.password);
+    if (!passwordIsValid) {
+      throw new UnauthorizedError("Current password is incorrect");
+    }
+
+    // Hash and update the new password
+    user.password = bcrypt.hashSync(newPassword, 10);
+    await user.save();
+
+    return true;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("Failed to update password", 500);
   }
 };
 

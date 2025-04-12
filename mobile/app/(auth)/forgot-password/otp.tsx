@@ -29,7 +29,7 @@ export default function OTPScreen() {
     if (!phone) return;
     const requestOTP = async () => {
       const unformattedPhone = phone.replace("+84", "0");
-      const response = await authAPI.requestOTP(unformattedPhone);
+      const response = await authAPI.requestPasswordReset(unformattedPhone);
       console.log("response", response);
     };
 
@@ -53,40 +53,44 @@ export default function OTPScreen() {
     if (isResendDisabled) return;
     setTimer(60);
     setIsResendDisabled(true);
+
     if (!phone) return;
-    const response = await authAPI.requestOTP(phone);
+    const unformattedPhone = phone.replace("+84", "0");
+    const response = await authAPI.requestPasswordReset(unformattedPhone);
     console.log("response", response);
   };
 
   const formatTime = (seconds: number) => {
-    return `${seconds}s`; // Change to format as "59s"
+    return `${seconds}s`;
   };
 
   const handleOtpChange = (text: string) => {
-    // Only allow numbers and limit to OTP_LENGTH
     const cleaned = text.replace(/[^0-9]/g, "").slice(0, OTP_LENGTH);
     setOtp(cleaned);
 
     if (cleaned.length === OTP_LENGTH) {
-      // TODO: Implement OTP verification
-      console.log("Verify OTP:", cleaned);
+      handleVerifyOtp();
     }
   };
 
   const handleVerifyOtp = async () => {
     if (otp.length !== OTP_LENGTH) return;
 
-    setIsVerifying(true); // Bắt đầu xác thực OTP
+    setIsVerifying(true);
     try {
-      console.log("Verifying OTP:", otp);
       if (!phone) return;
-      const unformattedPhone = phone.replace("+84", "0");
-      const response = await authAPI.verifyOTP(unformattedPhone, otp);
+      const response = await authAPI.verifyPasswordResetOTP(phone, otp);
       console.log("response", response);
 
-      if (response.success === true) {
-        console.log("OTP verified successfully");
-        router.push("/(auth)/signup/createName"); // Chuyển đến trang createName
+      if (response.statusCode === 1) {
+        // Store the reset token in the store
+        useSignupStore.setState({
+          data: {
+            ...useSignupStore.getState().data,
+            resetToken: response.data.resetToken,
+          },
+        });
+        router.push("/(auth)/forgot-password/reset-password");
       } else {
         alert("Mã OTP không hợp lệ. Vui lòng thử lại.");
       }
@@ -94,7 +98,7 @@ export default function OTPScreen() {
       console.error("Error verifying OTP:", error);
       alert("Đã xảy ra lỗi khi xác thực OTP. Vui lòng thử lại.");
     } finally {
-      setIsVerifying(false); // Kết thúc xác thực OTP
+      setIsVerifying(false);
     }
   };
 
@@ -201,7 +205,6 @@ export default function OTPScreen() {
               <Text className="text-base font-medium text-gray-400">
                 Bạn vẫn không nhận được mã?{" "}
                 <Text className="text-primary">Gửi OTP qua SMS</Text> hoặc{" "}
-                {/* <Text className="text-primary">qua Email</Text> */}
               </Text>
             </TouchableOpacity>
           </View>

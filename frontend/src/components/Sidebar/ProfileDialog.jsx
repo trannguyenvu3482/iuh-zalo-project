@@ -16,7 +16,7 @@ const ProfileDialog = ({ isOpen, close, onProfileUpdate }) => {
   const queryClient = useQueryClient()
   const [isEditMode, setIsEditMode] = useState(false)
   const [formData, setFormData] = useState({
-    fullname: '',
+    fullName: '',
     gender: 'male',
     birthDay: '23',
     birthMonth: '11',
@@ -70,7 +70,7 @@ const ProfileDialog = ({ isOpen, close, onProfileUpdate }) => {
       const userData = data.data
       setUser(userData)
       const newFormData = {
-        fullname: userData.fullname || '',
+        fullName: userData.fullName || '',
         gender: userData.gender || 'male',
         birthDay: userData.birthdate
           ? new Date(userData.birthdate).getDate().toString()
@@ -111,13 +111,13 @@ const ProfileDialog = ({ isOpen, close, onProfileUpdate }) => {
   }
 
   const handleSubmit = () => {
-    if (!formData.fullname.trim()) {
+    if (!formData.fullName.trim()) {
       enqueueSnackbar('Tên hiển thị không được để trống', { variant: 'error' })
       return
     }
     const birthdate = `${formData.birthYear}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`
     updateMutation.mutate({
-      fullname: formData.fullname,
+      fullName: formData.fullName,
       gender: formData.gender,
       birthdate,
     })
@@ -211,8 +211,8 @@ const ProfileDialog = ({ isOpen, close, onProfileUpdate }) => {
                     </label>
                     <input
                       type="text"
-                      name="fullname"
-                      value={formData.fullname}
+                      name="fullName"
+                      value={formData.fullName}
                       onChange={handleInputChange}
                       className="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
                     />
@@ -350,7 +350,7 @@ const ProfileDialog = ({ isOpen, close, onProfileUpdate }) => {
                     {/* Name and Edit Icon */}
                     <div className="absolute left-28 top-4 flex items-center justify-between">
                       <h2 className="mr-2 text-lg font-semibold text-gray-800">
-                        {userData.fullname || 'User'}
+                        {userData.fullName || 'User'}
                       </h2>
                       <button
                         onClick={() => setIsEditMode(true)}

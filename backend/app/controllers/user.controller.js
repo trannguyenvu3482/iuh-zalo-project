@@ -182,3 +182,63 @@ exports.updateStatus = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Search for a user by phone number (public endpoint, no authentication required)
+ */
+exports.searchUserByPhonePublic = async (req, res, next) => {
+  const { phoneNumber } = req.query;
+
+  try {
+    if (!phoneNumber) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Phone number is required",
+      });
+    }
+
+    const user = await userService.searchUserByPhonePublic(phoneNumber);
+
+    if (!user) {
+      return res.status(200).json({
+        statusCode: 1,
+        message: "Phone number is available",
+        data: null,
+      });
+    }
+
+    successResponse(res, "User found", user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Change user password
+ */
+exports.changePassword = async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new UnauthorizedError("Authentication required");
+
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Old password and new password are required",
+      });
+    }
+
+    const updatedUser = await userService.changePassword(
+      userId,
+      oldPassword,
+      newPassword
+    );
+
+    successResponse(res, "Password changed successfully", {
+      id: updatedUser.id,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

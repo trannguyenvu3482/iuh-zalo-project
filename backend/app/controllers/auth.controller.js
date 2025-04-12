@@ -14,30 +14,36 @@ const {
   getUserEnvironment,
   getUserPlatform,
 } = require("../utils/formatUserAgent");
+const { ValidationError, AppError } = require("../exceptions/errors");
+const otpService = require("../services/otp.service");
 
 const pendingLogins = {};
 
 /**
- * Request OTP for phone verification
+ * Request OTP for phone number verification
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
  */
 exports.requestOTP = async (req, res, next) => {
   try {
     const { phoneNumber } = req.body;
 
     if (!phoneNumber) {
-      return res.status(400).json({
-        statusCode: 0,
-        message: "Phone number is required",
-      });
+      throw new ValidationError("Phone number is required");
     }
 
-    authService.generateOTP(phoneNumber);
+    // Validate phone number format (you can add more validation)
+    if (!/^[0-9]{10,11}$/.test(phoneNumber)) {
+      throw new ValidationError("Invalid phone number format");
+    }
 
-    return successResponse(
-      res,
-      "OTP sent successfully. Please verify within 5 minutes.",
-      { sent: true }
-    );
+    await authService.generateOTP(phoneNumber);
+
+    res.json({
+      success: true,
+      message: "OTP sent successfully",
+    });
   } catch (error) {
     next(error);
   }
@@ -45,8 +51,64 @@ exports.requestOTP = async (req, res, next) => {
 
 /**
  * Verify OTP
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
  */
 exports.verifyOTP = async (req, res, next) => {
+  try {
+    const { phoneNumber, otp } = req.body;
+
+    if (!phoneNumber || !otp) {
+      throw new ValidationError("Phone number and OTP are required");
+    }
+
+    await authService.verifyOTP(phoneNumber, otp);
+
+    res.json({
+      success: true,
+      message: "OTP verified successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request password reset OTP
+ */
+exports.requestPasswordReset = async (req, res, next) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Phone number is required",
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ where: { phoneNumber } });
+    if (!user) {
+      return res.status(404).json({
+        statusCode: 0,
+        message: "User not found",
+      });
+    }
+
+    // Generate and send OTP
+    const result = await otpService.generateResetPasswordOTP(phoneNumber);
+
+    successResponse(res, "OTP sent successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify OTP for password reset
+ */
+exports.verifyPasswordResetOTP = async (req, res, next) => {
   try {
     const { phoneNumber, otp } = req.body;
 
@@ -57,10 +119,80 @@ exports.verifyOTP = async (req, res, next) => {
       });
     }
 
-    const verified = authService.verifyOTP(phoneNumber, otp);
+    // Check if user exists
+    const user = await User.findOne({ where: { phoneNumber } });
+    if (!user) {
+      return res.status(404).json({
+        statusCode: 0,
+        message: "User not found",
+      });
+    }
 
-    return successResponse(res, "OTP verified successfully", { verified });
+    // Verify OTP
+    otpService.verifyResetPasswordOTP(phoneNumber, otp);
+
+    // Generate a temporary token for password reset
+    const resetToken = jwt.sign(
+      { phoneNumber, type: "password_reset" },
+      config.secret,
+      { expiresIn: "5m" }
+    );
+
+    successResponse(res, "OTP verified successfully", {
+      resetToken,
+    });
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Reset password using reset token
+ */
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Reset token and new password are required",
+      });
+    }
+
+    // Verify reset token
+    const decoded = jwt.verify(resetToken, config.secret);
+    if (decoded.type !== "password_reset") {
+      throw new AppError("Invalid reset token", 400);
+    }
+
+    // Check if user exists
+    const user = await User.findOne({
+      where: { phoneNumber: decoded.phoneNumber },
+    });
+    if (!user) {
+      return res.status(404).json({
+        statusCode: 0,
+        message: "User not found",
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await user.update({ password: hashedPassword });
+
+    successResponse(res, "Password reset successfully", {
+      phoneNumber: decoded.phoneNumber,
+    });
+  } catch (error) {
+    if (error.name === "JsonWebTokenError") {
+      return res.status(400).json({
+        statusCode: 0,
+        message: "Invalid or expired reset token",
+      });
+    }
     next(error);
   }
 };

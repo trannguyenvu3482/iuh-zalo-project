@@ -35,6 +35,8 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     controller.searchUserByPhone
   );
+  // Public routes
+  app.get("/api/users/search-phone", controller.searchUserByPhonePublic);
 
   app.get("/api/users/:queryId", [authJwt.verifyToken], controller.getUserById);
 
@@ -43,29 +45,24 @@ module.exports = function (app) {
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.getAllUsers
   );
-  
+
   // Profile management routes
   app.put(
     "/api/users/profile",
     [authJwt.verifyToken],
     controller.updateProfile
   );
-  
+
+  app.put("/api/users/avatar", [authJwt.verifyToken], controller.updateAvatar);
+
+  app.put("/api/users/banner", [authJwt.verifyToken], controller.updateBanner);
+
+  app.put("/api/users/status", [authJwt.verifyToken], controller.updateStatus);
+
+  // Change password route
   app.put(
-    "/api/users/avatar",
+    "/api/users/change-password",
     [authJwt.verifyToken],
-    controller.updateAvatar
-  );
-  
-  app.put(
-    "/api/users/banner",
-    [authJwt.verifyToken],
-    controller.updateBanner
-  );
-  
-  app.put(
-    "/api/users/status",
-    [authJwt.verifyToken],
-    controller.updateStatus
+    controller.changePassword
   );
 };

@@ -3,6 +3,8 @@ import { router } from "expo-router";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useUserStore } from "~/store/userStore";
+
 type MenuItem = {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -66,6 +68,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const Profile = () => {
+  const { user } = useUserStore();
   const renderMenuItem = (item: MenuItem) => (
     <TouchableOpacity
       key={item.id}
@@ -107,16 +110,18 @@ const Profile = () => {
           onPress={() =>
             router.push({
               pathname: "/profile/[id]",
-              params: { id: "me" },
+              params: { id: user?.id },
             })
           }
         >
           <Image
-            source={{ uri: "https://github.com/shadcn.png" }}
-            className="w-16 h-16 rounded-full"
+            source={{ uri: user?.avatar || "https://picsum.photos/200/200" }}
+            className="w-16 h-16 rounded-full border-2 border-gray-200"
           />
           <View className="flex-1 ml-3">
-            <Text className="text-xl font-medium text-gray-900">Vũ Trần</Text>
+            <Text className="text-xl font-medium text-gray-900">
+              {user?.fullName}
+            </Text>
             <Text className="text-sm text-gray-500">Xem trang cá nhân</Text>
           </View>
           <TouchableOpacity>

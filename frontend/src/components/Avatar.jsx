@@ -162,7 +162,7 @@ const Avatar = () => {
         >
           <MenuItem>
             <button className="group mx-3 flex w-[calc(100%-24px)] items-center gap-2 border-b-2 border-gray-300 px-1 py-1 text-lg font-semibold data-[focus]:bg-white/10">
-              Vũ Trần
+              {user.fullName}
             </button>
           </MenuItem>
           <MenuItem className="mt-1">

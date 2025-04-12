@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
 import PhoneInput from "react-native-phone-number-input";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { userAPI } from "~/api";
 import { Button } from "~/components/Button";
 import Header from "~/components/Header";
 import PhoneNumberInput from "~/components/auth/PhoneNumberInput";
@@ -27,8 +28,24 @@ const Signup = () => {
     termsAccepted &&
     socialAccepted;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!isFormValid) return;
+
+    const phoneNumber = formattedValue.replace("+84", "0");
+
+    console.log("phoneNumber", phoneNumber);
+
+    const response = await userAPI.searchUserByPhoneNumberPublic(phoneNumber);
+
+    console.log("response", response);
+
+    if (response.statusCode === 200) {
+      Alert.alert(
+        "Số điện thoại đã tồn tại",
+        `Số điện thoại ${phoneNumber} đã tồn tại, vui lòng sử dụng số điện thoại khác`,
+      );
+      return;
+    }
 
     setPhoneStore(
       phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero()

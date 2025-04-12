@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useUserStore } from "../../store/userStore";
 
 interface ProfileAction {
   id: string;
@@ -13,7 +15,36 @@ interface ProfileAction {
 
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams();
-  const [isOwnProfile] = useState(id === "me"); // Replace with actual auth check
+  const { user } = useUserStore();
+  const [profileUser, setProfileUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+
+  useEffect(() => {
+    if (id && user) {
+      console.log("id", id);
+      console.log("user", user.id);
+      setIsOwnProfile(id === user.id);
+      setProfileUser(user);
+      setIsLoading(false);
+    }
+  }, [id, user]);
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-gray-100">
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!profileUser) {
+    return (
+      <View className="flex-1 items-center justify-center bg-gray-100">
+        <Text>User not found</Text>
+      </View>
+    );
+  }
 
   const profileActions: ProfileAction[] = [
     {
@@ -44,17 +75,28 @@ export default function ProfileScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={24} color="white" />
           </TouchableOpacity>
-          <View className="flex-row gap-6 items-center">
-            <TouchableOpacity>
-              <Ionicons name="call-outline" size={24} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Ionicons name="videocam-outline" size={24} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Ionicons name="ellipsis-horizontal" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
+          {!isOwnProfile ? (
+            <View className="flex-row gap-6 items-center">
+              <TouchableOpacity>
+                <Ionicons name="call-outline" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Ionicons name="videocam-outline" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Ionicons name="ellipsis-horizontal" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View className="flex-row gap-6 items-center">
+              <TouchableOpacity>
+                <Ionicons name="time-outline" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/profile/menu")}>
+                <Ionicons name="ellipsis-horizontal" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </SafeAreaView>
 
@@ -69,15 +111,25 @@ export default function ProfileScreen() {
           </View>
           <View className="items-center -mt-16">
             <Image
-              source={{ uri: "https://picsum.photos/300/300" }}
+              source={{
+                uri: profileUser.avatar || "https://picsum.photos/300/300",
+              }}
               className="w-32 h-32 rounded-full border-4 border-white"
             />
             <View className="flex-row items-center gap-2 mt-2">
-              <Text className="text-2xl font-bold">Đông Nhi</Text>
-              <TouchableOpacity>
-                <Ionicons name="pencil" size={20} color="#666" />
-              </TouchableOpacity>
+              <Text className="text-2xl font-bold">{profileUser.fullName}</Text>
             </View>
+            {isOwnProfile && (
+              <TouchableOpacity
+                className="flex-row items-center gap-2 mt-2"
+                onPress={() => router.push("/profile/edit")}
+              >
+                <Text className="text-primary">
+                  Cập nhật trạng thái cá nhân
+                </Text>
+                <Ionicons name="pencil" size={14} color="#3b82f6" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -102,7 +154,7 @@ export default function ProfileScreen() {
             {/* Status/Diary Section */}
             <View className="mt-6 mx-4 bg-white rounded-xl p-4">
               <Text className="text-lg font-medium mb-2">
-                Hôm nay Vũ Trần có gì vui?
+                Hôm nay {profileUser.fullName} có gì vui?
               </Text>
               <Text className="text-gray-500">
                 Đây là Nhật ký của bạn - Hãy làm đầy Nhật ký với những dấu ấn
@@ -114,7 +166,7 @@ export default function ProfileScreen() {
           <>
             <View className="mt-6 mx-4">
               <Text className="text-gray-500 text-center">
-                Đông Nhi chưa có hoạt động nào.{"\n"}
+                {profileUser.fullName} chưa có hoạt động nào.{"\n"}
                 Hãy trò chuyện để hiểu nhau hơn.
               </Text>
             </View>
