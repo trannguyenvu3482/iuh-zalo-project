@@ -1,14 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { getAllConversations } from '../api/apiMessage'
 import ChatWindow from '../components/ChatWindow'
 import LoadingSpinner from '../components/LoadingSpinner'
 
 const Chats = () => {
   const { id: conversationId } = useParams()
+  const location = useLocation()
   const [selectedConversation, setSelectedConversation] = useState(null)
-
+  const isFriend = location.state?.isFriend // Get data for new conversation
+  const user = location.state?.user // Get data for new conversation
   // Fetch all conversations
   const {
     data: conversationsResponse,
@@ -27,17 +29,29 @@ const Chats = () => {
     [conversationsResponse?.data],
   )
 
-  // Update selected conversation when conversationId changes
+  // Update selected conversation when conversationId changes or newUserData is provided
   useEffect(() => {
+    console.log(conversationId, conversations)
+
     if (conversationId && conversations.length > 0) {
+      // Case 1: We have a conversationId and it exists
       const conversation = conversations.find(
         (conv) => conv.id === conversationId,
       )
       setSelectedConversation(conversation)
+    } else if (!isFriend) {
+      console.log('CASE')
+
+      setSelectedConversation({
+        id: null, // No ID yet since it's not created in backend
+        user, // User data from search
+        messages: [], // Empty messages array
+        isNew: true, // Flag to indicate this is a new conversation
+      })
     } else {
       setSelectedConversation(null)
     }
-  }, [conversationId, conversations])
+  }, [conversationId, conversations, isFriend, user])
 
   if (isLoading) {
     return (

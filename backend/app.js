@@ -10,18 +10,23 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize Supabase storage buckets
-initSupabase().catch(err => {
+initSupabase().catch((err) => {
   console.error("Failed to initialize Supabase storage:", err);
-  console.warn("⚠️ File uploads may not work correctly. Check your Supabase configuration.");
+  console.warn(
+    "⚠️ File uploads may not work correctly. Check your Supabase configuration."
+  );
 });
 
 // Configure CORS options from environment variables
-const clientUrls = process.env.CLIENT_URL || ["http://localhost:3000", "http://localhost:3001"];
-const corsOptions = { 
-  origin: clientUrls, 
+const clientUrls = process.env.CLIENT_URL || [
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+const corsOptions = {
+  origin: clientUrls,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 // Setup Socket.IO with same CORS config
@@ -29,7 +34,7 @@ const io = socketIo(server, {
   cors: {
     origin: clientUrls,
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
   },
 });
 
@@ -44,20 +49,23 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const db = require("./app/models");
 const Role = db.Role;
-const messageService = require('./app/services/message.service');
-const { setIo: setMessageIo } = require('./app/controllers/message.controller');
-const { setIo: setConversationIo } = require('./app/controllers/conversation.controller');
+const messageService = require("./app/services/message.service");
+const { setIo: setMessageIo } = require("./app/controllers/message.controller");
+const {
+  setIo: setConversationIo,
+} = require("./app/controllers/conversation.controller");
 const { setIo: setFriendIo } = require("./app/controllers/friend.controller");
 
 // Import the call handlers
-const { setupCallHandlers } = require('./socket/callHandlers');
+const { setupCallHandlers } = require("./socket/callHandlers");
 
 // Import token routes
-const tokenRoutes = require('./routes/tokenRoutes');
+const tokenRoutes = require("./routes/tokenRoutes");
 
 // Import the QR handlers
-const { setupQRHandlers } = require('./socket/qrHandlers');
-const { initializeSocketIO } = require('./app/services/auth.service');
+const { setupQRHandlers } = require("./socket/qrHandlers");
+const { initializeSocketIO } = require("./app/services/auth.service");
+const setupNgrok = require("./app/utils/setupNgrok");
 
 db.sequelize.sync().then(() => {
   console.log("Database synced");
@@ -73,7 +81,7 @@ require("./app/routes/user.routes")(app);
 require("./app/routes/message.routes")(app);
 
 // Use token routes for generating Agora tokens
-app.use('/api/token', tokenRoutes);
+app.use("/api/token", tokenRoutes);
 
 // Initialize Socket.IO for all controllers that need it
 setMessageIo(io);
@@ -95,7 +103,7 @@ io.on("connection", (socket) => {
       members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
     });
     socket.join(`user_${userId}`);
-    
+
     // Set up call handlers with user information
     setupCallHandlers(io, socket, { id: userId });
     // Set up QR handlers
@@ -105,9 +113,12 @@ io.on("connection", (socket) => {
   socket.on("join", (room) => {
     console.log(`User ${socket.handshake.query.userId} joining room: ${room}`);
     socket.join(room);
-    
+
     // Log all rooms this socket is in
-    console.log(`Socket ${socket.id} is now in rooms:`, Array.from(socket.rooms));
+    console.log(
+      `Socket ${socket.id} is now in rooms:`,
+      Array.from(socket.rooms)
+    );
   });
 
   socket.on("joinQRRoom", (token) => {
@@ -125,18 +136,20 @@ io.on("connection", (socket) => {
         senderId: senderId || socket.handshake.query.userId,
         senderName: senderName,
         conversationId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } else if (receiverId) {
       // For private messages, emit to both sender and receiver
       const senderUserId = senderId || socket.handshake.query.userId;
-      io.to(`user_${senderUserId}`).to(`user_${receiverId}`).emit("new_message", {
-        content: message,
-        senderId: senderUserId,
-        senderName: senderName,
-        receiverId,
-        timestamp: new Date().toISOString()
-      });
+      io.to(`user_${senderUserId}`)
+        .to(`user_${receiverId}`)
+        .emit("new_message", {
+          content: message,
+          senderId: senderUserId,
+          senderName: senderName,
+          receiverId,
+          timestamp: new Date().toISOString(),
+        });
     }
   });
 
@@ -145,7 +158,7 @@ io.on("connection", (socket) => {
     socket.to(`conversation_${conversationId}`).emit("user_typing", {
       userId: userId,
       userName: "User", // Ideally, fetch user name from database
-      conversationId
+      conversationId,
     });
   });
 
@@ -153,7 +166,7 @@ io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;
     socket.to(`conversation_${conversationId}`).emit("user_stopped_typing", {
       userId: userId,
-      conversationId
+      conversationId,
     });
   });
 
@@ -166,7 +179,7 @@ io.on("connection", (socket) => {
       // Notify other users in the conversation
       socket.to(`conversation_${conversationId}`).emit("message_read_update", {
         messageId,
-        userId: userId
+        userId: userId,
       });
     } catch (error) {
       console.error("Error marking message as read:", error);
@@ -191,9 +204,11 @@ io.on("connection", (socket) => {
     if (userId) {
       db.ConversationMember.findAll({ where: { userId } })
         .then((members) => {
-          members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
+          members.forEach((m) =>
+            socket.join(`conversation_${m.conversationId}`)
+          );
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Reconnection error:", error);
         });
     }
@@ -228,3 +243,6 @@ function initial() {
 }
 
 // initial();
+
+// Start ngrok and setup .env files for frontend / mobile
+setupNgrok();
