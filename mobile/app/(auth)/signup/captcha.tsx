@@ -43,7 +43,6 @@ export default function CaptchaScreen() {
 
   useEffect(() => {
     if (isVerified) {
-      // Chuyển đến màn hình OTP và truyền tham số
       router.push({
         pathname: "/(auth)/signup/otp",
       });

@@ -13,6 +13,7 @@ export interface SignupData {
   hasAvatar?: boolean;
   birthdate?: Date | null;
   gender?: "male" | "female" | "other" | null;
+  resetToken?: string;
 }
 
 interface SignupState {

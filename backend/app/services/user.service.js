@@ -5,6 +5,7 @@ const {
   NotFoundError,
   AppError,
 } = require("../exceptions/errors");
+const bcrypt = require("bcryptjs");
 
 exports.searchUserByPhone = async (phoneNumber, userId) => {
   try {
@@ -271,5 +272,57 @@ exports.updateUserBanner = async (userId, file) => {
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError(`Failed to update banner: ${error.message}`, 500);
+  }
+};
+
+/**
+ * Search for a user by phone number without authentication
+ * @param {string} phoneNumber - Phone number to search for
+ * @returns {Promise<Object|null>} User object if found, null otherwise
+ */
+exports.searchUserByPhonePublic = async (phoneNumber) => {
+  try {
+    const user = await User.findOne({
+      where: { phoneNumber },
+      attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
+    });
+    return user;
+  } catch (error) {
+    throw new AppError("Error searching user by phone", 500);
+  }
+};
+
+/**
+ * Change user password
+ * @param {string} userId - User ID
+ * @param {string} oldPassword - Current password
+ * @param {string} newPassword - New password
+ * @returns {Promise<Object>} Updated user object
+ */
+exports.changePassword = async (userId, oldPassword, newPassword) => {
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new AppError("Tài khoản không tồn tại", 404);
+    }
+
+    // Verify old password
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      throw new AppError("Mật khẩu cũ không đúng", 400);
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await user.update({ password: hashedPassword });
+
+    return user;
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError("Lỗi khi đổi mật khẩu", 500);
   }
 };

@@ -11,31 +11,25 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { userAPI } from "~/api";
-import { signup } from "~/api/apiAuth";
-import { useSignupStore } from "~/store/signupStore";
-import { useUserStore } from "~/store/userStore";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
-
-const CreatePassword = () => {
+const ChangePassword = () => {
   const router = useRouter();
-  const [password, setPassword] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { setPassword: setPasswordStore, getSignupData } = useSignupStore();
-  const hasAvatar = useSignupStore((state) => state.data.hasAvatar);
-  const { setUser, setToken } = useUserStore();
 
   // Check if password meets requirements
-  const hasMinLength = password.length >= 8;
-  const hasLetter = /[a-zA-Z]/.test(password);
-  const hasNumber = /\d/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  const passwordsMatch = password === confirmPassword;
+  const hasMinLength = newPassword.length >= 8;
+  const hasLetter = /[a-zA-Z]/.test(newPassword);
+  const hasNumber = /\d/.test(newPassword);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+  const passwordsMatch = newPassword === confirmPassword;
 
   // Update password strength based on criteria
   useEffect(() => {
@@ -48,22 +42,23 @@ const CreatePassword = () => {
 
     setPasswordStrength(strength);
 
-    if (password && confirmPassword && !passwordsMatch) {
+    if (newPassword && confirmPassword && !passwordsMatch) {
       setError("Mật khẩu không khớp");
     } else {
       setError("");
     }
-  }, [password, confirmPassword]);
+  }, [newPassword, confirmPassword]);
 
   // Check if form is valid for submission
   const isFormValid =
-    password.length >= 8 &&
+    oldPassword.length > 0 &&
+    newPassword.length >= 8 &&
     hasLetter &&
     passwordsMatch &&
     confirmPassword.length > 0;
 
   const getStrengthLabel = () => {
-    if (!password) return "";
+    if (!newPassword) return "";
     if (passwordStrength <= 1) return "Yếu";
     if (passwordStrength === 2) return "Trung bình";
     if (passwordStrength === 3) return "Khá";
@@ -71,7 +66,7 @@ const CreatePassword = () => {
   };
 
   const getStrengthColor = () => {
-    if (!password) return "bg-gray-200";
+    if (!newPassword) return "bg-gray-200";
     if (passwordStrength <= 1) return "bg-red-500";
     if (passwordStrength === 2) return "bg-orange-500";
     if (passwordStrength === 3) return "bg-yellow-500";
@@ -80,60 +75,20 @@ const CreatePassword = () => {
 
   const handleSubmit = async () => {
     if (!isFormValid) return;
+    if (oldPassword === newPassword) {
+      setError("Mật khẩu mới không được trùng với mật khẩu cũ");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      // 1. Get all signup data except avatar
-      const signupData = getSignupData();
-      const { avatar, ...userData } = signupData;
-
-      console.log("signupData", signupData);
-
-      // 2. Create user with basic data
-      const response = await signup({
-        fullName: userData.fullName,
-        phoneNumber: userData.phoneNumber,
-        password,
-        gender: userData.gender,
-        birthdate: userData.birthdate,
-        avatar: !hasAvatar ? avatar : undefined,
-      });
-
-      console.log("response sign", response.data);
-
-      const { user, token } = response.data;
-
-      // 3. Upload avatar if exists and not default
-      if (hasAvatar) {
-        console.log("IS USING SELF AVATAR");
-
-        // Create form data
-        const formData = new FormData();
-        formData.append("avatar", {
-          uri: signupData.avatar,
-          type: "image/jpeg",
-          name: "avatar.jpg",
-        } as any);
-
-        // Upload avatar
-        const avatarResponse = await userAPI.updateUserAvatar(formData, token);
-        console.log("avatarResponse", avatarResponse);
-        setUser({
-          ...user,
-          avatar: avatarResponse.data.avatar,
-        });
-      } else {
-        console.log("IS USING DEFAULT AVATAR");
-        setUser({
-          ...user,
-        });
-      }
-
-      setToken(token);
-      router.replace("/(root)/messages");
+      const result = await userAPI.changePassword(oldPassword, newPassword);
+      // Show success message and go back
+      alert("Đổi mật khẩu thành công");
+      router.back();
     } catch (error) {
-      console.error("Signup error:", error);
-      setError("Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.");
+      console.error("Change password error:", error);
+      setError("Mật khẩu cũ không đúng hoặc đã xảy ra lỗi. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -146,24 +101,47 @@ const CreatePassword = () => {
       </TouchableOpacity>
 
       <View className="flex-1 px-5 pt-6">
-        <Text className="text-xl font-bold mb-4 text-center">
-          Tạo mật khẩu mới cho tài khoản của bạn
-        </Text>
+        <Text className="text-xl font-bold mb-4 text-center">Đổi mật khẩu</Text>
 
-        {/* Password Input */}
+        {/* Old Password Input */}
         <View className="mb-6">
           <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
             <TextInput
               className="flex-1 text-xl"
-              placeholder="Nhập mật khẩu"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
+              placeholder="Mật khẩu cũ"
+              value={oldPassword}
+              onChangeText={setOldPassword}
+              secureTextEntry={!showOldPassword}
               autoCapitalize="none"
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowOldPassword(!showOldPassword)}
+            >
               <Ionicons
-                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                name={showOldPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="gray"
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* New Password Input */}
+        <View className="mb-6">
+          <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
+            <TextInput
+              className="flex-1 text-xl"
+              placeholder="Mật khẩu mới"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry={!showNewPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              onPress={() => setShowNewPassword(!showNewPassword)}
+            >
+              <Ionicons
+                name={showNewPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color="gray"
               />
@@ -171,7 +149,7 @@ const CreatePassword = () => {
           </View>
 
           {/* Password Strength Meter */}
-          {password.length > 0 && (
+          {newPassword.length > 0 && (
             <View className="mt-2">
               <View className="flex-row justify-between mb-1">
                 <Text className="text-sm text-gray-500">
@@ -254,7 +232,7 @@ const CreatePassword = () => {
           <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
             <TextInput
               className="flex-1 text-xl"
-              placeholder="Nhập lại mật khẩu"
+              placeholder="Nhập lại mật khẩu mới"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
@@ -287,7 +265,7 @@ const CreatePassword = () => {
             {isSubmitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-white font-bold text-lg">Tiếp tục</Text>
+              <Text className="text-white font-bold text-lg">Đổi mật khẩu</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -296,4 +274,4 @@ const CreatePassword = () => {
   );
 };
 
-export default CreatePassword;
+export default ChangePassword;

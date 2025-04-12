@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import Header from "~/components/Header";
 
 interface MenuItem {
   id: string;
@@ -8,6 +11,7 @@ interface MenuItem {
   label: string;
   description?: string;
   divider?: boolean;
+  route?: string;
 }
 
 export default function AccountSettingsScreen() {
@@ -25,6 +29,7 @@ export default function AccountSettingsScreen() {
       icon: <Ionicons name="key-outline" size={24} color="#0066ff" />,
       label: "Mật khẩu",
       description: "Đã thiết lập",
+      route: "/settings/change-password",
     },
     {
       id: "email",
@@ -54,12 +59,18 @@ export default function AccountSettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Menu Items */}
+      <Header title="Tài khoản và bảo mật" showBackButton />
       <View className="flex-1">
         {menuItems.map((item) => (
           <View key={item.id}>
             <TouchableOpacity
               className="flex-row items-center bg-white px-4 py-3.5"
-              onPress={() => console.log(`Navigate to ${item.id} settings`)}
+              onPress={() =>
+                item.route &&
+                router.push({
+                  pathname: item.route as any,
+                })
+              }
             >
               <View className="w-8">{item.icon}</View>
               <View className="flex-1 ml-3">

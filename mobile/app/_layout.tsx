@@ -25,7 +25,7 @@ export default function Layout() {
         options={{ title: "Chat", headerShown: false }}
       />
       <Stack.Screen
-        name="profile/[id]"
+        name="profile"
         options={{ title: "Profile", headerShown: false }}
       />
       <Stack.Screen

@@ -23,7 +23,7 @@ const Login = () => {
 
   const handleResetPass = () => {
     router.push("/(auth)/resetPass/findPhoneNum");
-  }
+  };
 
   const handleLogin = async () => {
     if (!phone || !password) {
@@ -124,7 +124,10 @@ const Login = () => {
             onChangeText={setPassword}
           />
 
-          <TouchableOpacity className="items-start" onPress={handleResetPass}>
+          <TouchableOpacity
+            onPress={() => router.push("/forgot-password")}
+            className="items-start"
+          >
             <Text className="text-blue-500">Lấy lại mật khẩu</Text>
           </TouchableOpacity>
         </View>

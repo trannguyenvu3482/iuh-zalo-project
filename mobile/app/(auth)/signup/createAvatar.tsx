@@ -26,7 +26,6 @@ export default function CreateAvatarScreen() {
 
       if (!result.canceled) {
         setAvatar(result.assets[0].uri);
-        setHasAvatar(true);
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -36,6 +35,7 @@ export default function CreateAvatarScreen() {
   const handleUpdate = () => {
     // Save to signup store
     setAvatarStore(avatar);
+    setHasAvatar(true);
     router.push("/(auth)/signup/createPassword");
   };
 
