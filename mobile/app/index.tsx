@@ -7,7 +7,6 @@ import { useUserStore } from "~/store/userStore";
 export default function Index() {
   const { isAuthenticated } = useUserStore();
   const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     // Simulate checking authentication state
     setTimeout(() => {

@@ -21,7 +21,7 @@ const handleError = (error, res) => {
   return res.status(statusCode).json({
     success: false,
     statusCode: 0,
-    message
+    message,
   });
 };
 
@@ -81,7 +81,12 @@ exports.createPrivateConversation = async (req, res, next) => {
     if (io) {
       io.to(`user_${userId2}`).emit("conversation_created", conversation);
     }
-    successResponse(res, "Private conversation created successfully", conversation, 201);
+    successResponse(
+      res,
+      "Private conversation created successfully",
+      conversation,
+      201
+    );
   } catch (error) {
     next(error);
   }
@@ -93,30 +98,35 @@ exports.setNickname = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    if (!conversationId) throw new ValidationError("Conversation ID is required");
+    if (!conversationId)
+      throw new ValidationError("Conversation ID is required");
     if (!nickname) throw new ValidationError("Nickname is required");
-    
+
     const conversation = await conversationService.setConversationNickname(
       conversationId,
       userId,
       nickname
     );
-    
+
     // Get the other members to notify them
     const members = await ConversationMember.findAll({
-      where: { conversationId, userId: { [Op.ne]: userId } }
+      where: { conversationId, userId: { [Op.ne]: userId } },
     });
-    
+
     if (io) {
-      members.forEach(member => {
+      members.forEach((member) => {
         io.to(`user_${member.userId}`).emit("conversation_updated", {
           id: conversation.id,
-          name: conversation.name
+          name: conversation.name,
         });
       });
     }
-    
-    successResponse(res, "Conversation nickname set successfully", conversation);
+
+    successResponse(
+      res,
+      "Conversation nickname set successfully",
+      conversation
+    );
   } catch (error) {
     next(error);
   }
@@ -128,24 +138,28 @@ exports.clearChatHistory = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    if (!conversationId) throw new ValidationError("Conversation ID is required");
-    
-    const result = await conversationService.clearChatHistory(conversationId, userId);
-    
+    if (!conversationId)
+      throw new ValidationError("Conversation ID is required");
+
+    const result = await conversationService.clearChatHistory(
+      conversationId,
+      userId
+    );
+
     // Get all members to notify them
     const members = await ConversationMember.findAll({
-      where: { conversationId, userId: { [Op.ne]: userId } }
+      where: { conversationId, userId: { [Op.ne]: userId } },
     });
-    
+
     if (io) {
-      members.forEach(member => {
+      members.forEach((member) => {
         io.to(`user_${member.userId}`).emit("chat_history_cleared", {
           conversationId,
-          clearedBy: userId
+          clearedBy: userId,
         });
       });
     }
-    
+
     successResponse(res, "Chat history cleared successfully", result);
   } catch (error) {
     next(error);
@@ -158,30 +172,31 @@ exports.leaveGroup = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    if (!conversationId) throw new ValidationError("Conversation ID is required");
-    
+    if (!conversationId)
+      throw new ValidationError("Conversation ID is required");
+
     const result = await conversationService.leaveGroup(conversationId, userId);
-    
+
     // Get remaining members to notify them
     const members = await ConversationMember.findAll({
-      where: { conversationId }
+      where: { conversationId },
     });
-    
+
     if (io) {
       // Notify remaining members
-      members.forEach(member => {
+      members.forEach((member) => {
         io.to(`user_${member.userId}`).emit("user_left_group", {
           conversationId,
-          userId
+          userId,
         });
       });
-      
+
       // Notify the user who left
       io.to(`user_${userId}`).emit("left_group", {
-        conversationId
+        conversationId,
       });
     }
-    
+
     successResponse(res, "Left group successfully", result);
   } catch (error) {
     next(error);
@@ -194,20 +209,24 @@ exports.deleteGroup = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    if (!conversationId) throw new ValidationError("Conversation ID is required");
-    
-    const result = await conversationService.deleteGroup(conversationId, userId);
-    
+    if (!conversationId)
+      throw new ValidationError("Conversation ID is required");
+
+    const result = await conversationService.deleteGroup(
+      conversationId,
+      userId
+    );
+
     if (io && result.affectedUsers) {
       // Notify all affected users
-      result.affectedUsers.forEach(memberId => {
+      result.affectedUsers.forEach((memberId) => {
         io.to(`user_${memberId}`).emit("group_deleted", {
           conversationId,
-          deletedBy: userId
+          deletedBy: userId,
         });
       });
     }
-    
+
     successResponse(res, "Group deleted successfully", result);
   } catch (error) {
     next(error);
@@ -228,14 +247,14 @@ exports.addGroupMembers = async (req, res) => {
     if (!conversationId) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a conversation ID"
+        message: "Please provide a conversation ID",
       });
     }
 
     if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Please provide an array of member IDs to add"
+        message: "Please provide an array of member IDs to add",
       });
     }
 
@@ -255,18 +274,18 @@ exports.addGroupMembers = async (req, res) => {
             model: User,
             as: "members",
             attributes: ["id"],
-            through: { attributes: [] }
-          }
-        ]
+            through: { attributes: [] },
+          },
+        ],
       });
-      
+
       // Emit events to all existing members
       if (conversation && conversation.members) {
-        conversation.members.forEach(member => {
-          io.to(member.id).emit('group-members-added', {
+        conversation.members.forEach((member) => {
+          io.to(member.id).emit("group-members-added", {
             conversationId,
             addedBy: userId,
-            addedMembers: result.addedMembers
+            addedMembers: result.addedMembers,
           });
         });
       }
@@ -292,14 +311,14 @@ exports.removeGroupMember = async (req, res) => {
     if (!conversationId) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a conversation ID"
+        message: "Please provide a conversation ID",
       });
     }
 
     if (!memberId) {
       return res.status(400).json({
         success: false,
-        message: "Please provide the member ID to remove"
+        message: "Please provide the member ID to remove",
       });
     }
 
@@ -319,27 +338,27 @@ exports.removeGroupMember = async (req, res) => {
             model: User,
             as: "members",
             attributes: ["id"],
-            through: { attributes: [] }
-          }
-        ]
+            through: { attributes: [] },
+          },
+        ],
       });
-      
+
       // Emit events to all remaining members
       if (conversation && conversation.members) {
-        conversation.members.forEach(member => {
-          io.to(member.id).emit('group-member-removed', {
+        conversation.members.forEach((member) => {
+          io.to(member.id).emit("group-member-removed", {
             conversationId,
             removedBy: userId,
-            removedMember: result.removedMember
+            removedMember: result.removedMember,
           });
         });
       }
-      
+
       // Notify the removed member if it wasn't themselves who left
       if (userId !== memberId) {
-        io.to(memberId).emit('removed-from-group', {
+        io.to(memberId).emit("removed-from-group", {
           conversationId,
-          removedBy: userId
+          removedBy: userId,
         });
       }
     }
@@ -355,15 +374,21 @@ exports.getRecent = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    
+
     // Add console logging for debugging
     console.log("Fetching recent conversations for user:", userId);
-    
-    const conversations = await conversationService.getRecentConversations(userId);
-    
+
+    const conversations = await conversationService.getRecentConversations(
+      userId
+    );
+
     console.log("Successfully fetched conversations:", conversations.length);
-    
-    successResponse(res, "Recent conversations fetched successfully", conversations);
+
+    successResponse(
+      res,
+      "Recent conversations fetched successfully",
+      conversations
+    );
   } catch (error) {
     console.error("Error in getRecent controller:", error);
     if (next) {
@@ -380,30 +405,31 @@ exports.updateConversation = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    if (!conversationId) throw new ValidationError("Conversation ID is required");
-    
+    if (!conversationId)
+      throw new ValidationError("Conversation ID is required");
+
     const conversation = await conversationService.updateConversation(
       conversationId,
       userId,
       name,
       avatar
     );
-    
+
     // Get all members to notify them about the update
     const members = await ConversationMember.findAll({
-      where: { conversationId, userId: { [Op.ne]: userId } }
+      where: { conversationId, userId: { [Op.ne]: userId } },
     });
-    
+
     if (io) {
-      members.forEach(member => {
+      members.forEach((member) => {
         io.to(`user_${member.userId}`).emit("conversation_updated", {
           id: conversation.id,
           name: conversation.name,
-          avatar: conversation.avatar
+          avatar: conversation.avatar,
         });
       });
     }
-    
+
     successResponse(res, "Conversation updated successfully", conversation);
   } catch (error) {
     next(error);
@@ -415,13 +441,15 @@ exports.getMyConversations = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    
+
     console.log("Fetching all conversations for user:", userId);
-    
-    const conversations = await conversationService.getUserConversations(userId);
-    
+
+    const conversations = await conversationService.getUserConversations(
+      userId
+    );
+
     console.log("Successfully fetched conversations:", conversations.length);
-    
+
     successResponse(res, "Conversations fetched successfully", conversations);
   } catch (error) {
     console.error("Error in getMyConversations controller:", error);
@@ -439,45 +467,46 @@ exports.debugConversation = async (req, res, next) => {
 
   try {
     if (!userId) throw new UnauthorizedError("Authentication required");
-    if (!conversationId) throw new ValidationError("Conversation ID is required");
-    
+    if (!conversationId)
+      throw new ValidationError("Conversation ID is required");
+
     console.log("Debugging conversation:", conversationId);
-    
+
     // Get the conversation with all details
     const conversation = await Conversation.findOne({
       where: { id: conversationId },
       include: [
-        { 
-          model: User, 
+        {
+          model: User,
           as: "members",
-          attributes: ["id", "username", "fullname"]
-        }
-      ]
+          attributes: ["id", "username", "fullName"],
+        },
+      ],
     });
-    
+
     if (!conversation) {
       return res.status(404).json({
         success: false,
-        message: "Conversation not found"
+        message: "Conversation not found",
       });
     }
-    
+
     // Get the direct members from ConversationMember
     const members = await ConversationMember.findAll({
       where: { conversationId },
       include: [
         {
           model: User,
-          attributes: ["id", "username", "fullname"]
-        }
-      ]
+          attributes: ["id", "username", "fullName"],
+        },
+      ],
     });
-    
+
     // Return both for comparison
     successResponse(res, "Conversation details", {
       conversation,
       directMembers: members,
-      memberCount: members.length
+      memberCount: members.length,
     });
   } catch (error) {
     console.error("Error in debugConversation:", error);
@@ -486,5 +515,6 @@ exports.debugConversation = async (req, res, next) => {
 };
 
 module.exports = {
-  setIo, ...exports
-}
+  setIo,
+  ...exports,
+};

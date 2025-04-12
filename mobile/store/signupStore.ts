@@ -9,17 +9,10 @@ export interface SignupData {
   verificationId?: string;
   otp?: string;
   fullName?: string;
-  avatarUri?: string;
-  birthday?: Date | null;
+  avatar?: string;
+  hasAvatar?: boolean;
+  birthdate?: Date | null;
   gender?: "male" | "female" | "other" | null;
-  step:
-    | "phone"
-    | "captcha"
-    | "otp"
-    | "name"
-    | "avatar"
-    | "birthday-gender"
-    | "complete";
 }
 
 interface SignupState {
@@ -32,30 +25,26 @@ interface SignupState {
   setVerificationId: (verificationId: string) => void;
   setOtp: (otp: string) => void;
   setFullName: (fullName: string) => void;
-  setAvatar: (avatarUri: string) => void;
-  setBirthday: (birthday: Date | null) => void;
+  setAvatar: (avatar: string) => void;
+  setHasAvatar: (hasAvatar: boolean) => void;
+  setBirthdate: (birthdate: Date | null) => void;
   setGender: (gender: "male" | "female" | "other" | null) => void;
-  setStep: (step: SignupData["step"]) => void;
-
-  // Complete or reset signup
-  completeSignup: () => void;
-  resetSignup: () => void;
 
   // Get full data for API call
   getSignupData: () => Omit<SignupData, "step" | "confirmPassword">;
 }
 
 const initialState: SignupData = {
-  step: "phone",
   phoneNumber: "",
   password: "",
   confirmPassword: "",
   verificationId: "",
   otp: "",
   fullName: "",
-  avatarUri: "",
-  birthday: null,
+  avatar: "",
+  birthdate: null,
   gender: null,
+  hasAvatar: false,
 };
 
 export const useSignupStore = create<SignupState>()(
@@ -104,19 +93,27 @@ export const useSignupStore = create<SignupState>()(
           },
         })),
 
-      setAvatar: (avatarUri) =>
+      setAvatar: (avatar) =>
         set((state) => ({
           data: {
             ...state.data,
-            avatarUri,
+            avatar,
           },
         })),
 
-      setBirthday: (birthday) =>
+      setHasAvatar: (hasAvatar) =>
         set((state) => ({
           data: {
             ...state.data,
-            birthday,
+            hasAvatar,
+          },
+        })),
+
+      setBirthdate: (birthdate) =>
+        set((state) => ({
+          data: {
+            ...state.data,
+            birthdate,
           },
         })),
 
@@ -128,31 +125,8 @@ export const useSignupStore = create<SignupState>()(
           },
         })),
 
-      setStep: (step) =>
-        set((state) => ({
-          data: {
-            ...state.data,
-            step,
-          },
-        })),
-
-      completeSignup: () =>
-        set((state) => ({
-          data: {
-            ...state.data,
-            step: "complete",
-          },
-          isComplete: true,
-        })),
-
-      resetSignup: () =>
-        set({
-          data: initialState,
-          isComplete: false,
-        }),
-
       getSignupData: () => {
-        const { step, confirmPassword, ...signupData } = get().data;
+        const { confirmPassword, ...signupData } = get().data;
         return signupData;
       },
     }),

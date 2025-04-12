@@ -8,28 +8,33 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSignupStore } from "~/store/signupStore";
 
 export default function CreateAvatarScreen() {
-  const { setAvatar: setAvatarStore } = useSignupStore();
+  const { setAvatar: setAvatarStore, setHasAvatar } = useSignupStore();
   const fullName = useSignupStore((state) => state.data.fullName);
   const [avatar, setAvatar] = useState<string>(
-    `https://ui-avatars.com/api/?name=${fullName}&font-size=0.25&background=86ab56&color=fff&size=128`,
+    `https://ui-avatars.com/api/?name=${fullName}&font-size=0.25&background=86ab56&color=fff&size=80`,
   );
   const router = useRouter();
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled) {
-      setAvatar(result.assets[0].uri);
+      if (!result.canceled) {
+        setAvatar(result.assets[0].uri);
+        setHasAvatar(true);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
     }
   };
 
   const handleUpdate = () => {
-    console.log("Avatar updated:", avatar);
+    // Save to signup store
     setAvatarStore(avatar);
     router.push("/(auth)/signup/createPassword");
   };

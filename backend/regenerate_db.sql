@@ -23,11 +23,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Create users table
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  username VARCHAR(50) NOT NULL UNIQUE,
-  fullname VARCHAR(50) NOT NULL,
-  email VARCHAR(100) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
   "phoneNumber" VARCHAR(15) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  fullName VARCHAR(50) NOT NULL,
   gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other')),
   birthdate DATE,
   avatar VARCHAR(255) DEFAULT 'https://via.placeholder.com/150?text=User',
@@ -122,8 +120,6 @@ CREATE TABLE reactions (
 INSERT INTO roles (name) VALUES ('user'), ('moderator'), ('admin');
 
 -- Create indexes for better performance
-CREATE INDEX idx_user_username ON users(username);
-CREATE INDEX idx_user_email ON users(email);
 CREATE INDEX idx_user_phone ON users("phoneNumber");
 CREATE INDEX idx_message_conversation ON messages("conversationId");
 CREATE INDEX idx_message_sender ON messages(sender);
