@@ -1,19 +1,22 @@
 import PropTypes from 'prop-types'
+import { FaEllipsisH } from 'react-icons/fa'
 
 const ChatHeader = ({ receiverInfo, onStartCall }) => {
   return (
-    <div className="border-b border-gray-200 bg-white p-4 shadow-sm">
+    <div className="border-b border-gray-200 bg-white px-4 py-2 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src={receiverInfo.avatar}
-            alt={receiverInfo.name}
-            className="h-10 w-10 rounded-full object-cover"
+            alt={receiverInfo.fullName}
+            className="h-12 w-12 rounded-full border border-gray-300 object-cover"
           />
-          <div>
-            <h3 className="font-medium">{receiverInfo.name}</h3>
-            <span className="text-xs text-gray-500">
-              {receiverInfo.isOnline ? 'Online' : 'Offline'}
+          <div className="flex flex-col items-start gap-0.5">
+            <h3 className="ml-1 text-lg font-medium">
+              {receiverInfo.fullName}
+            </h3>
+            <span className="rounded-full bg-gray-300 px-2 py-1 text-xs">
+              {receiverInfo.isFriend ? '' : 'Người lạ'}
             </span>
           </div>
         </div>
@@ -56,18 +59,7 @@ const ChatHeader = ({ receiverInfo, onStartCall }) => {
 
           {/* Menu Button */}
           <button type="button" className="rounded-full p-2 hover:bg-gray-100">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="h-5 w-5 text-gray-600"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10.5 6a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0Zm0 6a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0Zm0 6a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0Z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <FaEllipsisH className="h-5 w-5 text-gray-600" />
           </button>
         </div>
       </div>
@@ -77,9 +69,9 @@ const ChatHeader = ({ receiverInfo, onStartCall }) => {
 
 ChatHeader.propTypes = {
   receiverInfo: PropTypes.shape({
-    name: PropTypes.string.isRequired,
+    fullName: PropTypes.string.isRequired,
     avatar: PropTypes.string.isRequired,
-    isOnline: PropTypes.bool,
+    isFriend: PropTypes.bool,
   }).isRequired,
   onStartCall: PropTypes.func.isRequired,
 }

@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon app.js"
+    "dev": "nodemon app.js"
   },
   "dependencies": {
+    "@ngrok/ngrok": "^1.4.1",
     "@supabase/supabase-js": "^2.49.4",
     "agora-token": "^2.0.3",
     "axios": "^1.8.4",
