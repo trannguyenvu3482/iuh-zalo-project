@@ -21,6 +21,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { setUser, setToken } = useUserStore();
 
+  const handleResetPass = () => {
+    router.push("/(auth)/resetPass/findPhoneNum");
+  }
+
   const handleLogin = async () => {
     if (!phone || !password) {
       Alert.alert("Thông báo", "Vui lòng nhập số điện thoại và mật khẩu");
@@ -120,7 +124,7 @@ const Login = () => {
             onChangeText={setPassword}
           />
 
-          <TouchableOpacity className="items-start">
+          <TouchableOpacity className="items-start" onPress={handleResetPass}>
             <Text className="text-blue-500">Lấy lại mật khẩu</Text>
           </TouchableOpacity>
         </View>
