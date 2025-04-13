@@ -4,13 +4,25 @@ import { useLocation, useParams } from 'react-router-dom'
 import { getAllConversations } from '../api/apiMessage'
 import ChatWindow from '../components/ChatWindow'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { useAuth } from '../hooks/useAuth'
+import { useUser } from '../hooks/useUser'
 
 const Chats = () => {
   const { id: conversationId } = useParams()
   const location = useLocation()
+  const currentUser = useUser()
+  const { isAuthenticated } = useAuth()
   const [selectedConversation, setSelectedConversation] = useState(null)
   const isFriend = location.state?.isFriend // Get data for new conversation
   const user = location.state?.user // Get data for new conversation
+
+  // Check for authentication
+  useEffect(() => {
+    if (!isAuthenticated) {
+      window.location.href = '/login'
+    }
+  }, [isAuthenticated])
+
   // Fetch all conversations
   const {
     data: conversationsResponse,
@@ -21,6 +33,7 @@ const Chats = () => {
     queryFn: getAllConversations,
     staleTime: 60000, // 1 minute
     retry: 1, // Only retry once on failure
+    enabled: isAuthenticated,
   })
 
   // Extract conversations from the response
@@ -43,10 +56,10 @@ const Chats = () => {
       console.log('CASE')
 
       setSelectedConversation({
-        id: null, // No ID yet since it's not created in backend
-        user, // User data from search
-        messages: [], // Empty messages array
-        isNew: true, // Flag to indicate this is a new conversation
+        id: null,
+        user,
+        messages: [],
+        isNew: true,
       })
     } else {
       setSelectedConversation(null)

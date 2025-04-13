@@ -10,6 +10,7 @@ const MessagesList = ({
   messagesContainerRef,
   isLoading,
   isFetchingNextPage,
+  onUserClick,
 }) => {
   const { user } = useUserStore()
 
@@ -43,6 +44,7 @@ const MessagesList = ({
           isCurrentUser={
             message.senderId === user?.id || message.sender === user?.id
           }
+          onUserClick={onUserClick}
         />
       ))}
 
@@ -61,12 +63,14 @@ MessagesList.propTypes = {
   messagesContainerRef: PropTypes.object.isRequired,
   isLoading: PropTypes.bool,
   isFetchingNextPage: PropTypes.bool,
+  onUserClick: PropTypes.func,
 }
 
 MessagesList.defaultProps = {
   typingUsers: [],
   isLoading: false,
   isFetchingNextPage: false,
+  onUserClick: () => {},
 }
 
 export default MessagesList

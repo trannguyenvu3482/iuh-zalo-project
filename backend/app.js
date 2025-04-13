@@ -55,9 +55,12 @@ const {
   setIo: setConversationIo,
 } = require("./app/controllers/conversation.controller");
 const { setIo: setFriendIo } = require("./app/controllers/friend.controller");
+const { setIo: setUserIo } = require("./app/controllers/user.controller");
 
 // Import the call handlers
 const { setupCallHandlers } = require("./socket/callHandlers");
+// Import the user handlers
+const { setupUserHandlers } = require("./socket/userHandlers");
 
 // Import token routes
 const tokenRoutes = require("./routes/tokenRoutes");
@@ -87,6 +90,7 @@ app.use("/api/token", tokenRoutes);
 setMessageIo(io);
 setConversationIo(io);
 setFriendIo(io);
+setUserIo(io);
 initializeSocketIO(io); // Initialize auth service with Socket.IO
 
 io.on("connection", (socket) => {
@@ -106,6 +110,8 @@ io.on("connection", (socket) => {
 
     // Set up call handlers with user information
     setupCallHandlers(io, socket, { id: userId });
+    // Set up user handlers with user information
+    setupUserHandlers(io, socket, { id: userId });
     // Set up QR handlers
   }
 

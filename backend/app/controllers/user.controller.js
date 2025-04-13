@@ -1,7 +1,17 @@
 const userService = require("../services/user.service");
-const { UnauthorizedError } = require("../exceptions/errors");
+const { UnauthorizedError, NotFoundError } = require("../exceptions/errors");
 const { successResponse } = require("../utils/response");
 const fileUpload = require("../middleware/fileUpload");
+const { User, Friendship } = require("../models");
+const { Op } = require("sequelize");
+
+// Socket.io instance
+let io;
+
+// Function to set Socket.io instance
+const setIo = (socketIo) => {
+  io = socketIo;
+};
 
 exports.allAccess = (req, res) => {
   res.status(200).send("Public Content.");
@@ -37,8 +47,48 @@ exports.getUserById = async (req, res, next) => {
   const userId = req?.userId;
 
   try {
-    const user = await userService.getUserById(userId, queryId);
-    successResponse(res, "User fetched successfully", user);
+    if (!userId) throw new UnauthorizedError("Authentication required");
+
+    // Get the user data from database
+    const user = await User.findByPk(queryId, {
+      attributes: [
+        "id",
+        "phoneNumber",
+        "fullName",
+        "avatar",
+        "banner",
+        "status",
+        "gender",
+        "birthdate",
+        "created_at",
+        "updated_at",
+      ],
+    });
+
+    if (!user) throw new NotFoundError("User not found");
+
+    // Check if this is the current user
+    const isCurrentUser = user.id === userId;
+
+    // Only check friend status if not viewing own profile
+    let isFriend = false;
+    if (!isCurrentUser) {
+      const friendship = await Friendship.findOne({
+        where: {
+          [Op.or]: [
+            { userId, friendId: user.id, status: "ACCEPTED" },
+            { userId: user.id, friendId: userId, status: "ACCEPTED" },
+          ],
+        },
+      });
+      isFriend = !!friendship;
+    }
+
+    successResponse(res, "User fetched successfully", {
+      user,
+      isFriend,
+      isCurrentUser,
+    });
   } catch (error) {
     next(error);
   }
@@ -83,7 +133,7 @@ exports.updateProfile = async (req, res, next) => {
       phoneNumber,
     });
 
-    successResponse(res, "Profile updated successfully", {
+    const userData = {
       id: updatedUser.id,
       fullName: updatedUser.fullName,
       phoneNumber: updatedUser.phoneNumber,
@@ -92,7 +142,17 @@ exports.updateProfile = async (req, res, next) => {
       avatar: updatedUser.avatar,
       banner: updatedUser.banner,
       status: updatedUser.status,
-    });
+    };
+
+    // Emit socket event for profile update if Socket.io is available
+    if (io) {
+      io.to(`user_${userId}`).emit("user:profile_updated", {
+        user: userData,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    successResponse(res, "Profile updated successfully", userData);
   } catch (error) {
     next(error);
   }
@@ -117,10 +177,20 @@ exports.updateAvatar = [
 
       const updatedUser = await userService.updateUserAvatar(userId, req.file);
 
-      successResponse(res, "Avatar updated successfully", {
+      const userData = {
         id: updatedUser.id,
         avatar: updatedUser.avatar,
-      });
+      };
+
+      // Emit socket event for avatar update if Socket.io is available
+      if (io) {
+        io.to(`user_${userId}`).emit("user:profile_updated", {
+          user: userData,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      successResponse(res, "Avatar updated successfully", userData);
     } catch (error) {
       next(error);
     }
@@ -146,10 +216,20 @@ exports.updateBanner = [
 
       const updatedUser = await userService.updateUserBanner(userId, req.file);
 
-      successResponse(res, "Banner updated successfully", {
+      const userData = {
         id: updatedUser.id,
         banner: updatedUser.banner,
-      });
+      };
+
+      // Emit socket event for banner update if Socket.io is available
+      if (io) {
+        io.to(`user_${userId}`).emit("user:profile_updated", {
+          user: userData,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      successResponse(res, "Banner updated successfully", userData);
     } catch (error) {
       next(error);
     }
@@ -174,10 +254,20 @@ exports.updateStatus = async (req, res, next) => {
 
     const updatedUser = await userService.updateUserStatus(userId, status);
 
-    successResponse(res, "Status updated successfully", {
+    const userData = {
       id: updatedUser.id,
       status: updatedUser.status,
-    });
+    };
+
+    // Emit socket event for status update if Socket.io is available
+    if (io) {
+      io.to(`user_${userId}`).emit("user:profile_updated", {
+        user: userData,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    successResponse(res, "Status updated successfully", userData);
   } catch (error) {
     next(error);
   }
@@ -242,3 +332,6 @@ exports.changePassword = async (req, res, next) => {
     next(error);
   }
 };
+
+// Export the setIo function
+exports.setIo = setIo;

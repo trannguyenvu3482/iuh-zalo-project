@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types'
 import { FaEllipsisH } from 'react-icons/fa'
 
-const ChatHeader = ({ receiverInfo, onStartCall }) => {
+const ChatHeader = ({ receiverInfo, onStartCall, onAvatarClick }) => {
   return (
     <div className="border-b border-gray-200 bg-white px-4 py-2 shadow-sm">
       <div className="flex items-center justify-between">
@@ -9,7 +9,8 @@ const ChatHeader = ({ receiverInfo, onStartCall }) => {
           <img
             src={receiverInfo.avatar}
             alt={receiverInfo.fullName}
-            className="h-12 w-12 rounded-full border border-gray-300 object-cover"
+            className="h-12 w-12 cursor-pointer rounded-full border border-gray-300 object-cover"
+            onClick={onAvatarClick}
           />
           <div className="flex flex-col items-start gap-0.5">
             <h3 className="ml-1 text-lg font-medium">
@@ -25,7 +26,7 @@ const ChatHeader = ({ receiverInfo, onStartCall }) => {
           <button
             type="button"
             className="rounded-full p-2 hover:bg-gray-100"
-            onClick={() => onStartCall(false)}
+            onClick={() => onStartCall && onStartCall(false)}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -45,7 +46,7 @@ const ChatHeader = ({ receiverInfo, onStartCall }) => {
           <button
             type="button"
             className="rounded-full p-2 hover:bg-gray-100"
-            onClick={() => onStartCall(true)}
+            onClick={() => onStartCall && onStartCall(true)}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -73,7 +74,13 @@ ChatHeader.propTypes = {
     avatar: PropTypes.string.isRequired,
     isFriend: PropTypes.bool,
   }).isRequired,
-  onStartCall: PropTypes.func.isRequired,
+  onStartCall: PropTypes.func,
+  onAvatarClick: PropTypes.func,
+}
+
+ChatHeader.defaultProps = {
+  onStartCall: () => {},
+  onAvatarClick: () => {},
 }
 
 export default ChatHeader
