@@ -18,7 +18,7 @@ const Sidebar = () => {
   const [isSearching, setIsSearching] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const { enqueueSnackbar } = useSnackbar()
-  const debouncedSearchValue = useDebounce(searchValue, 2000)
+  const debouncedSearchValue = useDebounce(searchValue, 1000)
 
   const {
     mutate,
@@ -169,8 +169,12 @@ const Sidebar = () => {
 
                   {searchResult && !error ? (
                     <div className="overflow-y-auto">
+                      <h3 className="px-3 pt-3 text-sm font-semibold">
+                        Tìm bạn qua số điện thoại:
+                      </h3>
                       <ConversationPreviewCard
-                        conversation={searchResult?.data?.user}
+                        isFriend={searchResult?.data?.isFriend}
+                        user={searchResult?.data?.user}
                       />
                     </div>
                   ) : (

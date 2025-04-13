@@ -1,13 +1,27 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { getAllConversations } from '../api/apiMessage'
 import ChatWindow from '../components/ChatWindow'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { useAuth } from '../hooks/useAuth'
+import { useUser } from '../hooks/useUser'
 
 const Chats = () => {
   const { id: conversationId } = useParams()
+  const location = useLocation()
+  const currentUser = useUser()
+  const { isAuthenticated } = useAuth()
   const [selectedConversation, setSelectedConversation] = useState(null)
+  const isFriend = location.state?.isFriend // Get data for new conversation
+  const user = location.state?.user // Get data for new conversation
+
+  // Check for authentication
+  useEffect(() => {
+    if (!isAuthenticated) {
+      window.location.href = '/login'
+    }
+  }, [isAuthenticated])
 
   // Fetch all conversations
   const {
@@ -19,6 +33,7 @@ const Chats = () => {
     queryFn: getAllConversations,
     staleTime: 60000, // 1 minute
     retry: 1, // Only retry once on failure
+    enabled: isAuthenticated,
   })
 
   // Extract conversations from the response
@@ -27,17 +42,29 @@ const Chats = () => {
     [conversationsResponse?.data],
   )
 
-  // Update selected conversation when conversationId changes
+  // Update selected conversation when conversationId changes or newUserData is provided
   useEffect(() => {
+    console.log(conversationId, conversations)
+
     if (conversationId && conversations.length > 0) {
+      // Case 1: We have a conversationId and it exists
       const conversation = conversations.find(
         (conv) => conv.id === conversationId,
       )
       setSelectedConversation(conversation)
+    } else if (!isFriend) {
+      console.log('CASE')
+
+      setSelectedConversation({
+        id: null,
+        user,
+        messages: [],
+        isNew: true,
+      })
     } else {
       setSelectedConversation(null)
     }
-  }, [conversationId, conversations])
+  }, [conversationId, conversations, isFriend, user])
 
   if (isLoading) {
     return (

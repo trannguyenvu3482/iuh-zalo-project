@@ -1,14 +1,18 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useSnackbar } from 'notistack'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getConversationMessages, sendNewMessage } from '../../../api/apiMessage'
-import { useSocket } from '../../../contexts/SocketContext'
-import { useUserStore } from '../../../zustand/userStore'
+import { getConversationMessages, sendNewMessage } from '../api/apiMessage'
+import { useSocket } from '../contexts/SocketContext'
+import { useUser } from './useUser'
 
 const MESSAGES_PER_PAGE = 20
 
 export const useChat = (conversation, conversationId) => {
-  const { user } = useUserStore()
+  const user = useUser()
   const {
     isConnected,
     sendPrivateMessage,
@@ -232,7 +236,7 @@ export const useChat = (conversation, conversationId) => {
             (m) =>
               (m.id && m.id === message.id) ||
               (m.content === (message.content || message.message) &&
-                m.senderId === (message.senderId || message.sender))
+                m.senderId === (message.senderId || message.sender)),
           )
 
           if (isDuplicate) {
@@ -311,11 +315,11 @@ export const useChat = (conversation, conversationId) => {
           prev.map((msg) =>
             msg.id === messageId
               ? { ...msg, readBy: [...(msg.readBy || []), userId] }
-              : msg
-          )
+              : msg,
+          ),
         )
       }
-      
+
       onMessageRead(handleMessageRead)
     }
 
@@ -331,7 +335,13 @@ export const useChat = (conversation, conversationId) => {
         onMessageRead(null)
       }
     }
-  }, [handleNewMessage, handleTypingStatus, onNewMessage, onTypingStatus, onMessageRead])
+  }, [
+    handleNewMessage,
+    handleTypingStatus,
+    onNewMessage,
+    onTypingStatus,
+    onMessageRead,
+  ])
 
   // Update the input field and send typing status
   const handleMessageChange = (value) => {
@@ -426,10 +436,17 @@ export const useChat = (conversation, conversationId) => {
     // Remove duplicates based on id
     .filter(
       (message, index, self) =>
-        index === self.findIndex((m) => (m.id || m._localId) === (message.id || message._localId)),
+        index ===
+        self.findIndex(
+          (m) => (m.id || m._localId) === (message.id || message._localId),
+        ),
     )
     // Sort by createdAt/timestamp
-    .sort((a, b) => new Date(a.createdAt || a.timestamp || a.created_at) - new Date(b.createdAt || b.timestamp || b.created_at))
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt || a.timestamp || a.created_at) -
+        new Date(b.createdAt || b.timestamp || b.created_at),
+    )
 
   // Function to get receiver information for display
   const getReceiverInfo = () => {
@@ -457,60 +474,64 @@ export const useChat = (conversation, conversationId) => {
   // Start a call with the conversation
   const handleStartCall = (isVideo = true) => {
     // Determine the receiver ID based on conversation type
-    let receiverId;
-    
+    let receiverId
+
     if (conversation?.type === 'GROUP') {
-      receiverId = conversation.id;
+      receiverId = conversation.id
     } else {
-      const otherMember = conversation?.members?.find(m => m.id !== user?.id);
-      receiverId = otherMember?.id;
+      const otherMember = conversation?.members?.find((m) => m.id !== user?.id)
+      receiverId = otherMember?.id
     }
 
     if (!receiverId) {
       enqueueSnackbar('Cannot start call: receiver information not found', {
         variant: 'error',
-      });
-      return;
+      })
+      return
     }
-    
-    console.log('Starting call with receiverId:', receiverId, 'isVideo:', isVideo);
+
+    console.log(
+      'Starting call with receiverId:',
+      receiverId,
+      'isVideo:',
+      isVideo,
+    )
 
     try {
       // Initialize necessary call data
-      const channelName = `call-${Date.now()}`;
-      
+      const channelName = `call-${Date.now()}`
+
       // Build the URL for the call
-      let callUrl = `/call/${channelName}?calleeId=${receiverId}&type=${isVideo ? 'video' : 'audio'}`;
-      
+      let callUrl = `/call/${channelName}?calleeId=${receiverId}&type=${isVideo ? 'video' : 'audio'}`
+
       // Store the current call info in the global state
       if (typeof window !== 'undefined') {
         // Create callState if it doesn't exist
         window.callState = window.callState || {
           currentCall: null,
-          navigatingToCall: false
-        };
-        
+          navigatingToCall: false,
+        }
+
         // Set current call data
         window.callState.currentCall = {
           channelName,
           calleeId: receiverId,
           callerId: user?.id,
           callType: isVideo ? 'video' : 'audio',
-          timestamp: Date.now()
-        };
-        window.callState.navigatingToCall = true;
+          timestamp: Date.now(),
+        }
+        window.callState.navigatingToCall = true
       }
-      
-      console.log('Navigating to call page:', callUrl);
-      
+
+      console.log('Navigating to call page:', callUrl)
+
       // Navigate to the call page
-      window.location.href = callUrl;
-      
+      window.location.href = callUrl
     } catch (error) {
-      console.error('Error starting call:', error);
+      console.error('Error starting call:', error)
       enqueueSnackbar('Call failed to start. Please try again.', {
         variant: 'error',
-      });
+      })
     }
   }
 
@@ -536,7 +557,7 @@ export const useChat = (conversation, conversationId) => {
   return {
     message,
     setMessage,
-    handleMessageChange,  // Return both for flexibility
+    handleMessageChange, // Return both for flexibility
     allMessages,
     typingUsers,
     messagesEndRef,

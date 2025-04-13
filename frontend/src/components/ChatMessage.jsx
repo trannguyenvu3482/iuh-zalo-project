@@ -1,6 +1,20 @@
 import { format } from 'date-fns'
 import PropTypes from 'prop-types'
 import { useUserStore } from '../zustand/userStore'
+import ChatImageViewer from './chat/ChatImageViewer'
+
+// Helper function to check if a string is an image URL
+const isImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return false
+
+  // Check if URL ends with common image extensions
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+  return (
+    imageExtensions.some((ext) => url.toLowerCase().endsWith(ext)) ||
+    url.includes('/images/') ||
+    url.includes('image/')
+  )
+}
 
 const ChatMessage = ({ message, isLastMessage }) => {
   const { user } = useUserStore()
@@ -11,8 +25,21 @@ const ChatMessage = ({ message, isLastMessage }) => {
     message.sender === user?.id ||
     message.isFromCurrentUser === true
 
+  // Extract message content
+  const content = message.content || message.message || ''
+
+  // Check if the message contains an image
+  const isImage = isImageUrl(content)
+
+  // Prepare sender info for image viewer
+  const senderInfo = {
+    id: message.senderId || message.sender,
+    fullName: message.senderName || 'User',
+    avatar: message.senderAvatar,
+  }
+
   console.log('Message display:', {
-    text: message.content || message.message,
+    text: content,
     isCurrentUser,
     senderId: message.senderId,
     sender: message.sender,
@@ -57,8 +84,12 @@ const ChatMessage = ({ message, isLastMessage }) => {
           </div>
         )}
 
-        {/* Message content */}
-        <div className="text-sm">{message.content || message.message}</div>
+        {/* Message content - Text or Image */}
+        {isImage ? (
+          <ChatImageViewer imageUrl={content} sender={senderInfo} />
+        ) : (
+          <div className="text-sm">{content}</div>
+        )}
 
         {/* Timestamp */}
         <div
