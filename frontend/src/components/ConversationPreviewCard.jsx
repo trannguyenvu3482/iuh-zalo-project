@@ -1,10 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 const ConversationPreviewCard = ({ user, isFriend, ...props }) => {
   const location = useLocation()
   const navigate = useNavigate()
-
+  const [isSelected, setIsSelected] = useState(false)
   console.log(user, isFriend)
 
   const handleSelectConversation = () => {
@@ -18,6 +18,7 @@ const ConversationPreviewCard = ({ user, isFriend, ...props }) => {
         },
       })
     }
+    setIsSelected(true)
   }
 
   return (
@@ -25,9 +26,7 @@ const ConversationPreviewCard = ({ user, isFriend, ...props }) => {
       onClick={handleSelectConversation}
       {...props}
       className={`flex h-[74px] cursor-pointer select-none items-stretch gap-4 px-3.5 py-3.5 hover:bg-gray-100 ${
-        location.pathname === `/chat/${user?.id}`
-          ? 'bg-blue-200 hover:!bg-blue-200'
-          : ''
+        isSelected ? 'bg-blue-200 hover:!bg-blue-200' : ''
       }`}
     >
       <img

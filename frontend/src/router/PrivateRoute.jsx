@@ -1,15 +1,14 @@
-import { Navigate } from "react-router-dom";
-import { useUserStore } from "../zustand/userStore";
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
 const PrivateRoute = ({ children }) => {
-  // TODO: Change this later
-  const { isAuthenticated } = useUserStore();
+  const { isAuthenticated } = useAuth()
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" />
   }
 
-  return children;
-};
+  return children
+}
 
-export default PrivateRoute;
+export default PrivateRoute

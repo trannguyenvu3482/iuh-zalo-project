@@ -47,7 +47,7 @@ export default function ProfileInfo() {
             resizeMethod="resize"
           />
           <Text className="text-white text-xl font-semibold ml-3 mb-1 drop-shadow-lg">
-            {user?.fullName || "Vũ Trần"}
+            {user?.fullName || ""}
           </Text>
         </View>
       </View>

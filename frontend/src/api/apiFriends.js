@@ -1,4 +1,6 @@
-import axios from '../service/axios';
+import axios from '../service/axios'
+
+const BASE_URL = '/users/friends'
 
 /**
  * Get friend list
@@ -6,13 +8,13 @@ import axios from '../service/axios';
  */
 export const getFriends = async () => {
   try {
-    const response = await axios.get('/users/friends');
-    return response.data || [];
+    const response = await axios.get(BASE_URL)
+    return response.data || []
   } catch (error) {
-    console.error('Error fetching friends:', error);
-    throw new Error(error.message || 'Failed to fetch friends');
+    console.error('Error fetching friends:', error)
+    throw new Error(error.message || 'Failed to fetch friends')
   }
-};
+}
 
 /**
  * Get pending friend requests
@@ -20,13 +22,13 @@ export const getFriends = async () => {
  */
 export const getFriendRequests = async () => {
   try {
-    const response = await axios.get('/users/friends/requests');
-    return response.data || [];
+    const response = await axios.get(`${BASE_URL}/requests`)
+    return response.data || []
   } catch (error) {
-    console.error('Error fetching friend requests:', error);
-    throw new Error(error.message || 'Failed to fetch friend requests');
+    console.error('Error fetching friend requests:', error)
+    throw new Error(error.message || 'Failed to fetch friend requests')
   }
-};
+}
 
 /**
  * Send friend request
@@ -37,16 +39,16 @@ export const getFriendRequests = async () => {
  */
 export const sendFriendRequest = async ({ userId, message = '' }) => {
   try {
-    const response = await axios.post('/users/friends/add', {
+    const response = await axios.post(`${BASE_URL}/add`, {
       friendId: userId,
-      message
-    });
-    return response.data;
+      message,
+    })
+    return response.data
   } catch (error) {
-    console.error('Error sending friend request:', error);
-    throw new Error(error.message || 'Failed to send friend request');
+    console.error('Error sending friend request:', error)
+    throw new Error(error.message || 'Failed to send friend request')
   }
-};
+}
 
 /**
  * Respond to friend request
@@ -58,17 +60,17 @@ export const sendFriendRequest = async ({ userId, message = '' }) => {
 export const respondToRequest = async ({ requestId, status }) => {
   try {
     if (status === 'accepted') {
-      const response = await axios.put('/users/friends/accept', { requestId });
-      return response.data;
+      const response = await axios.put(`${BASE_URL}/accept`, { requestId })
+      return response.data
     } else {
-      const response = await axios.put('/users/friends/reject', { requestId });
-      return response.data;
+      const response = await axios.put(`${BASE_URL}/reject`, { requestId })
+      return response.data
     }
   } catch (error) {
-    console.error('Error responding to friend request:', error);
-    throw new Error(error.message || 'Failed to respond to friend request');
+    console.error('Error responding to friend request:', error)
+    throw new Error(error.message || 'Failed to respond to friend request')
   }
-};
+}
 
 /**
  * Remove a friend
@@ -77,15 +79,15 @@ export const respondToRequest = async ({ requestId, status }) => {
  */
 export const removeFriend = async (friendId) => {
   try {
-    const response = await axios.delete('/users/friends/remove', {
-      data: { friendId }
-    });
-    return response.data;
+    const response = await axios.delete(`${BASE_URL}/remove`, {
+      data: { friendId },
+    })
+    return response.data
   } catch (error) {
-    console.error('Error removing friend:', error);
-    throw new Error(error.message || 'Failed to remove friend');
+    console.error('Error removing friend:', error)
+    throw new Error(error.message || 'Failed to remove friend')
   }
-};
+}
 
 /**
  * Search for users by name or phone number
@@ -94,15 +96,15 @@ export const removeFriend = async (friendId) => {
  */
 export const searchUsers = async (query) => {
   try {
-    const response = await axios.get('/users/search', {
-      params: { q: query }
-    });
-    return response.data || [];
+    const response = await axios.get(`${BASE_URL}/search`, {
+      params: { q: query },
+    })
+    return response.data || []
   } catch (error) {
-    console.error('Error searching users:', error);
-    throw new Error(error.message || 'Failed to search users');
+    console.error('Error searching users:', error)
+    throw new Error(error.message || 'Failed to search users')
   }
-};
+}
 
 export default {
   getFriends,
@@ -110,5 +112,5 @@ export default {
   sendFriendRequest,
   respondToRequest,
   removeFriend,
-  searchUsers
-}; 
+  searchUsers,
+}

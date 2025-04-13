@@ -13,12 +13,13 @@ import ZaloPCLogo from '../assets/icons/zalo-pc.png'
 import ZaloLogo from '../assets/imgs/logo.png'
 import { LoadingSpinner } from '../components'
 import { useSocket } from '../contexts/SocketContext'
+import { useAuth } from '../hooks/useAuth'
 import { useUserStore } from '../zustand/userStore'
 
 const Login = () => {
   const navigate = useNavigate()
-  const { setIsAuthenticated, setUser, setAccessToken, isAuthenticated } =
-    useUserStore()
+  const { isAuthenticated } = useAuth()
+  const { setIsAuthenticated, setUser, setAccessToken } = useUserStore()
   const { enqueueSnackbar } = useSnackbar()
   const { t, i18n } = useTranslation()
   const { getSocket } = useSocket()

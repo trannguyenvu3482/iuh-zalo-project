@@ -2,6 +2,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import PropTypes from 'prop-types'
 import { memo, useEffect, useState } from 'react'
 import { FiExternalLink } from 'react-icons/fi'
+import { useUser } from '../hooks/useUser'
 import { useUserStore } from '../zustand/userStore.js'
 import ProfileDialog from './Sidebar/ProfileDialog.jsx'
 
@@ -126,7 +127,8 @@ AvatarImage.propTypes = {
 
 const Avatar = () => {
   const [isOpen, setIsOpen] = useState(false)
-  const { user } = useUserStore()
+  const user = useUser()
+  const { logout } = useUserStore()
 
   // Function to handle dialog reopening
   const handleProfileUpdate = () => {
@@ -137,20 +139,25 @@ const Avatar = () => {
     window.location.reload()
   }
 
-  console.log(user)
+  const handleLogout = () => {
+    logout()
+    window.location.href = '/login'
+  }
 
   return (
     <div className="text-right">
-      <ProfileDialog
-        isOpen={isOpen}
-        close={() => setIsOpen(false)}
-        onProfileUpdate={handleProfileUpdate}
-      />
+      {isOpen && (
+        <ProfileDialog
+          isOpen={true}
+          close={() => setIsOpen(false)}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      )}
       <Menu>
         <MenuButton className="inline-flex items-center gap-2 text-sm/6 font-semibold text-white focus:outline-none data-[focus]:outline-1 data-[focus]:outline-white">
           <AvatarImage
             className="h-[48px] w-[48px] rounded-full border border-gray-100"
-            src={user.avatar}
+            src={user?.avatar}
             alt=""
           />
         </MenuButton>
@@ -162,7 +169,7 @@ const Avatar = () => {
         >
           <MenuItem>
             <button className="group mx-3 flex w-[calc(100%-24px)] items-center gap-2 border-b-2 border-gray-300 px-1 py-1 text-lg font-semibold data-[focus]:bg-white/10">
-              {user.fullName}
+              {user?.fullName}
             </button>
           </MenuItem>
           <MenuItem className="mt-1">
@@ -191,7 +198,10 @@ const Avatar = () => {
           </MenuItem>
           <div className="mx-2 border-b border-gray-300"></div>
           <MenuItem className="mt-1">
-            <button className="group flex w-full items-center gap-2 px-3 py-1.5 data-[focus]:bg-gray-200">
+            <button
+              onClick={handleLogout}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 data-[focus]:bg-gray-200"
+            >
               Đăng xuất
             </button>
           </MenuItem>

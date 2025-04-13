@@ -7,12 +7,12 @@ import { useSnackbar } from 'notistack'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getConversationMessages, sendNewMessage } from '../api/apiMessage'
 import { useSocket } from '../contexts/SocketContext'
-import { useUserStore } from '../zustand/userStore'
+import { useUser } from './useUser'
 
 const MESSAGES_PER_PAGE = 20
 
 export const useChat = (conversation, conversationId) => {
-  const { user } = useUserStore()
+  const user = useUser()
   const {
     isConnected,
     sendPrivateMessage,

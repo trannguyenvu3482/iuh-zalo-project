@@ -30,7 +30,12 @@ const updateUserBanner = (banner) => {
   })
 }
 
+const getUserById = async (userId) => {
+  return instance.get(`${BASE_URL}/${userId}`)
+}
+
 export {
+  getUserById,
   getUserInfo,
   searchUserByPhoneNumber,
   updateUserAvatar,

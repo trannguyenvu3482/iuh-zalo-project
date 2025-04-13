@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createConversation } from '../../../api/apiMessage'
 import useChat from '../../../hooks/useChat'
+import ProfileDialog from '../../Sidebar/ProfileDialog'
 import ChatHeader from './ChatHeader'
 import MessageInput from './MessageInput'
 import MessagesList from './MessagesList'
@@ -11,6 +12,8 @@ import MessagesList from './MessagesList'
 const ChatWindow = ({ conversation }) => {
   const navigate = useNavigate()
   const [isCreatingConversation, setIsCreatingConversation] = useState(false)
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
 
   console.log(conversation)
 
@@ -19,6 +22,12 @@ const ChatWindow = ({ conversation }) => {
 
   // Handle new conversation case (no ID yet)
   const isNewConversation = conversation?.isNew === true
+
+  // Open profile dialog
+  const openProfileDialog = (user) => {
+    setSelectedUser(user)
+    setIsProfileDialogOpen(true)
+  }
 
   // For new conversations, we need to create it when sending the first message
   const { mutate: createNewConversation } = useMutation({
@@ -44,28 +53,30 @@ const ChatWindow = ({ conversation }) => {
 
     return (
       <div className="flex h-full flex-col overflow-hidden bg-white">
-        <ChatHeader receiverInfo={receiverInfo} />
+        <ChatHeader
+          receiverInfo={receiverInfo}
+          onAvatarClick={() => openProfileDialog(receiverInfo)}
+        />
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="flex h-full flex-col items-center justify-center">
-            <div className="mb-4 h-20 w-20 overflow-hidden rounded-full">
+            <div
+              className="mb-4 h-20 w-20 cursor-pointer overflow-hidden rounded-full"
+              onClick={() => openProfileDialog(receiverInfo)}
+            >
               <img
                 src={receiverInfo.avatar || 'https://via.placeholder.com/100'}
                 alt={receiverInfo.fullName || 'User'}
-                className="h-full w-full object-cover"
+                className="h-full w-full rounded-full border border-gray-300 object-cover object-center"
               />
             </div>
             <h3 className="mb-1 text-xl font-semibold">
               {receiverInfo.fullName}
             </h3>
-            <p className="mb-6 text-sm text-gray-500">
-              {receiverInfo.phoneNumber}
-            </p>
             <p className="mb-4 text-center text-gray-600">
-              This is the beginning of your conversation with{' '}
-              {receiverInfo.fullName}.
+              Đây là cuộc hội thoại đầu tiên với {receiverInfo.fullName}.
               <br />
-              Send a message to start chatting.
+              Gửi tin nhắn để bắt đầu cuộc trò chuyện.
             </p>
           </div>
         </div>
@@ -76,6 +87,16 @@ const ChatWindow = ({ conversation }) => {
           sendMessage={handleSendFirstMessage}
           disabled={isCreatingConversation}
         />
+
+        {/* Profile Dialog */}
+        {selectedUser && (
+          <ProfileDialog
+            isOpen={isProfileDialogOpen}
+            close={() => setIsProfileDialogOpen(false)}
+            userId={selectedUser.id}
+            userData={selectedUser}
+          />
+        )}
       </div>
     )
   }
@@ -113,7 +134,11 @@ const ChatWindow = ({ conversation }) => {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white">
-      <ChatHeader receiverInfo={receiverInfo} onStartCall={handleStartCall} />
+      <ChatHeader
+        receiverInfo={receiverInfo}
+        onStartCall={handleStartCall}
+        onAvatarClick={() => openProfileDialog(receiverInfo)}
+      />
 
       <MessagesList
         messages={allMessages}
@@ -122,6 +147,7 @@ const ChatWindow = ({ conversation }) => {
         messagesContainerRef={messagesContainerRef}
         isLoading={isLoading}
         isFetchingNextPage={isFetchingNextPage}
+        onUserClick={openProfileDialog}
       />
 
       <MessageInput
@@ -136,6 +162,16 @@ const ChatWindow = ({ conversation }) => {
           You&apos;re currently offline. Messages will be sent when you
           reconnect.
         </div>
+      )}
+
+      {/* Profile Dialog */}
+      {selectedUser && (
+        <ProfileDialog
+          isOpen={isProfileDialogOpen}
+          close={() => setIsProfileDialogOpen(false)}
+          userId={selectedUser.id}
+          userData={selectedUser}
+        />
       )}
     </div>
   )
