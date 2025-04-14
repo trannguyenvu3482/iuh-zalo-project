@@ -73,28 +73,12 @@ exports.getFriendList = async (userId) => {
         {
           model: User,
           as: "friend",
-          attributes: [
-            "id",
-            "username",
-            "phoneNumber",
-            "fullName",
-            "email",
-            "avatar",
-            "status",
-          ],
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
         },
         {
           model: User,
           as: "user",
-          attributes: [
-            "id",
-            "username",
-            "phoneNumber",
-            "fullName",
-            "email",
-            "avatar",
-            "status",
-          ],
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
         },
       ],
     });
@@ -120,7 +104,7 @@ exports.getMyFriendRequests = async (userId) => {
       {
         model: User,
         as: "user",
-        attributes: ["id", "username", "phoneNumber"],
+        attributes: ["id", "fullName", "phoneNumber", "avatar"],
       },
     ],
   });
@@ -224,7 +208,7 @@ exports.getSentFriendRequests = async (userId) => {
         {
           model: User,
           as: "friend",
-          attributes: ["id", "username", "phoneNumber", "fullName", "avatar"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar"],
         },
       ],
     });
@@ -248,6 +232,7 @@ exports.getFriendshipStatus = async (userId, otherUserId) => {
       return { status: "SELF" };
     }
 
+    // Check if there's an existing friendship record
     const friendship = await Friendship.findOne({
       where: {
         [Op.or]: [
@@ -255,40 +240,39 @@ exports.getFriendshipStatus = async (userId, otherUserId) => {
           { userId: otherUserId, friendId: userId },
         ],
       },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "phoneNumber", "fullName", "avatar"],
+        },
+        {
+          model: User,
+          as: "friend",
+          attributes: ["id", "phoneNumber", "fullName", "avatar"],
+        },
+      ],
     });
 
     if (!friendship) {
       return { status: "NOT_FRIENDS" };
     }
 
+    // Determine the request direction and status
     if (friendship.status === "ACCEPTED") {
-      return {
-        status: "FRIENDS",
-        since: friendship.updated_at,
-      };
-    }
-
-    if (friendship.status === "PENDING") {
+      return { status: "FRIENDS", friendship };
+    } else if (friendship.status === "PENDING") {
       if (friendship.userId === userId) {
-        return {
-          status: "REQUEST_SENT",
-          sentAt: friendship.created_at,
-        };
+        return { status: "REQUEST_SENT", friendship };
       } else {
         return {
           status: "REQUEST_RECEIVED",
-          receivedAt: friendship.created_at,
-          fromUser: friendship.userId,
+          friendship,
+          requestId: friendship.id,
         };
       }
-    }
-
-    if (friendship.status === "REJECTED") {
-      if (friendship.userId === userId) {
-        return { status: "REJECTED_BY_OTHER" };
-      } else {
-        return { status: "REJECTED_BY_YOU" };
-      }
+    } else if (friendship.status === "REJECTED") {
+      return { status: "REQUEST_REJECTED", friendship };
     }
 
     return { status: "UNKNOWN" };
@@ -330,7 +314,7 @@ exports.getFriendSuggestions = async (userId, limit = 10) => {
           id: { [Op.ne]: userId },
         },
         limit,
-        attributes: ["id", "username", "phoneNumber", "fullName", "avatar"],
+        attributes: ["id", "phoneNumber", "fullName", "avatar"],
         order: sequelize.random(),
       });
     }
@@ -356,12 +340,12 @@ exports.getFriendSuggestions = async (userId, limit = 10) => {
         {
           model: User,
           as: "friend",
-          attributes: ["id", "username", "phoneNumber", "fullName", "avatar"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar"],
         },
         {
           model: User,
           as: "user",
-          attributes: ["id", "username", "phoneNumber", "fullName", "avatar"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar"],
         },
       ],
     });

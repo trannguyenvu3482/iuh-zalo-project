@@ -479,7 +479,7 @@ exports.debugConversation = async (req, res, next) => {
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName"],
+          attributes: ["id", "phoneNumber", "fullName"],
         },
       ],
     });
@@ -497,7 +497,7 @@ exports.debugConversation = async (req, res, next) => {
       include: [
         {
           model: User,
-          attributes: ["id", "username", "fullName"],
+          attributes: ["id", "phoneNumber", "fullName"],
         },
       ],
     });

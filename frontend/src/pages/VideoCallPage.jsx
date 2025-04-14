@@ -99,12 +99,12 @@ const VideoCallPage = () => {
     if (callerId && callerId !== user?.id) {
       setRemoteUser({
         id: callerId,
-        fullname: callerName || 'Caller',
+        fullName: callerName || 'Caller',
       })
     } else if (calleeId) {
       setRemoteUser({
         id: calleeId,
-        fullname: 'Callee',
+        fullName: 'Callee',
       })
     }
   }, [callerId, calleeId, callerName, user?.id])
@@ -141,13 +141,13 @@ const VideoCallPage = () => {
         setRemoteUser((prevUser) => ({
           ...prevUser,
           id: data.calleeId,
-          fullname: data.calleeName || prevUser?.fullname || 'Callee',
+          fullName: data.calleeName || prevUser?.fullName || 'Callee',
         }))
       } else if (data?.callerId && user?.id !== data.callerId) {
         setRemoteUser((prevUser) => ({
           ...prevUser,
           id: data.callerId,
-          fullname: data.callerName || prevUser?.fullname || 'Caller',
+          fullName: data.callerName || prevUser?.fullName || 'Caller',
         }))
       }
     }
@@ -229,7 +229,7 @@ const VideoCallPage = () => {
 
       const callData = {
         callerId: user.id,
-        callerName: user.fullname || user.name || user.username || 'User',
+        callerName: user.fullName || user.name || 'User',
         calleeId,
         type: callType,
         timestamp: new Date().toISOString(),
@@ -340,7 +340,7 @@ const VideoCallPage = () => {
       const acceptData = {
         callerId,
         calleeId: user.id,
-        calleeName: user?.fullname || user?.name || user?.username || 'User',
+        calleeName: user?.fullName || user?.name || 'User',
         channelName,
         token,
         type: callType,
@@ -429,7 +429,7 @@ const VideoCallPage = () => {
       <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-900">
         <div className="mb-8 text-center text-white">
           <div className="mb-2 text-2xl">
-            Calling {remoteUser?.fullname || 'User'}...
+            Calling {remoteUser?.fullName || 'User'}...
           </div>
           <div className="text-gray-400">
             Please wait while we connect your call

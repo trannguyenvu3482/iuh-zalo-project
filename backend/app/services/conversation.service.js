@@ -68,41 +68,30 @@ exports.getConversationMessages = async (
   }
 };
 
-exports.createPrivateConversation = async (userId1, userId2) => {
+exports.getPrivateConversation = async (userId1, userId2) => {
   try {
     console.log(
-      `Attempting to create/find private conversation between users ${userId1} and ${userId2}`
+      `Looking for conversation between users ${userId1} and ${userId2}`
+    );
+    // Check if a private conversation already exists between these users
+    const existingConversation = await findExistingPrivateConversation(
+      userId1,
+      userId2
     );
 
-    // First, use a simpler query to check for an existing private conversation
-    // between these two users without using GROUP BY
-    const query = `
-      SELECT c.id 
-      FROM conversations c
-      JOIN conversation_members cm1 ON c.id = cm1."conversationId" AND cm1."userId" = :userId1
-      JOIN conversation_members cm2 ON c.id = cm2."conversationId" AND cm2."userId" = :userId2
-      WHERE c.type = 'PRIVATE'
-      LIMIT 1
-    `;
-
-    const results = await sequelize.query(query, {
-      replacements: { userId1, userId2 },
-      type: Sequelize.QueryTypes.SELECT,
-    });
-
-    // If we found an existing conversation
-    if (results && results.length > 0 && results[0].id) {
-      const existingId = results[0].id;
-      console.log(`Found existing conversation: ${existingId}`);
-
-      // Return the conversation with full member details
+    if (existingConversation) {
+      console.log(
+        `Found existing conversation with ID: ${existingConversation.id}`
+      );
+      // Return existing conversation
+      const existingId = existingConversation.id;
       return await Conversation.findOne({
         where: { id: existingId },
         include: [
           {
             model: User,
             as: "members",
-            attributes: ["id", "username", "fullName", "avatar", "status"],
+            attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
           },
         ],
       });
@@ -131,7 +120,7 @@ exports.createPrivateConversation = async (userId1, userId2) => {
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName", "avatar", "status"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
         },
       ],
     });
@@ -176,7 +165,7 @@ exports.createGroupConversation = async (
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName", "avatar", "status"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
         },
       ],
     });
@@ -235,7 +224,7 @@ exports.getRecentConversations = async (userId) => {
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName", "avatar", "status"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
           through: { attributes: ["role"] },
         },
       ],
@@ -255,7 +244,7 @@ exports.getRecentConversations = async (userId) => {
             {
               model: User,
               as: "senderUser", // Match the association name defined in models/index.js
-              attributes: ["id", "username", "fullName"],
+              attributes: ["id", "phoneNumber", "fullName"],
             },
           ],
         });
@@ -301,11 +290,21 @@ exports.getRecentConversations = async (userId) => {
           name: conversationName,
           avatar: conversationAvatar,
           type: conversation.type,
-          created_at: conversation.created_at,
           members: conversation.members,
-          lastMessage: lastMessage,
-          unreadCount: unreadCount,
-          userRole: userRole,
+          lastMessage: lastMessage
+            ? {
+                id: lastMessage.id,
+                content: lastMessage.content,
+                type: lastMessage.type,
+                sender: lastMessage.sender,
+                senderName: lastMessage.senderUser
+                  ? lastMessage.senderUser.fullName
+                  : null,
+                createdAt: lastMessage.created_at,
+              }
+            : null,
+          unreadCount,
+          userRole,
         };
       })
     );
@@ -315,7 +314,7 @@ exports.getRecentConversations = async (userId) => {
       if (!a.lastMessage) return 1;
       if (!b.lastMessage) return -1;
       return (
-        new Date(b.lastMessage.created_at) - new Date(a.lastMessage.created_at)
+        new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt)
       );
     });
   } catch (error) {
@@ -479,7 +478,7 @@ exports.leaveGroup = async (conversationId, userId) => {
 
     // Get user info for the system message
     const user = await User.findByPk(userId, {
-      attributes: ["username"],
+      attributes: ["fullName"],
     });
 
     // Remove the user from the group
@@ -490,7 +489,7 @@ exports.leaveGroup = async (conversationId, userId) => {
     // Create system message
     await exports.createSystemMessage(
       conversationId,
-      `${user.username} has left the group.`,
+      `${user.fullName} has left the group.`,
       "USER_LEFT"
     );
 
@@ -575,7 +574,7 @@ exports.addGroupMembers = async (conversationId, userId, memberIds) => {
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName"],
+          attributes: ["id", "phoneNumber", "fullName"],
         },
       ],
     });
@@ -618,7 +617,7 @@ exports.addGroupMembers = async (conversationId, userId, memberIds) => {
     // Verify all users to be added exist
     const usersToAdd = await User.findAll({
       where: { id: { [Op.in]: newMemberIds } },
-      attributes: ["id", "username", "fullName", "avatar"],
+      attributes: ["id", "phoneNumber", "fullName", "avatar"],
     });
 
     if (usersToAdd.length !== newMemberIds.length) {
@@ -635,14 +634,14 @@ exports.addGroupMembers = async (conversationId, userId, memberIds) => {
     await ConversationMember.bulkCreate(newMembers);
 
     // Create system message about new members
-    const usernames = usersToAdd.map((u) => u.username).join(", ");
+    const usernames = usersToAdd.map((u) => u.fullName).join(", ");
     const addedBy = await User.findByPk(userId, {
-      attributes: ["username"],
+      attributes: ["phoneNumber"],
     });
 
     await exports.createSystemMessage(
       conversationId,
-      `${addedBy.username} added ${usernames} to the group.`,
+      `${addedBy.phoneNumber} added ${usernames} to the group.`,
       "MEMBERS_ADDED"
     );
 
@@ -710,8 +709,8 @@ exports.removeGroupMember = async (
 
     // Get user info for the system message
     const [adminUser, removedUser] = await Promise.all([
-      User.findByPk(adminId, { attributes: ["username"] }),
-      User.findByPk(memberIdToRemove, { attributes: ["username", "id"] }),
+      User.findByPk(adminId, { attributes: ["phoneNumber"] }),
+      User.findByPk(memberIdToRemove, { attributes: ["phoneNumber", "id"] }),
     ]);
 
     // Remove the member
@@ -720,9 +719,9 @@ exports.removeGroupMember = async (
     // Create system message
     let message;
     if (adminId === memberIdToRemove) {
-      message = `${adminUser.username} left the group.`;
+      message = `${adminUser.phoneNumber} left the group.`;
     } else {
-      message = `${adminUser.username} removed ${removedUser.username} from the group.`;
+      message = `${adminUser.phoneNumber} removed ${removedUser.phoneNumber} from the group.`;
     }
 
     await exports.createSystemMessage(
@@ -736,7 +735,7 @@ exports.removeGroupMember = async (
       message:
         adminId === memberIdToRemove
           ? "You left the group"
-          : `${removedUser.username} was removed from the group`,
+          : `${removedUser.phoneNumber} was removed from the group`,
       removedMember: removedUser,
     };
   } catch (error) {
@@ -773,7 +772,7 @@ exports.getUserConversations = async (userId) => {
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName", "avatar", "status"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
           through: { attributes: ["role"] },
         },
       ],
@@ -818,7 +817,7 @@ exports.getUserConversations = async (userId) => {
         updated_at: conversation.updated_at,
         members: otherMembers.map((m) => ({
           id: m.id,
-          username: m.username,
+          phoneNumber: m.phoneNumber,
           fullName: m.fullName,
           avatar: m.avatar,
           status: m.status,

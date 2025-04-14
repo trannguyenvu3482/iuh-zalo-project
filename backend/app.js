@@ -94,7 +94,15 @@ setUserIo(io);
 initializeSocketIO(io); // Initialize auth service with Socket.IO
 
 io.on("connection", (socket) => {
-  console.log("A user connected");
+  const auth = socket.handshake.query;
+  console.log("A user connected:", {
+    socketId: socket.id,
+    userId: auth.userId,
+    name: auth.name,
+    rooms: Array.from(socket.rooms || []),
+    queryParams: socket.handshake.query,
+  });
+
   setupQRHandlers(io, socket);
 
   socket.onAny((event, ...args) => {
@@ -103,16 +111,44 @@ io.on("connection", (socket) => {
 
   const userId = socket.handshake.query.userId;
   if (userId) {
-    db.ConversationMember.findAll({ where: { userId } }).then((members) => {
-      members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
-    });
+    console.log(`Setting up authenticated socket for user ${userId}`);
+
+    // Join user's room for private notifications
     socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined room: user_${userId}`);
+
+    // Join all conversation rooms the user is a member of
+    db.ConversationMember.findAll({ where: { userId } })
+      .then((members) => {
+        const conversationRooms = members.map(
+          (m) => `conversation_${m.conversationId}`
+        );
+        console.log(
+          `User ${userId} joining conversation rooms:`,
+          conversationRooms
+        );
+
+        members.forEach((m) => socket.join(`conversation_${m.conversationId}`));
+
+        // Log all rooms this socket is in after joining
+        console.log(
+          `User ${userId} is in rooms:`,
+          Array.from(socket.rooms || [])
+        );
+      })
+      .catch((error) => {
+        console.error(
+          `Error joining conversation rooms for user ${userId}:`,
+          error
+        );
+      });
 
     // Set up call handlers with user information
     setupCallHandlers(io, socket, { id: userId });
     // Set up user handlers with user information
     setupUserHandlers(io, socket, { id: userId });
-    // Set up QR handlers
+  } else {
+    console.log(`Unauthenticated socket connection: ${socket.id}`);
   }
 
   // Explicitly handle join events (important for call functionality)
@@ -194,11 +230,82 @@ io.on("connection", (socket) => {
   });
 
   socket.on("friend_request", (data) => {
-    console.log(`Friend request from ${data.from} to ${userId}`);
+    const userId = socket.handshake.query.userId;
+    const { to: recipientId } = data;
+
+    console.log(`Friend request from ${userId} to ${recipientId}`, data);
+
+    if (recipientId) {
+      // Find if the recipient is online
+      const recipientRoom = io.sockets.adapter.rooms.get(`user_${recipientId}`);
+      const isRecipientOnline = Boolean(
+        recipientRoom && recipientRoom.size > 0
+      );
+
+      console.log(`Recipient ${recipientId} online status:`, {
+        isOnline: isRecipientOnline,
+        roomSize: recipientRoom?.size || 0,
+        roomExists: !!recipientRoom,
+        allRooms: Object.keys(io.sockets.adapter.rooms || {})
+          .filter((room) => room.startsWith("user_"))
+          .map((room) => room.replace("user_", "")),
+      });
+
+      // Forward the friend request to the recipient
+      io.to(`user_${recipientId}`).emit("friend_request", {
+        id: Date.now(), // temporary ID to track the notification
+        from: userId,
+        senderId: userId,
+        senderName: socket.handshake.query.name || "Someone",
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`Friend request event emitted to user_${recipientId} room`);
+
+      // Debug: Check connected sockets
+      const connectedSockets = Array.from(io.sockets.sockets.keys());
+      console.log(
+        `All connected socket IDs (${connectedSockets.length}):`,
+        connectedSockets
+      );
+
+      // Let the sender know whether the recipient is online
+      socket.emit("friend_request_delivered", {
+        recipientId,
+        isDelivered: true,
+        isRecipientOnline,
+      });
+    }
   });
 
   socket.on("friend_accepted", (data) => {
     console.log(`Friend accepted: ${data.from} and ${userId}`);
+  });
+
+  socket.on("friend_request_canceled", (data) => {
+    const userId = socket.handshake.query.userId;
+    const { friendId } = data;
+
+    console.log(`Friend request canceled from ${userId} to ${friendId}`, data);
+
+    if (friendId) {
+      // Find if the recipient is online
+      const recipientRoom = io.sockets.adapter.rooms.get(`user_${friendId}`);
+      const isRecipientOnline = Boolean(
+        recipientRoom && recipientRoom.size > 0
+      );
+
+      console.log(`Recipient ${friendId} online status for cancellation:`, {
+        isOnline: isRecipientOnline,
+        roomSize: recipientRoom?.size || 0,
+      });
+
+      // Forward the cancellation to the recipient
+      io.to(`user_${friendId}`).emit("friend_request_canceled", {
+        from: userId,
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   socket.on("disconnect", () => {

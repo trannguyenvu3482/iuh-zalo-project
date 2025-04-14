@@ -320,7 +320,7 @@ exports.tryAcceptFriend = async (req, res, next) => {
           {
             model: User,
             as: "members",
-            attributes: ["id", "username", "fullName", "avatar", "status"],
+            attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
           },
         ],
       });
@@ -399,7 +399,7 @@ exports.testCreateConversation = async (req, res, next) => {
           {
             model: User,
             as: "members",
-            attributes: ["id", "username", "fullName", "avatar", "status"],
+            attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
           },
         ],
       });
@@ -451,7 +451,7 @@ exports.testCreateConversation = async (req, res, next) => {
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName", "avatar", "status"],
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
         },
       ],
     });
@@ -503,7 +503,7 @@ exports.checkConversationMembers = async (req, res, next) => {
     const userIds = members.map((m) => m.userId);
     const users = await User.findAll({
       where: { id: { [Op.in]: userIds } },
-      attributes: ["id", "username", "fullName", "avatar"],
+      attributes: ["id", "phoneNumber", "fullName", "avatar"],
     });
 
     // Get the conversation with members through the association
@@ -513,7 +513,7 @@ exports.checkConversationMembers = async (req, res, next) => {
         {
           model: User,
           as: "members",
-          attributes: ["id", "username", "fullName"],
+          attributes: ["id", "phoneNumber", "fullName"],
         },
       ],
     });

@@ -57,7 +57,9 @@ exports.getReactions = async (messageId, aggregate = false) => {
     } else {
       const reactions = await Reaction.findAll({
         where: { messageId },
-        include: [{ model: User, as: "user", attributes: ["id", "username"] }],
+        include: [
+          { model: User, as: "user", attributes: ["id", "phoneNumber"] },
+        ],
       });
       return reactions;
     }
