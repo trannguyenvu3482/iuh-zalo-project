@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useSnackbar } from 'notistack'
 import PropTypes from 'prop-types'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
@@ -96,6 +97,7 @@ export const SocketProvider = ({ children }) => {
   const [pendingMessages, setPendingMessages] = useState([])
   const [friendRequests, setFriendRequests] = useState([])
   const { enqueueSnackbar } = useSnackbar()
+  const queryClient = useQueryClient()
 
   // Track message IDs we've already shown notifications for
   const notifiedMessagesRef = useRef(new Set())
@@ -121,25 +123,42 @@ export const SocketProvider = ({ children }) => {
 
   // Initialize socket when user is authenticated
   useEffect(() => {
+    console.log(
+      'SocketContext initializing socket connection for user:',
+      user?.id,
+    )
+
     const socket = socketService.getSocket() // Always initialize socket
 
     socket.on('connect', () => {
-      console.log('Socket connected successfully')
+      console.log(
+        'Socket connected successfully in SocketContext for user:',
+        user?.id,
+      )
       setIsConnected(true)
     })
 
     socket.on('disconnect', () => {
-      console.log('Socket disconnected')
+      console.log('Socket disconnected in SocketContext for user:', user?.id)
       setIsConnected(false)
     })
 
     socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error)
+      console.error(
+        'Socket connection error in SocketContext for user:',
+        user?.id,
+        error,
+      )
       setIsConnected(false)
     })
 
     setIsConnected(socket.connected)
-    console.log('Initial socket connection state:', socket.connected)
+    console.log('Initial socket connection state in SocketContext:', {
+      connected: socket.connected,
+      userId: user?.id,
+      socketId: socket.id,
+      queryParams: socket.io?.opts?.query,
+    })
 
     // Only set up authenticated listeners if user is authenticated
     if (isAuthenticated && user) {
@@ -248,15 +267,53 @@ export const SocketProvider = ({ children }) => {
 
   // Handle friend requests
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated) {
+      console.log(
+        'Skipping friend request handler setup - user not authenticated',
+      )
+      return
+    }
+
+    console.log('Setting up friend request handler for user:', user?.id)
 
     const handleFriendRequest = (request) => {
-      // Add new friend request
-      setFriendRequests((prev) => [...prev, request])
+      console.log(
+        'Socket received friend_request event for user',
+        user?.id,
+        'with data:',
+        request,
+      )
+
+      // Check if the request is valid
+      if (!request || (!request.id && !request.friendshipId)) {
+        console.warn('Received invalid friend request data:', request)
+        return
+      }
+
+      // Normalize the request object
+      const normalizedRequest = {
+        id: request.id || request.friendshipId,
+        senderId: request.senderId || request.from,
+        senderName: request.senderName || 'Someone',
+      }
+
+      console.log(
+        'Normalized friend request for user',
+        user?.id,
+        ':',
+        normalizedRequest,
+      )
+
+      // Add new friend request to local state
+      setFriendRequests((prev) => {
+        const newRequests = [...prev, normalizedRequest]
+        console.log('Updated friend requests state:', newRequests)
+        return newRequests
+      })
 
       // Show notification for new friend request
       enqueueSnackbar(
-        `${request.senderName || 'Someone'} sent you a friend request`,
+        `${normalizedRequest.senderName} sent you a friend request`,
         {
           variant: 'info',
         },
@@ -264,15 +321,93 @@ export const SocketProvider = ({ children }) => {
 
       // Play notification sound for friend request
       playNotificationSound()
+
+      // Refresh friend requests data in React Query cache
+      if (queryClient) {
+        console.log(
+          'Invalidating receivedFriendRequests cache for user',
+          user?.id,
+        )
+        queryClient.invalidateQueries(['receivedFriendRequests'])
+
+        // Also force a refetch to get the latest data immediately
+        queryClient
+          .fetchQuery({
+            queryKey: ['receivedFriendRequests'],
+            queryFn: async () => {
+              try {
+                // Import the function here to avoid circular dependencies
+                const { getReceivedFriendRequests } = await import(
+                  '../api/apiFriends'
+                )
+                return getReceivedFriendRequests()
+              } catch (error) {
+                console.error('Error fetching received friend requests:', error)
+                throw error
+              }
+            },
+          })
+          .then((result) => {
+            console.log(
+              'Fetched fresh received requests data for user',
+              user?.id,
+              ':',
+              result,
+            )
+          })
+          .catch((error) => {
+            console.error(
+              'Error fetching received requests for user',
+              user?.id,
+              ':',
+              error,
+            )
+          })
+      }
     }
 
     // Subscribe to friend request events
+    console.log('Setting up friend_request event listener in SocketContext')
     const unsubscribe = socketService.onFriendRequest(handleFriendRequest)
+
+    return () => {
+      console.log('Cleaning up friend_request event listener in SocketContext')
+      unsubscribe()
+    }
+  }, [isAuthenticated, queryClient, enqueueSnackbar])
+
+  // Handle friend request cancellations
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const handleFriendRequestCancel = (data) => {
+      console.log('Friend request canceled event received:', data)
+
+      // Show notification for canceled request
+      enqueueSnackbar(`Lời mời kết bạn đã bị thu hồi`, { variant: 'info' })
+
+      // Force an immediate update of the cached data
+      if (queryClient) {
+        // Completely reset the received requests cache
+        queryClient.resetQueries(['receivedFriendRequests'])
+
+        // Force an immediate refetch
+        queryClient.refetchQueries(['receivedFriendRequests'])
+
+        // Also update relevant queries
+        queryClient.invalidateQueries(['friendshipStatus'])
+      }
+    }
+
+    // Subscribe to friend request cancellation events
+    const unsubscribe = socketService.onFriendRequestCanceled(
+      handleFriendRequestCancel,
+    )
 
     return () => {
       unsubscribe()
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, queryClient, enqueueSnackbar])
 
   // Handle friend request responses
   useEffect(() => {
@@ -298,6 +433,13 @@ export const SocketProvider = ({ children }) => {
           },
         )
       }
+
+      // Refresh relevant data in React Query cache
+      if (queryClient) {
+        queryClient.invalidateQueries(['sentFriendRequests'])
+        queryClient.invalidateQueries(['friends'])
+        queryClient.invalidateQueries(['friendshipStatus'])
+      }
     }
 
     // Subscribe to friend request response events
@@ -308,7 +450,7 @@ export const SocketProvider = ({ children }) => {
     return () => {
       unsubscribe()
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, queryClient])
 
   // Clear message when component unmounts
   const clearPendingMessage = (messageId) => {
@@ -328,6 +470,13 @@ export const SocketProvider = ({ children }) => {
     setHasUnreadMessages(false)
   }
 
+  // Initialize the socket manually - add this function to fix SocketInitializer
+  const initializeSocket = () => {
+    console.log('Manually initializing socket for user:', user?.id)
+    const socket = socketService.getSocket()
+    return socket
+  }
+
   // Value to be provided by the context
   const value = {
     isConnected,
@@ -338,6 +487,7 @@ export const SocketProvider = ({ children }) => {
     setActiveConversation,
     hasUnreadMessages,
     setHasUnreadMessages,
+    initializeSocket,
     ...socketService,
   }
 

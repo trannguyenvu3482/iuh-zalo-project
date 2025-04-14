@@ -56,7 +56,7 @@ VideoCalling.propTypes = {
   onCallEnd: PropTypes.func.isRequired,
   remoteUser: PropTypes.shape({
     id: PropTypes.string,
-    fullname: PropTypes.string,
+    fullName: PropTypes.string,
   }),
   appId: PropTypes.string,
 }
