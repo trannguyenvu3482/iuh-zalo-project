@@ -4,7 +4,7 @@ import { HiX } from 'react-icons/hi'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import VideoCalling from '../components/video-call/VideoCalling'
 import { useSocket } from '../contexts/SocketContext'
-import * as socketService from '../service/socket'
+import { getSocket } from '../service/socket/index'
 import { getAgoraToken } from '../service/tokenService'
 import { endCurrentCall } from '../utils/callUtils'
 import { useUserStore } from '../zustand/userStore'
@@ -25,7 +25,7 @@ const VideoCallPage = () => {
   const callerName = queryParams.get('callerName')
 
   // Get a direct reference to the socket
-  const directSocket = socketService.getSocket()
+  const directSocket = getSocket()
 
   // Call state
   const [callState, setCallState] = useState(

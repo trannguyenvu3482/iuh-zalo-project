@@ -15,7 +15,11 @@ const getFriends = () => {
  * @returns {Promise<Array>} List of friend requests
  */
 const getSentFriendRequests = async () => {
-  return instance.get(`${BASE_URL}/sent-requests`)
+  console.log('API call: getSentFriendRequests')
+  // Add timestamp to prevent caching
+  return instance.get(`${BASE_URL}/sent-requests`, {
+    params: { _t: Date.now() },
+  })
 }
 
 /**
@@ -23,7 +27,11 @@ const getSentFriendRequests = async () => {
  * @returns {Promise<Array>} List of friend requests
  */
 const getReceivedFriendRequests = async () => {
-  return instance.get(`${BASE_URL}/requests`)
+  console.log('API call: getReceivedFriendRequests')
+  // Add timestamp to prevent caching
+  return instance.get(`${BASE_URL}/requests`, {
+    params: { _t: Date.now() },
+  })
 }
 
 /**
@@ -46,6 +54,7 @@ const sendFriendRequest = ({ userId, message = '' }) => {
  * @returns {Promise<Object>} Response data
  */
 const cancelFriendRequest = (userId) => {
+  console.log('API call: cancelFriendRequest', userId)
   return instance.delete(`${BASE_URL}/cancel`, {
     data: { friendId: userId },
   })
@@ -60,9 +69,9 @@ const cancelFriendRequest = (userId) => {
  */
 const respondToRequest = ({ requestId, status }) => {
   if (status === 'accepted') {
-    return instance.put(`${BASE_URL}/accept`, { requestId })
+    return instance.put(`${BASE_URL}/accept`, { friendId: requestId })
   } else {
-    return instance.put(`${BASE_URL}/reject`, { requestId })
+    return instance.put(`${BASE_URL}/reject`, { friendId: requestId })
   }
 }
 

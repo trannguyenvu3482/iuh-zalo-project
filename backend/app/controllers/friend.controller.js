@@ -32,6 +32,7 @@ exports.addFriend = async (req, res, next) => {
     if (io) {
       io.to(`user_${friendship.friendId}`).emit("friend_request", {
         from: userId,
+        friendId: userId,
         friendshipId: friendship.id,
       });
     }
@@ -72,10 +73,15 @@ exports.acceptFriend = async (req, res, next) => {
         );
 
         if (io) {
-          io.to(`user_${friendId}`).emit("friend_accepted", { from: userId });
+          io.to(`user_${friendId}`).emit("friend_accepted", {
+            from: userId,
+            friendId: userId,
+            requestId: friendship.id,
+          });
           io.to(`user_${friendId}`).emit("conversation_created", {
             conversation,
             from: userId,
+            friendId: userId,
           });
         }
 
@@ -152,7 +158,11 @@ exports.rejectFriend = async (req, res, next) => {
     const friendship = await friendService.rejectFriend(userId, friendId);
 
     if (io) {
-      io.to(`user_${friendId}`).emit("friend_rejected", { from: userId });
+      io.to(`user_${friendId}`).emit("friend_rejected", {
+        from: userId,
+        friendId: userId,
+        requestId: friendship.id,
+      });
     }
 
     successResponse(res, "Friend request rejected successfully", friendship);
@@ -175,7 +185,10 @@ exports.removeFriend = async (req, res, next) => {
     await friendService.removeFriend(userId, friendId);
 
     if (io) {
-      io.to(`user_${friendId}`).emit("friend_removed", { from: userId });
+      io.to(`user_${friendId}`).emit("friend_removed", {
+        from: userId,
+        friendId: userId,
+      });
     }
 
     successResponse(res, "Friend removed successfully", { success: true });
@@ -195,11 +208,18 @@ exports.cancelFriendRequest = async (req, res, next) => {
     if (!friendId) throw new ValidationError("Friend ID is required");
     if (!userId) throw new UnauthorizedError("Authentication required");
 
-    await friendService.cancelFriendRequest(userId, friendId);
+    const request = await friendService.cancelFriendRequest(userId, friendId);
 
     if (io) {
       io.to(`user_${friendId}`).emit("friend_request_canceled", {
         from: userId,
+        friendId: friendId,
+        request,
+      });
+      io.to(`user_${userId}`).emit("friend_request_canceled", {
+        from: userId,
+        friendId: friendId,
+        request,
       });
     }
 

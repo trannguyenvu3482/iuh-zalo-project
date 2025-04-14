@@ -7,11 +7,13 @@ const setupNgrok = async () => {
   const listener = await ngrok.connect({
     addr: process.env.PORT || 8080,
     authtoken_from_env: true,
+    domain: "main-gradually-octopus.ngrok-free.app",
+    region: "au",
   });
   console.log(`Ngrok tunnel established at: ${listener.url()}`);
 
-  updateEnvFile("../frontend/.env", "VITE_API_URL_NGROK", listener.url());
-  updateEnvFile("../mobile/.env", "EXPO_PUBLIC_API_URL", listener.url());
+  // updateEnvFile("../frontend/.env", "VITE_API_URL_NGROK", listener.url());
+  // updateEnvFile("../mobile/.env", "EXPO_PUBLIC_API_URL", listener.url());
 };
 
 const updateEnvFile = (filePath, key, value) => {
