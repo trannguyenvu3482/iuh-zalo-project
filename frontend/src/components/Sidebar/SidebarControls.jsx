@@ -6,7 +6,6 @@ import contactsIcon from '../../assets/icons/contacts-btn.png'
 import settingsIcon from '../../assets/icons/settings-btn.png'
 import todoIcon from '../../assets/icons/todo-btn.png'
 import zCloudIcon from '../../assets/icons/zcloud-btn.png'
-import FriendRequestsMenu from '../FriendRequestsMenu'
 import { Avatar } from '../index'
 
 const TOP_TAB_BUTTONS = [
@@ -83,8 +82,6 @@ const SidebarControls = () => {
           ))}
         </div>
       </div>
-
-      <FriendRequestsMenu />
     </div>
   )
 }

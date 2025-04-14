@@ -1,4 +1,4 @@
-import axios from '../service/axios'
+import instance from '../service/axios'
 
 const BASE_URL = '/users/friends'
 
@@ -6,28 +6,24 @@ const BASE_URL = '/users/friends'
  * Get friend list
  * @returns {Promise<Array>} List of friends
  */
-export const getFriends = async () => {
-  try {
-    const response = await axios.get(BASE_URL)
-    return response.data || []
-  } catch (error) {
-    console.error('Error fetching friends:', error)
-    throw new Error(error.message || 'Failed to fetch friends')
-  }
+const getFriends = () => {
+  return instance.get(BASE_URL)
 }
 
 /**
  * Get pending friend requests
  * @returns {Promise<Array>} List of friend requests
  */
-export const getFriendRequests = async () => {
-  try {
-    const response = await axios.get(`${BASE_URL}/requests`)
-    return response.data || []
-  } catch (error) {
-    console.error('Error fetching friend requests:', error)
-    throw new Error(error.message || 'Failed to fetch friend requests')
-  }
+const getSentFriendRequests = async () => {
+  return instance.get(`${BASE_URL}/sent-requests`)
+}
+
+/**
+ * Get received friend requests
+ * @returns {Promise<Array>} List of friend requests
+ */
+const getReceivedFriendRequests = async () => {
+  return instance.get(`${BASE_URL}/requests`)
 }
 
 /**
@@ -37,17 +33,22 @@ export const getFriendRequests = async () => {
  * @param {string} [requestData.message] - Optional message
  * @returns {Promise<Object>} The created request
  */
-export const sendFriendRequest = async ({ userId, message = '' }) => {
-  try {
-    const response = await axios.post(`${BASE_URL}/add`, {
-      friendId: userId,
-      message,
-    })
-    return response.data
-  } catch (error) {
-    console.error('Error sending friend request:', error)
-    throw new Error(error.message || 'Failed to send friend request')
-  }
+const sendFriendRequest = ({ userId, message = '' }) => {
+  return instance.post(`${BASE_URL}/add`, {
+    friendId: userId,
+    message,
+  })
+}
+
+/**
+ * Cancel a friend request that you've sent
+ * @param {string} userId - The user ID of the request recipient
+ * @returns {Promise<Object>} Response data
+ */
+const cancelFriendRequest = (userId) => {
+  return instance.delete(`${BASE_URL}/cancel`, {
+    data: { friendId: userId },
+  })
 }
 
 /**
@@ -57,18 +58,11 @@ export const sendFriendRequest = async ({ userId, message = '' }) => {
  * @param {string} responseData.status - The response status ('accepted' or 'rejected')
  * @returns {Promise<Object>} Response data
  */
-export const respondToRequest = async ({ requestId, status }) => {
-  try {
-    if (status === 'accepted') {
-      const response = await axios.put(`${BASE_URL}/accept`, { requestId })
-      return response.data
-    } else {
-      const response = await axios.put(`${BASE_URL}/reject`, { requestId })
-      return response.data
-    }
-  } catch (error) {
-    console.error('Error responding to friend request:', error)
-    throw new Error(error.message || 'Failed to respond to friend request')
+const respondToRequest = ({ requestId, status }) => {
+  if (status === 'accepted') {
+    return instance.put(`${BASE_URL}/accept`, { requestId })
+  } else {
+    return instance.put(`${BASE_URL}/reject`, { requestId })
   }
 }
 
@@ -77,16 +71,38 @@ export const respondToRequest = async ({ requestId, status }) => {
  * @param {string} friendId - The friend ID to remove
  * @returns {Promise<Object>} Response data
  */
-export const removeFriend = async (friendId) => {
-  try {
-    const response = await axios.delete(`${BASE_URL}/remove`, {
-      data: { friendId },
+const removeFriend = async (friendId) => {
+  return instance.delete(`${BASE_URL}/remove`, {
+    data: { friendId },
+  })
+}
+
+/**
+ * Get friendship status
+ * @param {string} userId - The user ID to get status for
+ * @returns {Promise<Object>} Friendship status
+ */
+const getFriendshipStatus = async (userId) => {
+  // Storage key format for localStorage
+  const storageKey = `friendship_status_${userId}`
+
+  return instance
+    .get(`${BASE_URL}/status/${userId}`)
+    .then((response) => {
+      // Store response data in localStorage for persistence
+      if (response?.data) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(response.data))
+        } catch (e) {
+          console.error('Error storing friendship status:', e)
+        }
+      }
+      return response
     })
-    return response.data
-  } catch (error) {
-    console.error('Error removing friend:', error)
-    throw new Error(error.message || 'Failed to remove friend')
-  }
+    .catch((error) => {
+      console.error(`Error fetching friendship status:`, error)
+      throw error
+    })
 }
 
 /**
@@ -94,23 +110,20 @@ export const removeFriend = async (friendId) => {
  * @param {string} query - The search query
  * @returns {Promise<Array>} Search results
  */
-export const searchUsers = async (query) => {
-  try {
-    const response = await axios.get(`${BASE_URL}/search`, {
-      params: { q: query },
-    })
-    return response.data || []
-  } catch (error) {
-    console.error('Error searching users:', error)
-    throw new Error(error.message || 'Failed to search users')
-  }
+const searchUsers = async (query) => {
+  return instance.get(`${BASE_URL}/search`, {
+    params: { q: query },
+  })
 }
 
-export default {
+export {
+  cancelFriendRequest,
   getFriends,
-  getFriendRequests,
-  sendFriendRequest,
-  respondToRequest,
+  getFriendshipStatus,
+  getReceivedFriendRequests,
+  getSentFriendRequests,
   removeFriend,
+  respondToRequest,
   searchUsers,
+  sendFriendRequest,
 }

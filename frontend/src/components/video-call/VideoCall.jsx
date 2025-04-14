@@ -378,14 +378,14 @@ const VideoCall = ({ appId, channelName, token, onCallEnd, remoteUser }) => {
                   className="h-full w-full object-cover"
                 >
                   <div className="absolute bottom-2 left-2 rounded-md bg-black/50 px-2 py-1 text-sm text-white">
-                    {remoteUser?.fullname || user.uid}
+                    {remoteUser?.fullName || user.uid}
                   </div>
                 </RemoteUser>
               </div>
             ))
           ) : (
             <div className="flex h-full w-full items-center justify-center rounded-lg bg-gray-800 text-white">
-              Waiting for {remoteUser?.fullname || 'remote user'} to join...
+              Waiting for {remoteUser?.fullName || 'remote user'} to join...
             </div>
           )}
 
@@ -452,7 +452,7 @@ VideoCall.propTypes = {
   onCallEnd: PropTypes.func.isRequired,
   remoteUser: PropTypes.shape({
     id: PropTypes.string,
-    fullname: PropTypes.string,
+    fullName: PropTypes.string,
   }),
 }
 

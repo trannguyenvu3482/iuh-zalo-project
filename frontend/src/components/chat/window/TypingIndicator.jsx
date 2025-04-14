@@ -5,13 +5,13 @@ const TypingIndicator = ({ typingUsers }) => {
 
   const displayText = () => {
     if (typingUsers.length === 1) {
-      return `${typingUsers[0].username || 'Someone'} is typing...`
+      return `${typingUsers[0].fullName || 'Someone'} is typing...`
     } else if (typingUsers.length === 2) {
-      return `${typingUsers[0].username || 'Someone'} and ${
-        typingUsers[1].username || 'someone else'
+      return `${typingUsers[0].fullName || 'Someone'} and ${
+        typingUsers[1].fullName || 'someone else'
       } are typing...`
     } else {
-      return 'Several people are typing...'
+      return `${typingUsers.length} people are typing...`
     }
   }
 
@@ -30,10 +30,23 @@ const TypingIndicator = ({ typingUsers }) => {
 TypingIndicator.propTypes = {
   typingUsers: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      username: PropTypes.string,
+      id: PropTypes.string,
+      fullName: PropTypes.string,
     }),
   ),
 }
 
 export default TypingIndicator
+
+export const formatTypingUsers = (typingUsers) => {
+  if (!typingUsers || typingUsers.length === 0) return ''
+  if (typingUsers.length === 1) {
+    return `${typingUsers[0].fullName || 'Someone'} is typing...`
+  } else if (typingUsers.length === 2) {
+    return `${typingUsers[0].fullName || 'Someone'} and ${
+      typingUsers[1].fullName || 'someone else'
+    } are typing...`
+  } else {
+    return `${typingUsers.length} people are typing...`
+  }
+}

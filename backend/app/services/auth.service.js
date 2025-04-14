@@ -158,7 +158,6 @@ exports.authenticateUser = async (phoneNumber, password) => {
   return {
     user: {
       id: user.id,
-      username: user.username,
       email: user.email,
       fullName: user.fullName,
       avatar: user.avatar,
@@ -256,7 +255,6 @@ exports.processQRLogin = async (sessionId, userId, deviceInfo) => {
 
     const userData = {
       id: user.id,
-      username: user.username,
       email: user.email,
       fullName: user.fullName,
       roles: roles.map((role) => role.name),

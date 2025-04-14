@@ -165,7 +165,7 @@ const Avatar = () => {
         <MenuItems
           transition
           anchor="right"
-          className="ml-2 mt-8 w-[300px] origin-top-right rounded-lg border border-white/5 bg-white py-1 text-sm/6 shadow-lg duration-100 ease-out [--anchor-gap:var(--spacing-1)] *:transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0"
+          className="z-10 ml-2 mt-8 w-[300px] origin-top-right rounded-lg border border-white/5 bg-white py-1 text-sm/6 shadow-lg duration-100 ease-out [--anchor-gap:var(--spacing-1)] *:transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0"
         >
           <MenuItem>
             <button className="group mx-3 flex w-[calc(100%-24px)] items-center gap-2 border-b-2 border-gray-300 px-1 py-1 text-lg font-semibold data-[focus]:bg-white/10">

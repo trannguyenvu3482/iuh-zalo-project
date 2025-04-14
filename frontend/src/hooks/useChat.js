@@ -275,7 +275,7 @@ export const useChat = (conversation, conversationId) => {
 
       // Only update typing status if it's for the current conversation
       if (data.conversationId === currentConversationId) {
-        const { userId, isTyping, username } = data
+        const { userId, isTyping, fullName } = data
 
         setTypingUsers((prevTypingUsers) => {
           // Don't show typing indicator for the current user
@@ -284,7 +284,7 @@ export const useChat = (conversation, conversationId) => {
           if (isTyping) {
             // Add user to typing users if not already present
             if (!prevTypingUsers.some((u) => u.id === userId)) {
-              return [...prevTypingUsers, { id: userId, username }]
+              return [...prevTypingUsers, { id: userId, fullName }]
             }
           } else {
             // Remove user from typing users
@@ -381,7 +381,7 @@ export const useChat = (conversation, conversationId) => {
       senderId: user?.id,
       sender: {
         id: user?.id,
-        fullname: user?.fullname,
+        fullName: user?.fullName,
         avatar: user?.avatar,
       },
       createdAt: new Date().toISOString(),
@@ -462,7 +462,7 @@ export const useChat = (conversation, conversationId) => {
     else {
       const otherMember = conversation?.members?.find((m) => m.id !== user?.id)
       return {
-        name: otherMember?.fullname || 'User',
+        name: otherMember?.fullName || 'User',
         avatar: otherMember?.avatar || 'https://via.placeholder.com/40',
         isOnline: otherMember?.isOnline || false,
       }
