@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useSocket } from '../contexts/SocketContext'
+import { disconnectSocket } from '../service/socket/utils'
 import { useUserStore } from '../zustand/userStore'
 
 /**
@@ -8,7 +9,7 @@ import { useUserStore } from '../zustand/userStore'
  */
 const SocketInitializer = () => {
   const { isAuthenticated, user } = useUserStore()
-  const { initializeSocket, disconnectSocket, isConnected } = useSocket()
+  const { initializeSocket, isConnected } = useSocket()
 
   // Initialize socket when user logs in
   useEffect(() => {
@@ -19,7 +20,7 @@ const SocketInitializer = () => {
     } else {
       disconnectSocket()
     }
-  }, [isAuthenticated, user, isConnected, initializeSocket, disconnectSocket])
+  }, [isAuthenticated, user, isConnected, initializeSocket])
 
   // No visible UI
   return null

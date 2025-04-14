@@ -3,7 +3,13 @@ import { useSnackbar } from 'notistack'
 import PropTypes from 'prop-types'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import socketService from '../service/socket'
+import { onNewMessage } from '../service/socket/chat'
+import {
+  onFriendRequest,
+  onFriendRequestCanceled,
+  onFriendRequestResponse,
+} from '../service/socket/friends'
+import { getSocket } from '../service/socket/index'
 import { useUserStore } from '../zustand/userStore'
 
 // Create a simple notification sound player function that won't cause re-renders
@@ -128,7 +134,7 @@ export const SocketProvider = ({ children }) => {
       user?.id,
     )
 
-    const socket = socketService.getSocket() // Always initialize socket
+    const socket = getSocket() // Always initialize socket
 
     socket.on('connect', () => {
       console.log(
@@ -258,7 +264,7 @@ export const SocketProvider = ({ children }) => {
     }
 
     // Subscribe to new message events
-    const unsubscribe = socketService.onNewMessage(handleNewMessage)
+    const unsubscribe = onNewMessage(handleNewMessage)
 
     return () => {
       unsubscribe()
@@ -274,7 +280,7 @@ export const SocketProvider = ({ children }) => {
       return
     }
 
-    console.log('Setting up friend request handler for user:', user?.id)
+    console.log('Setting up friend_request handler for user:', user?.id)
 
     const handleFriendRequest = (request) => {
       console.log(
@@ -284,17 +290,23 @@ export const SocketProvider = ({ children }) => {
         request,
       )
 
-      // Check if the request is valid
-      if (!request || (!request.id && !request.friendshipId)) {
-        console.warn('Received invalid friend request data:', request)
-        return
-      }
+      // Validate the request
+      // if (!request || (!request.id && !request.friendshipId)) {
+      //   console.warn('Received invalid friend request data:', request)
+      //   return
+      // }
 
-      // Normalize the request object
+      // Normalize the request object to match the API response structure
       const normalizedRequest = {
         id: request.id || request.friendshipId,
-        senderId: request.senderId || request.from,
-        senderName: request.senderName || 'Someone',
+        user: {
+          id: request.senderId || request.from,
+          fullName: request.senderName || 'Someone',
+          avatar: request.senderAvatar || '', // Ensure avatar is included
+        },
+        status: request.status || 'pending', // Default status
+        createdAt: request.createdAt || new Date().toISOString(), // Ensure createdAt is included
+        mutualGroups: request.mutualGroups || 0, // Ensure mutualGroups is included
       }
 
       console.log(
@@ -304,16 +316,21 @@ export const SocketProvider = ({ children }) => {
         normalizedRequest,
       )
 
-      // Add new friend request to local state
+      // Add new friend request to local state (for notifications), avoiding duplicates
       setFriendRequests((prev) => {
-        const newRequests = [...prev, normalizedRequest]
-        console.log('Updated friend requests state:', newRequests)
-        return newRequests
+        if (prev.some((req) => req.id === normalizedRequest.id)) {
+          console.log(
+            'Duplicate friend request detected in friendRequests state:',
+            normalizedRequest.id,
+          )
+          return prev
+        }
+        return [...prev, normalizedRequest]
       })
 
       // Show notification for new friend request
       enqueueSnackbar(
-        `${normalizedRequest.senderName} sent you a friend request`,
+        `${normalizedRequest.user.fullName} sent you a friend request`,
         {
           variant: 'info',
         },
@@ -322,89 +339,38 @@ export const SocketProvider = ({ children }) => {
       // Play notification sound for friend request
       playNotificationSound()
 
-      // Refresh friend requests data in React Query cache
+      // Update the React Query cache directly, avoiding duplicates
       if (queryClient) {
-        console.log(
-          'Invalidating receivedFriendRequests cache for user',
-          user?.id,
-        )
-        queryClient.invalidateQueries(['receivedFriendRequests'])
-
-        // Also force a refetch to get the latest data immediately
-        queryClient
-          .fetchQuery({
-            queryKey: ['receivedFriendRequests'],
-            queryFn: async () => {
-              try {
-                // Import the function here to avoid circular dependencies
-                const { getReceivedFriendRequests } = await import(
-                  '../api/apiFriends'
-                )
-                return getReceivedFriendRequests()
-              } catch (error) {
-                console.error('Error fetching received friend requests:', error)
-                throw error
-              }
-            },
-          })
-          .then((result) => {
+        queryClient.setQueryData(['receivedFriendRequests'], (old) => {
+          if (!old || !old.data) return { data: [normalizedRequest] }
+          if (old.data.some((req) => req.id === normalizedRequest.id)) {
             console.log(
-              'Fetched fresh received requests data for user',
-              user?.id,
-              ':',
-              result,
+              'Duplicate friend request detected in cache:',
+              normalizedRequest.id,
             )
-          })
-          .catch((error) => {
-            console.error(
-              'Error fetching received requests for user',
-              user?.id,
-              ':',
-              error,
-            )
-          })
+            return old
+          }
+          return { ...old, data: [...old.data, normalizedRequest] }
+        })
+
+        // Optional: Log the updated cache for debugging
+        const updatedCache = queryClient.getQueryData([
+          'receivedFriendRequests',
+        ])
+        console.log(
+          'Updated receivedFriendRequests cache for user',
+          user?.id,
+          ':',
+          updatedCache,
+        )
       }
     }
 
-    // Subscribe to friend request events
     console.log('Setting up friend_request event listener in SocketContext')
-    const unsubscribe = socketService.onFriendRequest(handleFriendRequest)
+    const unsubscribe = onFriendRequest(handleFriendRequest)
 
     return () => {
       console.log('Cleaning up friend_request event listener in SocketContext')
-      unsubscribe()
-    }
-  }, [isAuthenticated, queryClient, enqueueSnackbar])
-
-  // Handle friend request cancellations
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    const handleFriendRequestCancel = (data) => {
-      console.log('Friend request canceled event received:', data)
-
-      // Show notification for canceled request
-      enqueueSnackbar(`Lời mời kết bạn đã bị thu hồi`, { variant: 'info' })
-
-      // Force an immediate update of the cached data
-      if (queryClient) {
-        // Completely reset the received requests cache
-        queryClient.resetQueries(['receivedFriendRequests'])
-
-        // Force an immediate refetch
-        queryClient.refetchQueries(['receivedFriendRequests'])
-
-        // Also update relevant queries
-        queryClient.invalidateQueries(['friendshipStatus'])
-      }
-    }
-
-    // Subscribe to friend request cancellation events
-    const unsubscribe = socketService.onFriendRequestCanceled(
-      handleFriendRequestCancel,
-    )
-
-    return () => {
       unsubscribe()
     }
   }, [isAuthenticated, queryClient, enqueueSnackbar])
@@ -443,14 +409,90 @@ export const SocketProvider = ({ children }) => {
     }
 
     // Subscribe to friend request response events
-    const unsubscribe = socketService.onFriendRequestResponse(
-      handleFriendRequestResponse,
-    )
+    const unsubscribe = onFriendRequestResponse(handleFriendRequestResponse)
 
     return () => {
       unsubscribe()
     }
   }, [isAuthenticated, queryClient])
+
+  // Handle friend request cancellations
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const handleFriendRequestCancel = (data) => {
+      const currentUserId = useUserStore.getState().user?.id
+
+      if (currentUserId === data.friendId) {
+        enqueueSnackbar(`Lời mời kết bạn đã bị thu hồi`, { variant: 'info' })
+      }
+
+      if (queryClient) {
+        // Optimistically update UI by filtering out canceled requests
+        queryClient.setQueryData(['receivedFriendRequests'], (old) => {
+          if (!old || !old.data) return { data: [] }
+          return {
+            ...old,
+            data: old.data.filter(
+              (req) =>
+                !(
+                  req.user?.id === data.from ||
+                  (req.user?.id === data.friendId &&
+                    data.from === currentUserId)
+                ),
+            ),
+          }
+        })
+
+        queryClient.setQueryData(['sentFriendRequests'], (old) => {
+          if (!old || !old.data) return { data: [] }
+          return {
+            ...old,
+            data: old.data.filter(
+              (req) =>
+                !(
+                  req.friend?.id === data.friendId ||
+                  (req.friend?.id === data.from &&
+                    data.friendId === currentUserId)
+                ),
+            ),
+          }
+        })
+
+        // Then invalidate to get fresh data on next render after a slight delay
+        setTimeout(() => {
+          queryClient.invalidateQueries(['receivedFriendRequests'])
+          queryClient.invalidateQueries(['sentFriendRequests'])
+          queryClient.invalidateQueries(['friendshipStatus'])
+        }, 300)
+
+        // Clear any pending friend requests from state that match the canceled request
+        setFriendRequests((prev) =>
+          prev.filter(
+            (req) =>
+              !(
+                req.user?.id === data.from ||
+                (req.user?.id === data.friendId && data.from === currentUserId)
+              ),
+          ),
+        )
+      }
+    }
+
+    // Subscribe to both regular cancellation and confirmation events
+    const unsubscribe = onFriendRequestCanceled(handleFriendRequestCancel)
+
+    // Get direct access to socket
+    const socket = getSocket()
+
+    // Also listen for the confirmation event directly
+    socket.on('friend_request_canceled_confirmed', handleFriendRequestCancel)
+
+    return () => {
+      unsubscribe()
+      socket.off('friend_request_canceled_confirmed', handleFriendRequestCancel)
+    }
+  }, [isAuthenticated, queryClient, enqueueSnackbar])
 
   // Clear message when component unmounts
   const clearPendingMessage = (messageId) => {
@@ -473,22 +515,51 @@ export const SocketProvider = ({ children }) => {
   // Initialize the socket manually - add this function to fix SocketInitializer
   const initializeSocket = () => {
     console.log('Manually initializing socket for user:', user?.id)
-    const socket = socketService.getSocket()
+    const socket = getSocket()
     return socket
   }
 
-  // Value to be provided by the context
-  const value = {
+  // Expose all socket methods in context value
+  const socketValue = {
+    socket: isConnected ? getSocket() : null,
     isConnected,
     pendingMessages,
+    setPendingMessages,
     friendRequests,
+    setFriendRequests,
     clearPendingMessage,
     clearFriendRequest,
     setActiveConversation,
-    hasUnreadMessages,
-    setHasUnreadMessages,
     initializeSocket,
-    ...socketService,
+    getSocket,
+    cancelFriendRequestSocket: (friendId) => {
+      const socket = getSocket()
+      if (socket) {
+        // Send consistent data format matching backend expectations
+        socket.emit('friend_request_canceled', {
+          friendId,
+          from: user?.id,
+          timestamp: new Date().toISOString(),
+        })
+
+        // Update the cache properly without causing refetch loops
+        if (queryClient) {
+          // Optimistically update UI by filtering out the request
+          queryClient.setQueryData(['sentFriendRequests'], (old) => {
+            if (!old || !old.data) return { data: [] }
+            return {
+              ...old,
+              data: old.data.filter((req) => req.friend?.id !== friendId),
+            }
+          })
+
+          // Then invalidate to get fresh data on next render
+          setTimeout(() => {
+            queryClient.invalidateQueries(['sentFriendRequests'])
+          }, 300)
+        }
+      }
+    },
   }
 
   return (
@@ -498,7 +569,9 @@ export const SocketProvider = ({ children }) => {
           {hasUnreadMessages ? 'Bạn có tin nhắn mới' : 'Zalo Clone'}
         </title>
       </Helmet>
-      <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
+      <SocketContext.Provider value={socketValue}>
+        {children}
+      </SocketContext.Provider>
     </>
   )
 }

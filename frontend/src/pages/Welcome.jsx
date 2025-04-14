@@ -2,7 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import WelcomeSwiper from '../components/WelcomeSwiper'
-import { disconnectSocket } from '../service/socket'
+import { disconnectSocket } from '../service/socket/utils'
 import { useUserStore } from '../zustand/userStore'
 const Welcome = () => {
   const { setUser, setAccessToken, setIsAuthenticated } = useUserStore()

@@ -186,6 +186,37 @@ export const useFriendship = (userId, isCurrentUser) => {
         }
         updateStorage(userForAction.id, updatedData)
 
+        // Invalidate sent requests cache to show the new request immediately
+        if (queryClient) {
+          // First attempt optimistic update for immediate UI refresh
+          queryClient.setQueryData(['sentFriendRequests'], (old) => {
+            if (!old || !old.data) return { data: [] }
+
+            // Create a new request object that matches API response structure
+            const newRequest = {
+              id: response?.data?.id || `temp-${Date.now()}`,
+              friend: {
+                id: userForAction.id,
+                fullName: userForAction.fullName || 'User',
+                avatar: userForAction.avatar || null,
+              },
+              createdAt: new Date().toISOString(),
+              status: 'PENDING',
+            }
+
+            // Add the new request to the list
+            return {
+              ...old,
+              data: [...old.data, newRequest],
+            }
+          })
+
+          // Then invalidate the query to get fresh data
+          setTimeout(() => {
+            queryClient.invalidateQueries(['sentFriendRequests'])
+          }, 300)
+        }
+
         enqueueSnackbar('Đã gửi lời mời kết bạn', { variant: 'success' })
       }
 

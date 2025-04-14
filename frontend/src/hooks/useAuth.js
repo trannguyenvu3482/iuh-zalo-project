@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getUserInfo } from '../api/apiUser'
-import { onProfileUpdated } from '../service/socket'
+import { onProfileUpdated } from '../service/socket/status'
 import { useUserStore } from '../zustand/userStore'
 import { useDebounce } from './useDebounce'
 

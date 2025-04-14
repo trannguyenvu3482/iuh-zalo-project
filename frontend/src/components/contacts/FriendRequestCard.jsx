@@ -57,12 +57,6 @@ const FriendRequestCard = ({
           </button>
         )}
       </div>
-
-      {requestFriend.message && type === 'received' && (
-        <div className="mt-3 rounded-lg bg-gray-50 p-3 text-sm">
-          {requestFriend.message}
-        </div>
-      )}
     </div>
   )
 }
