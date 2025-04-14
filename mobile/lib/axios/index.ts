@@ -5,8 +5,6 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import axiosRetry from "axios-retry";
-import Constants from "expo-constants";
-import { Platform } from "react-native";
 
 import { useUserStore } from "../../store/userStore";
 
@@ -22,34 +20,11 @@ const API_URLS = {
   // Production or hosted API
   PRODUCTION: "https://main-gradually-octopus.ngrok-free.app/api/v1",
   // Backup API URL if the main one fails, get from computer IP
-  BACKUP: `http://192.168.137.146:8081/api`,
+  BACKUP: "https://main-gradually-octopus.ngrok-free.app/api",
 };
-
-// Get API URL from environment variables or use fallback
-const apiUrlFromEnv = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL;
 
 // Determine the best API URL to use based on the platform and environment
 const determineApiUrl = (): string => {
-  // If there's an environment variable specified, use it
-  if (apiUrlFromEnv) {
-    return apiUrlFromEnv;
-  }
-
-  // Otherwise choose based on platform
-  if (Platform.OS === "web") {
-    return API_URLS.WEB;
-  }
-
-  // For native mobile platforms
-  if (Platform.OS === "android") {
-    return API_URLS.EMULATOR.ANDROID;
-  }
-
-  if (Platform.OS === "ios") {
-    return API_URLS.EMULATOR.IOS;
-  }
-
-  // Fallback to production URL
   return API_URLS.BACKUP;
 };
 
@@ -69,7 +44,6 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
 
 // Log the available URLs
 console.log("API URLS configuration:", {
-  fromEnv: apiUrlFromEnv,
   selected: INITIAL_API_URL,
   available: API_URLS,
 });
