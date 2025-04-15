@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { HiPhone, HiPhoneIncoming, HiUser, HiX } from 'react-icons/hi'
 import { useSocket } from '../contexts/SocketContext'
-import * as socketService from '../service/socket'
+import { getSocket } from '../service/socket/index'
 import { useUserStore } from '../zustand/userStore'
 
 // Initialize global registry
@@ -20,7 +20,7 @@ const IncomingCallNotification = () => {
   const { user } = useUserStore()
   const { socket } = useSocket()
   const [currentCall, setCurrentCall] = useState(null)
-  const directSocket = socketService.getSocket()
+  const directSocket = getSocket()
 
   // Handle audio cleanup
   const stopRingtone = useCallback((callId) => {

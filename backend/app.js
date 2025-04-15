@@ -33,7 +33,7 @@ const corsOptions = {
 const io = socketIo(server, {
   cors: {
     origin: clientUrls,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   },
 });
@@ -231,18 +231,18 @@ io.on("connection", (socket) => {
 
   socket.on("friend_request", (data) => {
     const userId = socket.handshake.query.userId;
-    const { to: recipientId } = data;
+    const { friendId } = data;
 
-    console.log(`Friend request from ${userId} to ${recipientId}`, data);
+    console.log(`Friend request from ${userId} to ${friendId}`, data);
 
-    if (recipientId) {
+    if (friendId) {
       // Find if the recipient is online
-      const recipientRoom = io.sockets.adapter.rooms.get(`user_${recipientId}`);
+      const recipientRoom = io.sockets.adapter.rooms.get(`user_${friendId}`);
       const isRecipientOnline = Boolean(
         recipientRoom && recipientRoom.size > 0
       );
 
-      console.log(`Recipient ${recipientId} online status:`, {
+      console.log(`Recipient ${friendId} online status:`, {
         isOnline: isRecipientOnline,
         roomSize: recipientRoom?.size || 0,
         roomExists: !!recipientRoom,
@@ -252,15 +252,16 @@ io.on("connection", (socket) => {
       });
 
       // Forward the friend request to the recipient
-      io.to(`user_${recipientId}`).emit("friend_request", {
+      io.to(`user_${friendId}`).emit("friend_request", {
         id: Date.now(), // temporary ID to track the notification
         from: userId,
         senderId: userId,
+        friendId: userId,
         senderName: socket.handshake.query.name || "Someone",
         timestamp: new Date().toISOString(),
       });
 
-      console.log(`Friend request event emitted to user_${recipientId} room`);
+      console.log(`Friend request event emitted to user_${friendId} room`);
 
       // Debug: Check connected sockets
       const connectedSockets = Array.from(io.sockets.sockets.keys());
@@ -271,7 +272,7 @@ io.on("connection", (socket) => {
 
       // Let the sender know whether the recipient is online
       socket.emit("friend_request_delivered", {
-        recipientId,
+        friendId,
         isDelivered: true,
         isRecipientOnline,
       });
@@ -279,32 +280,87 @@ io.on("connection", (socket) => {
   });
 
   socket.on("friend_accepted", (data) => {
-    console.log(`Friend accepted: ${data.from} and ${userId}`);
+    const userId = socket.handshake.query.userId;
+    const { requestId, from } = data;
+
+    console.log(
+      `Friend accepted: request ${requestId} from ${userId} to ${from}`
+    );
+
+    // Forward the acceptance to the original requester
+    if (from) {
+      io.to(`user_${from}`).emit("friend_accepted", {
+        requestId,
+        from: userId,
+        friendId: userId,
+      });
+    }
   });
 
-  socket.on("friend_request_canceled", (data) => {
+  socket.on("friend_rejected", (data) => {
+    const userId = socket.handshake.query.userId;
+    const { requestId, from } = data;
+
+    console.log(
+      `Friend rejected: request ${requestId} from ${userId} to ${from}`
+    );
+
+    // Forward the rejection to the original requester
+    if (from) {
+      io.to(`user_${from}`).emit("friend_rejected", {
+        requestId,
+        from: userId,
+        friendId: userId,
+      });
+    }
+  });
+
+  socket.on("friend_request_canceled", async (data) => {
     const userId = socket.handshake.query.userId;
     const { friendId } = data;
 
     console.log(`Friend request canceled from ${userId} to ${friendId}`, data);
 
     if (friendId) {
-      // Find if the recipient is online
-      const recipientRoom = io.sockets.adapter.rooms.get(`user_${friendId}`);
-      const isRecipientOnline = Boolean(
-        recipientRoom && recipientRoom.size > 0
-      );
+      try {
+        // Immediately update the database to ensure API calls get fresh data
+        const { friendService } = require("./app/services");
+        await friendService.cancelFriendRequest(userId, friendId);
+        console.log(
+          `Database updated for cancellation from ${userId} to ${friendId}`
+        );
 
-      console.log(`Recipient ${friendId} online status for cancellation:`, {
-        isOnline: isRecipientOnline,
-        roomSize: recipientRoom?.size || 0,
-      });
+        // Find if the recipient is online
+        const recipientRoom = io.sockets.adapter.rooms.get(`user_${friendId}`);
+        const isRecipientOnline = Boolean(
+          recipientRoom && recipientRoom.size > 0
+        );
 
-      // Forward the cancellation to the recipient
-      io.to(`user_${friendId}`).emit("friend_request_canceled", {
-        from: userId,
-        timestamp: new Date().toISOString(),
-      });
+        console.log(`Recipient ${friendId} online status for cancellation:`, {
+          isOnline: isRecipientOnline,
+          roomSize: recipientRoom?.size || 0,
+        });
+
+        // Forward the cancellation to the recipient
+        io.to(`user_${friendId}`).emit("friend_request_canceled", {
+          from: userId,
+          friendId: friendId,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Also emit a confirmation back to the sender
+        socket.emit("friend_request_canceled_confirmed", {
+          success: true,
+          friendId: friendId,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error(`Error processing friend request cancellation:`, error);
+        socket.emit("error", {
+          message: "Failed to cancel friend request",
+          error: error.message,
+        });
+      }
     }
   });
 

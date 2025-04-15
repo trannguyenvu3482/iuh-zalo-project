@@ -21,21 +21,24 @@ exports.addFriend = async (userId, friendId) => {
         ],
       },
     });
-    if (existingFriendship) {
+    if (existingFriendship && existingFriendship.status !== "REJECTED") {
       if (existingFriendship.status === "PENDING") {
         throw new ValidationError("Friend request already exists");
       } else if (existingFriendship.status === "ACCEPTED") {
         throw new ValidationError("User is already a friend");
       }
+    } else if (existingFriendship && existingFriendship.status === "REJECTED") {
+      existingFriendship.status = "PENDING";
+      const updatedFriendship = await existingFriendship.save();
+      return updatedFriendship;
+    } else {
+      const friendship = await Friendship.create({
+        userId,
+        friendId: friend.id,
+        status: "PENDING",
+      });
+      return friendship;
     }
-
-    const friendship = await Friendship.create({
-      userId,
-      friendId: friend.id,
-      status: "PENDING",
-    });
-
-    return friendship;
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to add friend", 500);
