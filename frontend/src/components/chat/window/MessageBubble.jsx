@@ -30,13 +30,23 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick }) => {
 
   // Handle different message formats
   const content = message.content || message.message || ''
+  const fileUrl = message.file || ''
   const timestamp =
     message.createdAt ||
     message.timestamp ||
     message.created_at ||
     new Date().toISOString()
   const isRecalled = message.isRecalled || false
-  const messageType = message.type || (isImageUrl(content) ? 'IMAGE' : 'TEXT')
+
+  // Determine message type - prioritize the explicitly set type, then detect based on content/file
+  let messageType = message.type || 'TEXT'
+  if (!message.type) {
+    if (isImageUrl(fileUrl)) {
+      messageType = fileUrl.toLowerCase().endsWith('.gif') ? 'GIF' : 'IMAGE'
+    } else if (isImageUrl(content)) {
+      messageType = content.toLowerCase().endsWith('.gif') ? 'GIF' : 'IMAGE'
+    }
+  }
 
   // Get sender information
   const sender = message.sender || {}
@@ -97,7 +107,8 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick }) => {
       icon: <BiCopy />,
       text: 'Copy tin nhắn',
       action: () => {
-        navigator.clipboard.writeText(content)
+        const textToCopy = messageType === 'TEXT' ? content : fileUrl || content
+        navigator.clipboard.writeText(textToCopy)
         console.log('Copied message:', message.id)
       },
     },
@@ -138,14 +149,17 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick }) => {
       )
     }
 
+    // Pre-compute file name outside of the switch
+    const fileName = (fileUrl || content).split('/').pop() || 'File'
+
     switch (messageType) {
       case 'IMAGE':
-        return <ChatImageViewer imageUrl={content} sender={sender} />
+        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
 
       case 'GIF':
         return (
           <div className="relative">
-            <ChatImageViewer imageUrl={content} sender={sender} />
+            <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
             <div className="absolute left-1 top-1 rounded bg-black/50 px-1.5 py-0.5 text-xs text-white">
               <HiMiniGif className="h-4 w-4" />
             </div>
@@ -158,7 +172,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick }) => {
             <video
               controls
               className="rounded-md"
-              src={content || message.file}
+              src={fileUrl || content}
               style={{ maxWidth: '100%' }}
             >
               Your browser does not support the video tag.
@@ -169,7 +183,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick }) => {
       case 'AUDIO':
         return (
           <div className="w-full max-w-[240px]">
-            <audio controls className="w-full" src={content || message.file}>
+            <audio controls className="w-full" src={fileUrl || content}>
               Your browser does not support the audio element.
             </audio>
           </div>
@@ -180,11 +194,9 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick }) => {
           <div className="flex items-center gap-2 rounded-md bg-white/50 p-2">
             <FiFile className="h-6 w-6 text-blue-500" />
             <div>
-              <p className="text-sm font-medium">
-                {content.split('/').pop() || 'File'}
-              </p>
+              <p className="text-sm font-medium">{fileName}</p>
               <a
-                href={content || message.file}
+                href={fileUrl || content}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-500 underline"
@@ -256,6 +268,15 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick }) => {
         {/* Message content based on type */}
         {renderMessageContent()}
 
+        {/* Display message text as caption for media files if available */}
+        {['IMAGE', 'VIDEO', 'AUDIO'].includes(messageType) && content && (
+          <p
+            className={`mt-1 text-sm ${isCurrentUser ? 'text-blue-100' : 'text-gray-700'}`}
+          >
+            {content}
+          </p>
+        )}
+
         <p
           className={`mt-1 text-right text-xs ${
             isCurrentUser
@@ -325,6 +346,7 @@ MessageBubble.propTypes = {
     id: PropTypes.string,
     content: PropTypes.string,
     message: PropTypes.string,
+    file: PropTypes.string,
     sender: PropTypes.object,
     timestamp: PropTypes.string,
     createdAt: PropTypes.string,
@@ -332,7 +354,6 @@ MessageBubble.propTypes = {
     isRecalled: PropTypes.bool,
     type: PropTypes.string,
     isSystemMessage: PropTypes.bool,
-    file: PropTypes.string,
   }).isRequired,
   isCurrentUser: PropTypes.bool.isRequired,
   onUserClick: PropTypes.func,

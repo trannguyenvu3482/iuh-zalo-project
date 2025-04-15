@@ -17,10 +17,6 @@ exports.sendPrivateMessage = [
       const senderId = req.user?.id;
       const file = req.file;
 
-      console.log(`Request headers:`, {
-        authorization: req.headers.authorization ? "Present" : "Missing",
-        contentType: req.headers["content-type"],
-      });
       console.log(`User from request:`, {
         userId: senderId,
         authenticated: !!senderId,
@@ -28,11 +24,19 @@ exports.sendPrivateMessage = [
 
       if (!senderId) throw new UnauthorizedError("Authentication required");
       if (!receiverId) throw new ValidationError("Receiver ID is required");
-      if (!message && !file)
-        throw new ValidationError("Message or file is required");
+
+      console.log(`File present: ${!!file}`);
+
+      // Check if either message or file is provided
+      // Allow empty string for message when there's a file
+      if ((!message && !file) || (message === "" && !file)) {
+        throw new ValidationError("Either message or file is required");
+      }
 
       console.log(
-        `Sending private message: ${senderId} -> ${receiverId}: "${message}"`
+        `Sending private message: ${senderId} -> ${receiverId}: "${
+          message || "[FILE]"
+        }"`
       );
 
       // Allow messaging between non-friends by default
@@ -41,17 +45,37 @@ exports.sendPrivateMessage = [
         type,
       };
 
-      const { message: newMessage, conversationId } =
-        await messageService.createPrivateMessage(
+      let newMessage, conversationId;
+
+      // Route to the appropriate service function based on content type
+      if (file) {
+        // Handle file-based messages (images, audio, video, etc.)
+        const result = await messageService.createPrivateFileMessage(
+          senderId,
+          receiverId,
+          message, // Include message text as caption
+          file,
+          name,
+          avatar,
+          replyToId,
+          options
+        );
+        newMessage = result.message;
+        conversationId = result.conversationId;
+      } else {
+        // Handle text or GIF messages
+        const result = await messageService.createPrivateTextMessage(
           senderId,
           receiverId,
           message,
           name,
           avatar,
-          file,
           replyToId,
           options
         );
+        newMessage = result.message;
+        conversationId = result.conversationId;
+      }
 
       console.log(
         `Message sent successfully to conversation: ${conversationId}`
@@ -90,18 +114,41 @@ exports.sendGroupMessage = [
 
     try {
       if (!senderId) throw new UnauthorizedError("Authentication required");
+      if (!conversationId)
+        throw new ValidationError("Conversation ID is required");
+
+      // Check if either message or file is provided
+      // Allow empty string for message when there's a file
+      if ((!message && !file) || (message === "" && !file)) {
+        throw new ValidationError("Either message or file is required");
+      }
 
       // Pass the type parameter to the service
       const options = { type };
 
-      const newMessage = await messageService.createGroupMessage(
-        senderId,
-        conversationId,
-        message,
-        file,
-        replyToId,
-        options
-      );
+      let newMessage;
+
+      // Route to the appropriate service function based on content type
+      if (file) {
+        // Handle file-based messages (images, audio, video, etc.)
+        newMessage = await messageService.createGroupFileMessage(
+          senderId,
+          conversationId,
+          message, // Include message text as caption
+          file,
+          replyToId,
+          options
+        );
+      } else {
+        // Handle text or GIF messages
+        newMessage = await messageService.createGroupTextMessage(
+          senderId,
+          conversationId,
+          message,
+          replyToId,
+          options
+        );
+      }
 
       if (io) {
         io.to(`conversation_${conversationId}`).emit("new_message", newMessage);

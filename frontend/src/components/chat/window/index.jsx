@@ -1,13 +1,13 @@
 import data from '@emoji-mart/data'
 import Picker from '@emoji-mart/react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import GifPicker from 'gif-picker-react'
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { sendPrivateMessage } from '../../../api/apiMessage'
 import useChat from '../../../hooks/useChat'
 import { useUser } from '../../../hooks/useUser'
+import instance from '../../../service/axios'
 import ProfileDialog from '../../Sidebar/ProfileDialog'
 import ChatHeader from './ChatHeader'
 import MessageInput from './MessageInput'
@@ -23,7 +23,6 @@ const ChatWindow = ({ conversation }) => {
   const [firstMessage, setFirstMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showGifPicker, setShowGifPicker] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
   const [localMediaMessages, setLocalMediaMessages] = useState([])
 
   // Always call useChat to avoid conditional hooks
@@ -42,48 +41,6 @@ const ChatWindow = ({ conversation }) => {
   const openProfileDialog = (user) => {
     setSelectedUser(user)
     setIsProfileDialogOpen(true)
-  }
-
-  // For new conversations, we need to send the first private message
-  // The backend will handle creating the conversation if needed
-  const { mutate: sendFirstPrivateMessage } = useMutation({
-    mutationFn: (data) =>
-      sendPrivateMessage({
-        receiverId: data.receiverId,
-        content: data.content || '',
-        type: data.type || 'TEXT',
-        file: data.file || null,
-      }),
-    onSuccess: (response) => {
-      // Navigate to the new conversation
-      navigate(`/chats/${response.data.conversationId}`, { replace: true })
-    },
-  })
-
-  // Upload file helper (simulated for now)
-  const uploadFile = async (file) => {
-    setIsUploading(true)
-
-    try {
-      // For demo purposes, we'll just simulate an upload
-      // In a real app, you would use something like:
-      // const formData = new FormData();
-      // formData.append('file', file);
-      // const response = await axios.post('/api/upload', formData);
-      // return response.data.fileUrl;
-
-      // Simulate upload delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Return a mock URL - in a real app this would be the URL returned from your server
-      const mockUrl = URL.createObjectURL(file)
-      return mockUrl
-    } catch (error) {
-      console.error('Error uploading file:', error)
-      throw error
-    } finally {
-      setIsUploading(false)
-    }
   }
 
   // Auto scroll when GIF picker is closed
@@ -114,16 +71,16 @@ const ChatWindow = ({ conversation }) => {
 
   // Unified message handler for new conversations
   const handleNewConversationMessage = async (messageData) => {
-    if (isCreatingConversation || isUploading) return
+    if (isCreatingConversation) return
 
     setIsCreatingConversation(true)
 
     try {
-      let fileUrl = null
+      let fileObject = null
 
-      // If message has a file, upload it first
+      // Store the file object for upload
       if (messageData.file) {
-        fileUrl = await uploadFile(messageData.file)
+        fileObject = messageData.file
       }
 
       // Show toast or loading indicator for media messages
@@ -131,20 +88,72 @@ const ChatWindow = ({ conversation }) => {
         console.log(`Sending ${messageData.type} message...`)
       }
 
-      // Send the message
-      sendFirstPrivateMessage(
-        {
-          receiverId: conversation.user.id,
+      // Create a temporary message to show immediately (for non-text messages)
+      if (messageData.type !== 'TEXT') {
+        const tempMessage = {
+          id: `temp-${Date.now()}`,
           content: messageData.content || '',
+          message: messageData.content || '',
           type: messageData.type,
-          file:
-            fileUrl ||
-            (messageData.type === 'GIF' ? messageData.content : null),
+          senderId: currentUser.id,
+          sender: {
+            id: currentUser.id,
+            fullName: currentUser.fullName,
+            avatar: currentUser.avatar,
+          },
+          createdAt: new Date().toISOString(),
+          isLocal: true,
+          isFromCurrentUser: true,
+        }
+
+        // Add appropriate file URL handling for different message types
+        if (
+          fileObject &&
+          ['IMAGE', 'VIDEO', 'AUDIO', 'FILE'].includes(messageData.type)
+        ) {
+          // For file uploads, create a temporary object URL to display immediately
+          tempMessage.file = URL.createObjectURL(fileObject)
+        } else if (messageData.type === 'GIF') {
+          // For GIFs, the content contains the URL, so we set file to that URL
+          tempMessage.file = messageData.content
+        }
+
+        console.log('New conversation temp message:', tempMessage)
+        // Add to local messages for immediate display
+        setLocalMediaMessages((prev) => [...prev, tempMessage])
+      }
+
+      // Create FormData for the message with file
+      const formData = new FormData()
+      formData.append('receiverId', conversation.user.id)
+      formData.append('message', messageData.content || '')
+      formData.append('type', messageData.type)
+
+      // Append file if it exists
+      if (fileObject && messageData.type !== 'GIF') {
+        formData.append('file', fileObject)
+      } else if (messageData.type === 'GIF') {
+        // For GIFs, the content contains the URL
+        formData.append('message', messageData.content)
+      }
+
+      // Send the message with file using axios directly
+      const response = await instance.post('/messages/private', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
         },
-        {
-          onSettled: () => setIsCreatingConversation(false),
-        },
-      )
+      })
+
+      console.log(`First message sent!`, response)
+
+      // Navigate to the new conversation if successful
+      if (response?.data?.data?.conversationId) {
+        navigate(`/chats/${response.data.data.conversationId}`, {
+          replace: true,
+        })
+      }
+
+      setIsCreatingConversation(false)
 
       // Clear first message if it was a text message
       if (messageData.type === 'TEXT') {
@@ -162,11 +171,11 @@ const ChatWindow = ({ conversation }) => {
     if (!conversation?.id) return
 
     try {
-      let fileUrl = null
+      let fileObject = null
 
-      // If message has a file, upload it first
+      // Store the actual file object for upload
       if (messageData.file) {
-        fileUrl = await uploadFile(messageData.file)
+        fileObject = messageData.file
       }
 
       // For text messages, use the chat hook's built-in handler
@@ -194,8 +203,8 @@ const ChatWindow = ({ conversation }) => {
         // Create a temporary message to show immediately
         const tempMessage = {
           id: `temp-${Date.now()}`,
-          content: fileUrl || messageData.content,
-          message: fileUrl || messageData.content,
+          content: messageData.content || '',
+          message: messageData.content || '',
           type: messageData.type,
           senderId: currentUser.id,
           sender: {
@@ -208,16 +217,43 @@ const ChatWindow = ({ conversation }) => {
           isFromCurrentUser: true,
         }
 
+        // Add appropriate file URL handling for different message types
+        if (
+          fileObject &&
+          ['IMAGE', 'VIDEO', 'AUDIO', 'FILE'].includes(messageData.type)
+        ) {
+          // For file uploads, create a temporary object URL to display immediately
+          tempMessage.file = URL.createObjectURL(fileObject)
+        } else if (messageData.type === 'GIF') {
+          // For GIFs, the content contains the URL, so we set file to that URL
+          tempMessage.file = messageData.content
+        }
+
+        console.log('tempMessage', tempMessage)
+
         // Add to local messages for immediate display
         setLocalMediaMessages((prev) => [...prev, tempMessage])
 
-        // Send the message using the API
-        const response = await sendPrivateMessage({
-          receiverId: otherMember.id,
-          conversationId: conversation.id,
-          content: messageData.content || '',
-          type: messageData.type,
-          file: fileUrl || messageData.content, // For GIFs, content contains the URL
+        // Create FormData for the message with file
+        const formData = new FormData()
+        formData.append('receiverId', otherMember.id)
+        formData.append('conversationId', conversation.id)
+        formData.append('message', messageData.content || '')
+        formData.append('type', messageData.type)
+
+        // Append file if it exists
+        if (fileObject && messageData.type !== 'GIF') {
+          formData.append('file', fileObject)
+        } else if (messageData.type === 'GIF') {
+          // For GIFs, the content contains the URL
+          formData.append('message', messageData.content)
+        }
+
+        // Send the message with file using axios directly
+        const response = await instance.post('/messages/private', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
         })
 
         console.log(`${messageData.type} message sent!`, response)
@@ -345,37 +381,28 @@ const ChatWindow = ({ conversation }) => {
             </p>
           </div>
           {showEmojiPicker && (
-            <Picker
-              theme="light"
-              data={data}
-              locale="vi"
-              navPosition="bottom"
-              previewPosition="none"
-              skinTonePosition="none"
-              onEmojiSelect={(e) => {
-                setFirstMessage(firstMessage + e.native)
-              }}
-            />
+            <div className="absolute bottom-0 right-0 z-10">
+              <Picker
+                theme="light"
+                data={data}
+                locale="vi"
+                navPosition="bottom"
+                previewPosition="none"
+                skinTonePosition="none"
+                onEmojiSelect={(e) => {
+                  setFirstMessage(firstMessage + e.native)
+                }}
+              />
+            </div>
           )}
           {fixGifPickerPosition()}
         </div>
-
-        {isUploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <div className="rounded-lg bg-white p-4 shadow-lg">
-              <div className="mb-2 text-center">Uploading file...</div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                <div className="h-full animate-pulse bg-blue-500 transition-all"></div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <MessageInput
           message={firstMessage}
           setMessage={setFirstMessage}
           onSendMessage={handleSendMessage}
-          disabled={isCreatingConversation || isUploading}
+          disabled={isCreatingConversation}
           setShowEmojiPicker={setShowEmojiPicker}
           showEmojiPicker={showEmojiPicker}
           setShowGifPicker={setShowGifPicker}
@@ -432,7 +459,7 @@ const ChatWindow = ({ conversation }) => {
         onAvatarClick={() => openProfileDialog(receiverInfo)}
       />
 
-      <div className="relative flex-1 overflow-y-auto">
+      <div className="overflow-y-auto">
         <MessagesList
           messages={allMessagesWithMedia}
           typingUsers={typingUsers}
@@ -444,39 +471,26 @@ const ChatWindow = ({ conversation }) => {
         />
 
         {showEmojiPicker && (
-          <div className="absolute bottom-0 right-0 z-10">
-            <Picker
-              theme="light"
-              data={data}
-              locale="vi"
-              navPosition="bottom"
-              previewPosition="none"
-              skinTonePosition="none"
-              onEmojiSelect={(e) => {
-                setMessage((prev) => prev + e.native)
-              }}
-            />
-          </div>
+          <Picker
+            theme="light"
+            data={data}
+            locale="vi"
+            navPosition="bottom"
+            previewPosition="none"
+            skinTonePosition="none"
+            onEmojiSelect={(e) => {
+              setMessage((prev) => prev + e.native)
+            }}
+          />
         )}
         {fixGifPickerPosition()}
       </div>
-
-      {isUploading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-          <div className="rounded-lg bg-white p-4 shadow-lg">
-            <div className="mb-2 text-center">Uploading file...</div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-              <div className="h-full animate-pulse bg-blue-500 transition-all"></div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <MessageInput
         message={message || ''}
         setMessage={setMessage}
         onSendMessage={handleSendMessage}
-        disabled={isUploading}
+        disabled={false}
         setShowEmojiPicker={setShowEmojiPicker}
         showEmojiPicker={showEmojiPicker}
         setShowGifPicker={setShowGifPicker}

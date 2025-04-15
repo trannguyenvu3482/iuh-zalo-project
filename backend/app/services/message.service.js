@@ -57,67 +57,64 @@ const uploadMessageFile = async (file) => {
   }
 };
 
-exports.createPrivateMessage = async (
+/**
+ * Helper function to get an existing conversation or create a new one
+ * @param {string} senderId - The sender's user ID
+ * @param {string} receiverId - The receiver's user ID
+ * @param {string} name - Optional conversation name
+ * @param {string} avatar - Optional conversation avatar
+ * @returns {Promise<Object>} - The conversation object
+ */
+const getOrCreatePrivateConversation = async (
   senderId,
   receiverId,
-  messageContent,
   name = null,
-  avatar = null,
-  file = null,
-  replyToId = null,
-  options = {}
+  avatar = null
 ) => {
-  try {
-    console.log(
-      `Creating private message: senderId=${senderId}, receiverId=${receiverId}`
-    );
+  // First, find conversation IDs where both users are members
+  const memberOf = await ConversationMember.findAll({
+    where: { userId: senderId },
+    attributes: ["conversationId"],
+  });
 
-    const sender = await User.findByPk(senderId);
-    const receiver = await User.findByPk(receiverId);
-    if (!sender || !receiver)
-      throw new NotFoundError("Sender or receiver not found");
+  const conversationIds = memberOf.map((m) => m.conversationId);
+  console.log(`Found ${conversationIds.length} conversations for sender`);
 
-    // Check if users are friends
-    const areFriends = await Friendship.findOne({
+  let conversation;
+
+  if (conversationIds.length === 0) {
+    // Create new conversation if none exists
+    console.log("No existing conversations, creating new one");
+    conversation = await Conversation.create({
+      id: uuidv4(),
+      type: "PRIVATE",
+      name,
+      avatar,
+    });
+    await ConversationMember.bulkCreate([
+      { userId: senderId, conversationId: conversation.id, role: "MEMBER" },
+      { userId: receiverId, conversationId: conversation.id, role: "MEMBER" },
+    ]);
+  } else {
+    // Find private conversation with both users
+    const existingConversation = await Conversation.findOne({
       where: {
-        [Op.or]: [
-          { userId: senderId, friendId: receiverId, status: "ACCEPTED" },
-          { userId: receiverId, friendId: senderId, status: "ACCEPTED" },
-        ],
+        id: { [Op.in]: conversationIds },
+        type: "PRIVATE",
       },
+      include: [
+        {
+          model: User,
+          as: "members",
+          where: { id: receiverId },
+          through: { attributes: [] },
+        },
+      ],
     });
 
-    console.log(`Friendship check: ${!!areFriends}`);
-
-    // Get configuration for friendship checks
-    const { requireFriendship = false } = options;
-
-    // Skip friendship check if:
-    // 1. We're explicitly not requiring friendship (requireFriendship = false)
-    // 2. We're in development mode and SKIP_FRIENDSHIP_CHECK is true
-    const skipFriendshipCheck =
-      !requireFriendship ||
-      (process.env.NODE_ENV === "development" &&
-        process.env.SKIP_FRIENDSHIP_CHECK === "true");
-
-    if (!areFriends && !skipFriendshipCheck) {
-      throw new ForbiddenError("You can only message friends");
-    }
-
-    // First, find conversation IDs where both users are members
-    const memberOf = await ConversationMember.findAll({
-      where: { userId: senderId },
-      attributes: ["conversationId"],
-    });
-
-    const conversationIds = memberOf.map((m) => m.conversationId);
-    console.log(`Found ${conversationIds.length} conversations for sender`);
-
-    let conversation;
-
-    if (conversationIds.length === 0) {
-      // Create new conversation if none exists
-      console.log("No existing conversations, creating new one");
+    if (!existingConversation) {
+      // Create new conversation if none exists with both users
+      console.log("No existing conversation with both users, creating new one");
       conversation = await Conversation.create({
         id: uuidv4(),
         type: "PRIVATE",
@@ -126,104 +123,149 @@ exports.createPrivateMessage = async (
       });
       await ConversationMember.bulkCreate([
         { userId: senderId, conversationId: conversation.id, role: "MEMBER" },
-        { userId: receiverId, conversationId: conversation.id, role: "MEMBER" },
+        {
+          userId: receiverId,
+          conversationId: conversation.id,
+          role: "MEMBER",
+        },
       ]);
     } else {
-      // Find private conversation with both users
-      const existingConversation = await Conversation.findOne({
-        where: {
-          id: { [Op.in]: conversationIds },
-          type: "PRIVATE",
-        },
-        include: [
-          {
-            model: User,
-            as: "members",
-            where: { id: receiverId },
-            through: { attributes: [] },
-          },
-        ],
-      });
-
-      if (!existingConversation) {
-        // Create new conversation if none exists with both users
-        console.log(
-          "No existing conversation with both users, creating new one"
-        );
-        conversation = await Conversation.create({
-          id: uuidv4(),
-          type: "PRIVATE",
-          name,
-          avatar,
-        });
-        await ConversationMember.bulkCreate([
-          { userId: senderId, conversationId: conversation.id, role: "MEMBER" },
-          {
-            userId: receiverId,
-            conversationId: conversation.id,
-            role: "MEMBER",
-          },
-        ]);
-      } else {
-        console.log(`Found existing conversation: ${existingConversation.id}`);
-        conversation = existingConversation;
-      }
+      console.log(`Found existing conversation: ${existingConversation.id}`);
+      conversation = existingConversation;
     }
+  }
+
+  return conversation;
+};
+
+/**
+ * Validate friendship between users if required
+ * @param {string} senderId - The sender's user ID
+ * @param {string} receiverId - The receiver's user ID
+ * @param {Object} options - Options including requireFriendship
+ * @returns {Promise<void>} - Throws an error if validation fails
+ */
+const validateFriendship = async (senderId, receiverId, options = {}) => {
+  // Check if users are friends
+  const areFriends = await Friendship.findOne({
+    where: {
+      [Op.or]: [
+        { userId: senderId, friendId: receiverId, status: "ACCEPTED" },
+        { userId: receiverId, friendId: senderId, status: "ACCEPTED" },
+      ],
+    },
+  });
+
+  console.log(`Friendship check: ${!!areFriends}`);
+
+  // Get configuration for friendship checks
+  const { requireFriendship = false } = options;
+
+  // Skip friendship check if:
+  // 1. We're explicitly not requiring friendship (requireFriendship = false)
+  // 2. We're in development mode and SKIP_FRIENDSHIP_CHECK is true
+  const skipFriendshipCheck =
+    !requireFriendship ||
+    (process.env.NODE_ENV === "development" &&
+      process.env.SKIP_FRIENDSHIP_CHECK === "true");
+
+  if (!areFriends && !skipFriendshipCheck) {
+    throw new ForbiddenError("You can only message friends");
+  }
+};
+
+/**
+ * Validate reply-to message exists in the conversation
+ * @param {string} replyToId - The ID of the message being replied to
+ * @param {string} conversationId - The conversation ID
+ * @returns {Promise<void>} - Throws an error if validation fails
+ */
+const validateReplyTo = async (replyToId, conversationId) => {
+  if (!replyToId) return;
+
+  const replyToMessage = await Message.findOne({
+    where: { id: replyToId, conversationId },
+  });
+  if (!replyToMessage)
+    throw new NotFoundError(
+      "Message to reply to not found in this conversation"
+    );
+};
+
+/**
+ * Create a text or GIF message in a private conversation
+ * @param {string} senderId - The sender's user ID
+ * @param {string} receiverId - The receiver's user ID
+ * @param {string} messageContent - The message content
+ * @param {string} name - Optional conversation name
+ * @param {string} avatar - Optional conversation avatar
+ * @param {string} replyToId - Optional ID of message being replied to
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - The created message and conversation ID
+ */
+exports.createPrivateTextMessage = async (
+  senderId,
+  receiverId,
+  messageContent,
+  name = null,
+  avatar = null,
+  replyToId = null,
+  options = {}
+) => {
+  try {
+    console.log(
+      `Creating private text message: senderId=${senderId}, receiverId=${receiverId}`
+    );
+
+    const sender = await User.findByPk(senderId);
+    const receiver = await User.findByPk(receiverId);
+    if (!sender || !receiver)
+      throw new NotFoundError("Sender or receiver not found");
+
+    // Validate friendship if required
+    await validateFriendship(senderId, receiverId, options);
+
+    // Get or create a private conversation
+    const conversation = await getOrCreatePrivateConversation(
+      senderId,
+      receiverId,
+      name,
+      avatar
+    );
 
     // Validate replyToId if provided
-    if (replyToId) {
-      const replyToMessage = await Message.findOne({
-        where: { id: replyToId, conversationId: conversation.id },
-      });
-      if (!replyToMessage)
-        throw new NotFoundError(
-          "Message to reply to not found in this conversation"
-        );
-    }
+    await validateReplyTo(replyToId, conversation.id);
 
-    // Determine message type based on file or content
+    // Determine message type (TEXT or GIF)
     let messageType = options.type || "TEXT";
     let fileUrl = null;
 
-    // Upload file if provided
-    if (file) {
-      fileUrl = await uploadMessageFile(file);
-
-      // If type is not explicitly provided, determine from file
-      if (!options.type) {
-        if (file.mimetype.startsWith("image/")) {
-          messageType = file.mimetype.includes("gif") ? "GIF" : "IMAGE";
-        } else if (file.mimetype.startsWith("video/")) {
-          messageType = "VIDEO";
-        } else if (file.mimetype.startsWith("audio/")) {
-          messageType = "AUDIO";
-        } else {
-          messageType = "FILE";
-        }
-      }
+    // Check if the message content is a GIF URL
+    if (
+      !options.type &&
+      messageContent &&
+      messageContent.startsWith("http") &&
+      /\.gif$/i.test(messageContent)
+    ) {
+      messageType = "GIF";
+      fileUrl = messageContent;
     } else if (
       !options.type &&
       messageContent &&
       messageContent.startsWith("http") &&
-      /\.(gif|jpe?g|png|webp|bmp)$/i.test(messageContent)
+      /\.(jpe?g|png|webp|bmp)$/i.test(messageContent)
     ) {
-      // Check if the message content is an image URL
-      if (/\.gif$/i.test(messageContent)) {
-        messageType = "GIF";
-      } else {
-        messageType = "IMAGE";
-      }
-
-      // For URLs provided directly in the content
+      messageType = "IMAGE";
       fileUrl = messageContent;
     }
 
+    // Create the message
     const message = await Message.create({
       id: uuidv4(),
       message: messageContent || null,
       sender: senderId,
       conversationId: conversation.id,
-      file: fileUrl, // Use the uploaded file URL instead of path
+      file: fileUrl,
       replyToId,
       type: messageType,
       isSystemMessage: false,
@@ -242,21 +284,171 @@ exports.createPrivateMessage = async (
 
     return { message, conversationId: conversation.id };
   } catch (error) {
-    console.error("Error creating private message:", error);
+    console.error("Error creating private text message:", error);
     if (error instanceof AppError) throw error;
-    throw new AppError("Failed to create private message", 500);
+    throw new AppError("Failed to create private text message", 500);
   }
 };
 
-exports.createGroupMessage = async (
+/**
+ * Create a file-based message (IMAGE, VIDEO, AUDIO, FILE) in a private conversation
+ * @param {string} senderId - The sender's user ID
+ * @param {string} receiverId - The receiver's user ID
+ * @param {string} messageContent - Optional message caption/content
+ * @param {Object} file - The file object from multer
+ * @param {string} name - Optional conversation name
+ * @param {string} avatar - Optional conversation avatar
+ * @param {string} replyToId - Optional ID of message being replied to
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - The created message and conversation ID
+ */
+exports.createPrivateFileMessage = async (
   senderId,
-  conversationId,
+  receiverId,
   messageContent,
+  file,
+  name = null,
+  avatar = null,
+  replyToId = null,
+  options = {}
+) => {
+  try {
+    console.log(
+      `Creating private file message: senderId=${senderId}, receiverId=${receiverId}`
+    );
+
+    if (!file) {
+      throw new ValidationError("File is required for file messages");
+    }
+
+    const sender = await User.findByPk(senderId);
+    const receiver = await User.findByPk(receiverId);
+    if (!sender || !receiver)
+      throw new NotFoundError("Sender or receiver not found");
+
+    // Validate friendship if required
+    await validateFriendship(senderId, receiverId, options);
+
+    // Get or create a private conversation
+    const conversation = await getOrCreatePrivateConversation(
+      senderId,
+      receiverId,
+      name,
+      avatar
+    );
+
+    // Validate replyToId if provided
+    await validateReplyTo(replyToId, conversation.id);
+
+    // Upload the file
+    const fileUrl = await uploadMessageFile(file);
+
+    // Determine message type based on file
+    let messageType = options.type || "FILE";
+    if (!options.type) {
+      if (file.mimetype.startsWith("image/")) {
+        messageType = file.mimetype.includes("gif") ? "GIF" : "IMAGE";
+      } else if (file.mimetype.startsWith("video/")) {
+        messageType = "VIDEO";
+      } else if (file.mimetype.startsWith("audio/")) {
+        messageType = "AUDIO";
+      }
+    }
+
+    // Create the message
+    const message = await Message.create({
+      id: uuidv4(),
+      message: messageContent || null,
+      sender: senderId,
+      conversationId: conversation.id,
+      file: fileUrl,
+      replyToId,
+      type: messageType,
+      isSystemMessage: false,
+    });
+
+    // Update conversation timestamp
+    await Conversation.update(
+      { updated_at: new Date() },
+      { where: { id: conversation.id } }
+    );
+
+    // Include the replied-to message in the response
+    if (message.replyToId) {
+      await message.reload({ include: [{ model: Message, as: "replyTo" }] });
+    }
+
+    return { message, conversationId: conversation.id };
+  } catch (error) {
+    console.error("Error creating private file message:", error);
+    if (error instanceof AppError) throw error;
+    throw new AppError("Failed to create private file message", 500);
+  }
+};
+
+/**
+ * Create a private message (legacy function for backward compatibility)
+ * This function will route to the appropriate specialized function based on the input
+ */
+exports.createPrivateMessage = async (
+  senderId,
+  receiverId,
+  messageContent,
+  name = null,
+  avatar = null,
   file = null,
   replyToId = null,
   options = {}
 ) => {
   try {
+    // Route to the appropriate function based on whether a file is provided
+    if (file) {
+      return exports.createPrivateFileMessage(
+        senderId,
+        receiverId,
+        messageContent,
+        file,
+        name,
+        avatar,
+        replyToId,
+        options
+      );
+    } else {
+      return exports.createPrivateTextMessage(
+        senderId,
+        receiverId,
+        messageContent,
+        name,
+        avatar,
+        replyToId,
+        options
+      );
+    }
+  } catch (error) {
+    console.error("Error in createPrivateMessage:", error);
+    if (error instanceof AppError) throw error;
+    throw new AppError("Failed to create private message", 500);
+  }
+};
+
+/**
+ * Create a text or GIF message in a group conversation
+ * @param {string} senderId - The sender's user ID
+ * @param {string} conversationId - The group conversation ID
+ * @param {string} messageContent - The message content
+ * @param {string} replyToId - Optional ID of message being replied to
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - The created message
+ */
+exports.createGroupTextMessage = async (
+  senderId,
+  conversationId,
+  messageContent,
+  replyToId = null,
+  options = {}
+) => {
+  try {
+    // Verify conversation exists and user is a member
     const conversation = await Conversation.findOne({
       where: { id: conversationId, type: "GROUP" },
       include: [{ model: User, as: "members", where: { id: senderId } }],
@@ -265,59 +457,38 @@ exports.createGroupMessage = async (
       throw new NotFoundError("Group does not exist or user is not a member");
 
     // Validate replyToId if provided
-    if (replyToId) {
-      const replyToMessage = await Message.findOne({
-        where: { id: replyToId, conversationId },
-      });
-      if (!replyToMessage)
-        throw new NotFoundError(
-          "Message to reply to not found in this conversation"
-        );
-    }
+    await validateReplyTo(replyToId, conversationId);
 
-    // Determine message type based on file, content, or explicitly provided type
+    // Determine message type (TEXT or GIF)
     let messageType = options.type || "TEXT";
     let fileUrl = null;
 
-    // Upload file if provided
-    if (file) {
-      fileUrl = await uploadMessageFile(file);
-
-      // If type is not explicitly provided, determine from file
-      if (!options.type) {
-        if (file.mimetype.startsWith("image/")) {
-          messageType = file.mimetype.includes("gif") ? "GIF" : "IMAGE";
-        } else if (file.mimetype.startsWith("video/")) {
-          messageType = "VIDEO";
-        } else if (file.mimetype.startsWith("audio/")) {
-          messageType = "AUDIO";
-        } else {
-          messageType = "FILE";
-        }
-      }
+    // Check if the message content is a GIF or image URL
+    if (
+      !options.type &&
+      messageContent &&
+      messageContent.startsWith("http") &&
+      /\.gif$/i.test(messageContent)
+    ) {
+      messageType = "GIF";
+      fileUrl = messageContent;
     } else if (
       !options.type &&
       messageContent &&
       messageContent.startsWith("http") &&
-      /\.(gif|jpe?g|png|webp|bmp)$/i.test(messageContent)
+      /\.(jpe?g|png|webp|bmp)$/i.test(messageContent)
     ) {
-      // Check if the message content is an image URL
-      if (/\.gif$/i.test(messageContent)) {
-        messageType = "GIF";
-      } else {
-        messageType = "IMAGE";
-      }
-
-      // For URLs provided directly in the content
+      messageType = "IMAGE";
       fileUrl = messageContent;
     }
 
+    // Create the message
     const message = await Message.create({
       id: uuidv4(),
       message: messageContent || null,
       sender: senderId,
       conversationId,
-      file: fileUrl, // Use the uploaded file URL instead of path
+      file: fileUrl,
       replyToId,
       type: messageType,
       isSystemMessage: false,
@@ -336,6 +507,126 @@ exports.createGroupMessage = async (
 
     return message;
   } catch (error) {
+    console.error("Error creating group text message:", error);
+    if (error instanceof AppError) throw error;
+    throw new AppError("Failed to create group text message", 500);
+  }
+};
+
+/**
+ * Create a file-based message (IMAGE, VIDEO, AUDIO, FILE) in a group conversation
+ * @param {string} senderId - The sender's user ID
+ * @param {string} conversationId - The group conversation ID
+ * @param {string} messageContent - Optional message caption/content
+ * @param {Object} file - The file object from multer
+ * @param {string} replyToId - Optional ID of message being replied to
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - The created message
+ */
+exports.createGroupFileMessage = async (
+  senderId,
+  conversationId,
+  messageContent,
+  file,
+  replyToId = null,
+  options = {}
+) => {
+  try {
+    if (!file) {
+      throw new ValidationError("File is required for file messages");
+    }
+
+    // Verify conversation exists and user is a member
+    const conversation = await Conversation.findOne({
+      where: { id: conversationId, type: "GROUP" },
+      include: [{ model: User, as: "members", where: { id: senderId } }],
+    });
+    if (!conversation)
+      throw new NotFoundError("Group does not exist or user is not a member");
+
+    // Validate replyToId if provided
+    await validateReplyTo(replyToId, conversationId);
+
+    // Upload the file
+    const fileUrl = await uploadMessageFile(file);
+
+    // Determine message type based on file
+    let messageType = options.type || "FILE";
+    if (!options.type) {
+      if (file.mimetype.startsWith("image/")) {
+        messageType = file.mimetype.includes("gif") ? "GIF" : "IMAGE";
+      } else if (file.mimetype.startsWith("video/")) {
+        messageType = "VIDEO";
+      } else if (file.mimetype.startsWith("audio/")) {
+        messageType = "AUDIO";
+      }
+    }
+
+    // Create the message
+    const message = await Message.create({
+      id: uuidv4(),
+      message: messageContent || null,
+      sender: senderId,
+      conversationId,
+      file: fileUrl,
+      replyToId,
+      type: messageType,
+      isSystemMessage: false,
+    });
+
+    // Update conversation timestamp
+    await Conversation.update(
+      { updated_at: new Date() },
+      { where: { id: conversationId } }
+    );
+
+    // Include the replied-to message in the response
+    if (message.replyToId) {
+      await message.reload({ include: [{ model: Message, as: "replyTo" }] });
+    }
+
+    return message;
+  } catch (error) {
+    console.error("Error creating group file message:", error);
+    if (error instanceof AppError) throw error;
+    throw new AppError("Failed to create group file message", 500);
+  }
+};
+
+/**
+ * Create a group message (legacy function for backward compatibility)
+ * This function will route to the appropriate specialized function based on the input
+ */
+exports.createGroupMessage = async (
+  senderId,
+  conversationId,
+  messageContent,
+  file = null,
+  replyToId = null,
+  options = {}
+) => {
+  try {
+    // Route to the appropriate function based on whether a file is provided
+    if (file) {
+      return exports.createGroupFileMessage(
+        senderId,
+        conversationId,
+        messageContent,
+        file,
+        replyToId,
+        options
+      );
+    } else {
+      return exports.createGroupTextMessage(
+        senderId,
+        conversationId,
+        messageContent,
+        replyToId,
+        options
+      );
+    }
+  } catch (error) {
+    console.error("Error in createGroupMessage:", error);
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to create group message", 500);
   }
