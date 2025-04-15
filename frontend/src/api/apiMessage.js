@@ -49,14 +49,36 @@ export const getConversationMessages = async (conversationId, options = {}) => {
  * @param {Object} messageData - The message data
  * @param {string} messageData.receiverId - The recipient ID
  * @param {string} messageData.content - The message content
+ * @param {string} [messageData.type] - The message type (TEXT, IMAGE, VIDEO, AUDIO, FILE, GIF)
+ * @param {string} [messageData.file] - The file URL for media messages
+ * @param {string} [messageData.conversationId] - Optional conversation ID for existing chats
  * @returns {Promise<Object>} The created message
  */
-export const sendPrivateMessage = async ({ receiverId, content }) => {
+export const sendPrivateMessage = async ({
+  receiverId,
+  content,
+  type = 'TEXT',
+  file,
+  conversationId,
+}) => {
   try {
-    const response = await axios.post(`/messages/private`, {
+    const payload = {
       receiverId,
       message: content,
-    })
+      type,
+    }
+
+    // Add file URL for media messages
+    if (file) {
+      payload.file = file
+    }
+
+    // Add conversationId if provided (for existing conversations)
+    if (conversationId) {
+      payload.conversationId = conversationId
+    }
+
+    const response = await axios.post(`/messages/private`, payload)
     return response.data
   } catch (error) {
     console.error('Error sending private message:', error)
@@ -69,13 +91,15 @@ export const sendPrivateMessage = async ({ receiverId, content }) => {
  * @param {Object} messageData - The message data
  * @param {string} messageData.conversationId - The conversation ID
  * @param {string} messageData.content - The message content
+ * @param {string} [messageData.type] - The message type (TEXT, IMAGE, VIDEO, AUDIO, FILE, GIF)
  * @returns {Promise<Object>} The created message
  */
-export const sendGroupMessage = async ({ conversationId, content }) => {
+export const sendGroupMessage = async ({ conversationId, content, type }) => {
   try {
     const response = await axios.post(`/messages/group`, {
       conversationId,
       message: content,
+      type,
     })
     return response.data
   } catch (error) {
@@ -90,21 +114,23 @@ export const sendGroupMessage = async ({ conversationId, content }) => {
  * @param {string} messageData.conversationId - The conversation ID
  * @param {string} messageData.content - The message content
  * @param {string} [messageData.receiverId] - The recipient ID (for private messages)
+ * @param {string} [messageData.type] - The message type (TEXT, IMAGE, VIDEO, AUDIO, FILE, GIF)
  * @returns {Promise<Object>} The created message
  */
 export const sendNewMessage = async ({
   conversationId,
   content,
   receiverId,
+  type,
 }) => {
   try {
     // If receiverId is provided, send a private message
     if (receiverId) {
-      return sendPrivateMessage({ receiverId, content })
+      return sendPrivateMessage({ receiverId, content, type })
     }
 
     // Otherwise, send a group message
-    return sendGroupMessage({ conversationId, content })
+    return sendGroupMessage({ conversationId, content, type })
   } catch (error) {
     console.error('Error sending message:', error)
     throw new Error(error.message || 'Failed to send message')
@@ -186,13 +212,35 @@ export const getUnreadMessageCount = async () => {
 /**
  * Create a new conversation with another user
  * @param {string} userId - The ID of the user to create a conversation with
+ * @param {Object} options - Additional options
+ * @param {string} options.content - Initial message content (optional)
  * @returns {Promise<Object>} - The API response
  */
-export const createConversation = async (userId) => {
-  const response = await axios.post('/conversations', {
-    userId,
-  })
+export const createConversation = async (userId, options = {}) => {
+  const payload = { userId }
+
+  // Add message content if provided
+  if (options && options.content) {
+    payload.initialMessage = options.content
+  }
+
+  const response = await axios.post('/conversations', payload)
   return response.data
+}
+
+/**
+ * Recall a message (mark it as recalled)
+ * @param {string} messageId - The ID of the message to recall
+ * @returns {Promise<Object>} Response data
+ */
+export const recallMessage = async (messageId) => {
+  try {
+    const response = await axios.post(`/messages/recall`, { messageId })
+    return response.data
+  } catch (error) {
+    console.error('Error recalling message:', error)
+    throw new Error(error.message || 'Failed to recall message')
+  }
 }
 
 export default {
@@ -206,4 +254,5 @@ export default {
   deleteMessage,
   getUnreadMessageCount,
   createConversation,
+  recallMessage,
 }

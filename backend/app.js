@@ -70,7 +70,7 @@ const { setupQRHandlers } = require("./socket/qrHandlers");
 const { initializeSocketIO } = require("./app/services/auth.service");
 const setupNgrok = require("./app/utils/setupNgrok");
 
-db.sequelize.sync().then(() => {
+db.sequelize.sync({ alter: true }).then(() => {
   console.log("Database synced");
 });
 
@@ -414,4 +414,6 @@ function initial() {
 // initial();
 
 // Start ngrok and setup .env files for frontend / mobile
-setupNgrok();
+if (process.env.NGROK_ENABLED === "true") {
+  setupNgrok();
+}

@@ -20,10 +20,6 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      updated_at: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
     },
     {
       timestamps: true,

@@ -4,8 +4,7 @@ import { useUserStore } from '../zustand/userStore'
 
 const BASE_URL = [
   'http://localhost:8081/api',
-  'https://main-gradually-octopus.ngrok-free.app/api/v1',
-  'https://e3327ca97bd21c.lhr.life/api/v1',
+  'https://main-gradually-octopus.ngrok-free.app/api',
 ]
 
 // Create a request cache to avoid duplicate requests
@@ -13,7 +12,8 @@ const requestCache = new Map()
 const CACHE_TIME = 5 * 60 * 1000 // 5 minutes
 
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL_NGROK + '/api' || BASE_URL[0],
+  baseURL:
+    import.meta.env.VITE_NGROK_ENABLED === true ? BASE_URL[1] : BASE_URL[0],
   headers: {
     'Content-Type': 'application/json',
   },
@@ -77,7 +77,7 @@ const addCacheInterceptor = (instance) => {
 
       // Handle refresh token
       if (
-        error.response?.data?.statusCode === -1 &&
+        error.response?.data?.statusCode === 1 &&
         error.response?.status === 401 &&
         !originalRequest._retry
       ) {

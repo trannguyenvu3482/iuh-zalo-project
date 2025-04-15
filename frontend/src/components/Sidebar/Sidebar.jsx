@@ -111,16 +111,6 @@ const Sidebar = () => {
   }, [conversationsResponse])
 
   // Filter conversations by active tab
-  const filteredConversations = useMemo(() => {
-    if (activeConversationTab === ConversationTabs.PRIORITY) {
-      return conversations.filter(
-        (conv) => conv.priority || conv.unreadCount > 0,
-      )
-    }
-    return conversations.filter(
-      (conv) => !conv.priority && conv.unreadCount === 0,
-    )
-  }, [conversations, activeConversationTab])
 
   // Search handler using useCallback to prevent unnecessary recreations
   const handleSearch = useCallback(() => {
@@ -410,7 +400,7 @@ const Sidebar = () => {
           <div className="flex h-40 items-center justify-center">
             <LoadingSpinner />
           </div>
-        ) : filteredConversations.length === 0 ? (
+        ) : conversations.length === 0 ? (
           <div className="flex h-40 flex-col items-center justify-center p-4">
             <p className="mb-2 text-gray-500">Không có cuộc trò chuyện nào</p>
             <button className="text-sm text-primary-blue hover:underline">
@@ -419,7 +409,7 @@ const Sidebar = () => {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {filteredConversations.map((conversation) => (
+            {conversations.map((conversation) => (
               <ChatRoom
                 key={conversation.id}
                 id={conversation.id}

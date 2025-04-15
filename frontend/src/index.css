@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+em-emoji-picker {
+    position: absolute;
+    bottom: 120px;
+    right: 40px;
+    z-index: 1000;
+}
+
+.GifPickerReact {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+}

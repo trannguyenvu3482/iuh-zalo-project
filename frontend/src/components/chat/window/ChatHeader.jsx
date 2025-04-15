@@ -7,17 +7,17 @@ const ChatHeader = ({ receiverInfo, onStartCall, onAvatarClick }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
-            src={receiverInfo.avatar}
-            alt={receiverInfo.fullName}
+            src={receiverInfo?.avatar}
+            alt={receiverInfo?.fullName}
             className="h-12 w-12 cursor-pointer rounded-full border border-gray-300 object-cover"
             onClick={onAvatarClick}
           />
           <div className="flex flex-col items-start gap-0.5">
             <h3 className="ml-1 text-lg font-medium">
-              {receiverInfo.fullName}
+              {receiverInfo?.fullName}
             </h3>
             <span className="rounded-full bg-gray-300 px-2 py-1 text-xs">
-              {receiverInfo.isFriend ? '' : 'Người lạ'}
+              {receiverInfo?.isFriend ? '' : 'Người lạ'}
             </span>
           </div>
         </div>

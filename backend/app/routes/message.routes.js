@@ -23,6 +23,11 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     messageController.sendGroupMessage
   );
+  app.post(
+    "/api/messages/recall",
+    [authJwt.verifyToken],
+    messageController.recallMessage
+  );
 
   // Conversation Routes
   app.get(
@@ -65,14 +70,14 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     conversationController.getRecent
   );
-  
+
   // New route for getting all user's conversations
   app.get(
     "/api/conversations",
     [authJwt.verifyToken],
     conversationController.getMyConversations
   );
-  
+
   // Debug route to check conversation details
   app.get(
     "/api/conversations/:conversationId/debug",
@@ -103,7 +108,7 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     conversationController.addGroupMembers
   );
-  
+
   // Remove member from group
   app.delete(
     "/api/groups/members/remove",

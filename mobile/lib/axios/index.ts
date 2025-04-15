@@ -7,34 +7,6 @@ import axios, {
 import axiosRetry from "axios-retry";
 
 import { useUserStore } from "../../store/userStore";
-
-// API URLs configuration for different environments
-const API_URLS = {
-  // For development on emulators
-  EMULATOR: {
-    ANDROID: "http://192.168.137.146:8081/api", // Special IP that Android emulator uses to access host machine
-    IOS: "http://192.168.137.146:8081/api", // iOS simulator can access localhost of host machine
-  },
-  // For web or Expo Go (web works with localhost, Expo Go needs network IP)
-  WEB: "http://localhost:8081/api",
-  // Production or hosted API
-  PRODUCTION: "https://main-gradually-octopus.ngrok-free.app/api/v1",
-  // Backup API URL if the main one fails, get from computer IP
-  BACKUP: "https://main-gradually-octopus.ngrok-free.app/api",
-};
-
-// Determine the best API URL to use based on the platform and environment
-const determineApiUrl = (): string => {
-  return API_URLS.BACKUP;
-};
-
-// Get the initial API URL
-const INITIAL_API_URL = determineApiUrl();
-
-// Create a request cache to avoid duplicate requests
-const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
-
-// Extend the InternalAxiosRequestConfig type to include our custom properties
 interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
   noCache?: boolean;
   cached?: boolean;
@@ -42,15 +14,19 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
-// Log the available URLs
-console.log("API URLS configuration:", {
-  selected: INITIAL_API_URL,
-  available: API_URLS,
-});
+// API URLs configuration for different environments
+// Determine the best API URL to use based on the platform and environment
+const API_URLS = [
+  "http://localhost:8081/api",
+  "https://main-gradually-octopus.ngrok-free.app/api",
+];
+
+const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Create axios instance with better logging for debugging
 const axiosInstance = axios.create({
-  baseURL: INITIAL_API_URL,
+  baseURL:
+    process.env.EXPO_NGROK_ENABLED === "true" ? API_URLS[1] : API_URLS[0],
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -59,37 +35,6 @@ const axiosInstance = axios.create({
 
 // Log which base URL is being used
 console.log("Using API baseURL:", axiosInstance.defaults.baseURL);
-
-// Function to test API connection and fallback if needed
-const testApiConnection = async (): Promise<void> => {
-  try {
-    // Try a simple GET request to check if the API is accessible
-    await axios.get(`${axiosInstance.defaults.baseURL}/health`, {
-      timeout: 5000,
-    });
-    console.log("API connection test successful");
-  } catch (error) {
-    console.warn("API connection test failed, trying fallback URL");
-
-    // Try the backup URL
-    try {
-      await axios.get(`${API_URLS.BACKUP}/health`, { timeout: 5000 });
-      console.log("Fallback API connection successful, switching to fallback");
-
-      // Switch to the backup URL
-      axiosInstance.defaults.baseURL = API_URLS.BACKUP;
-      console.log("Now using API baseURL:", axiosInstance.defaults.baseURL);
-    } catch (fallbackError) {
-      console.error(
-        "All API connections failed, using production URL as last resort",
-      );
-      axiosInstance.defaults.baseURL = API_URLS.BACKUP;
-    }
-  }
-};
-
-// Run the connection test when the app starts
-testApiConnection();
 
 // Add request caching for GET requests
 const addCacheInterceptor = (instance: AxiosInstance) => {

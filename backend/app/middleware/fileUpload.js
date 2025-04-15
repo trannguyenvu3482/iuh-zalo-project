@@ -21,12 +21,14 @@ const messageFileFilter = (req, file, cb) => {
     "image/png",
     "image/gif",
   ];
-  
+
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(
-      new ValidationError("Invalid file type. Only PDF, DOCX, RAR, ZIP, and images are allowed."),
+      new ValidationError(
+        "Invalid file type. Only PDF, DOCX, RAR, ZIP, and images are allowed."
+      ),
       false
     );
   }
@@ -41,12 +43,14 @@ const imageFileFilter = (req, file, cb) => {
     "image/gif",
     "image/webp",
   ];
-  
+
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(
-      new ValidationError("Invalid file type. Only JPEG, JPG, PNG, GIF, and WEBP images are allowed."),
+      new ValidationError(
+        "Invalid file type. Only JPEG, JPG, PNG, GIF, and WEBP images are allowed."
+      ),
       false
     );
   }
