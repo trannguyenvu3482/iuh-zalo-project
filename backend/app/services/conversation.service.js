@@ -53,6 +53,8 @@ exports.getConversationMessages = async (
       ],
     });
 
+    console.log(messages);
+
     return {
       messages: messages.reverse(), // Reverse back to ASC order for the client
       pagination: {

@@ -14,34 +14,73 @@ const sequelize = new Sequelize(config.DB, config.USER, config.PASSWORD, {
   },
 });
 
+// Function to reset the database schema in case of OID errors
+async function resetDatabaseSchema() {
+  console.log("Attempting to reset database schema due to relation errors...");
+  try {
+    // Drop and recreate the public schema
+    await sequelize.query("DROP SCHEMA public CASCADE;");
+    await sequelize.query("CREATE SCHEMA public;");
+
+    // Grant privileges
+    await sequelize.query("GRANT ALL ON SCHEMA public TO postgres;");
+    await sequelize.query("GRANT ALL ON SCHEMA public TO public;");
+
+    console.log("Database schema reset successfully");
+    return true;
+  } catch (error) {
+    console.error("Failed to reset database schema:", error);
+    return false;
+  }
+}
+
+// Function to check if a table exists in the database
+async function tableExists(tableName) {
+  try {
+    // Query the information_schema to check if the table exists
+    const [results] = await sequelize.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = '${tableName}'
+      );
+    `);
+
+    return results[0].exists;
+  } catch (error) {
+    console.error(`Error checking if table ${tableName} exists:`, error);
+    return false;
+  }
+}
+
 const db = {};
 
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-// Auth tables
-db.User = require("../models/user.model.js")(sequelize, Sequelize.DataTypes);
-db.Role = require("../models/role.model.js")(sequelize, Sequelize.DataTypes);
-
-db.Role.belongsToMany(db.User, { through: "user_roles" });
-db.User.belongsToMany(db.Role, { through: "user_roles" });
-
+// Define ROLES constant upfront
 db.ROLES = ["user", "admin", "moderator"];
 
-// Message tables
-db.Message = require("../models/message.model.js")(
-  sequelize,
-  Sequelize.DataTypes
-);
+// Define base models first
+db.User = require("../models/user.model.js")(sequelize, Sequelize.DataTypes);
+db.Role = require("../models/role.model.js")(sequelize, Sequelize.DataTypes);
 db.Conversation = require("../models/conversation.model.js")(
   sequelize,
   Sequelize.DataTypes
 );
-db.ConversationMember = require("../models/conversationMember.model.js")(
+
+// User-Role relationships
+db.Role.belongsToMany(db.User, { through: "user_roles" });
+db.User.belongsToMany(db.Role, { through: "user_roles" });
+
+// Define Message model before its dependencies
+db.Message = require("../models/message.model.js")(
   sequelize,
   Sequelize.DataTypes
 );
-db.Reaction = require("../models/reaction.model.js")(
+
+// Define remaining models
+db.ConversationMember = require("../models/conversationMember.model.js")(
   sequelize,
   Sequelize.DataTypes
 );
@@ -49,37 +88,12 @@ db.Friendship = require("../models/friendship.model.js")(
   sequelize,
   Sequelize.DataTypes
 );
+db.Reaction = require("../models/reaction.model.js")(
+  sequelize,
+  Sequelize.DataTypes
+);
 
-// Relationships
-db.Conversation.hasMany(db.Message, {
-  foreignKey: "conversationId",
-  as: "messages",
-});
-db.Message.belongsTo(db.Conversation, {
-  foreignKey: "conversationId",
-  as: "conversation",
-});
-
-db.User.hasMany(db.Message, { foreignKey: "sender", as: "sentMessages" });
-db.Message.belongsTo(db.User, { foreignKey: "sender", as: "senderUser" });
-
-db.Conversation.belongsToMany(db.User, {
-  through: db.ConversationMember,
-  foreignKey: "conversationId",
-  as: "members",
-});
-db.User.belongsToMany(db.Conversation, {
-  through: db.ConversationMember,
-  foreignKey: "userId",
-  as: "conversations",
-});
-
-db.Message.hasMany(db.Reaction, { foreignKey: "messageId", as: "reactions" });
-db.Reaction.belongsTo(db.Message, { foreignKey: "messageId", as: "message" });
-db.User.hasMany(db.Reaction, { foreignKey: "userId", as: "reactions" });
-db.Reaction.belongsTo(db.User, { foreignKey: "userId", as: "user" });
-
-// User - User relationship
+// User-User (friendship) relationships
 db.User.belongsToMany(db.User, {
   as: "friends",
   through: db.Friendship,
@@ -92,8 +106,6 @@ db.User.belongsToMany(db.User, {
   foreignKey: "friendId",
   otherKey: "userId",
 });
-
-// Add Friendship to User associations
 db.Friendship.belongsTo(db.User, { foreignKey: "userId", as: "user" });
 db.Friendship.belongsTo(db.User, { foreignKey: "friendId", as: "friend" });
 db.User.hasMany(db.Friendship, {
@@ -105,8 +117,57 @@ db.User.hasMany(db.Friendship, {
   as: "friendshipsReceived",
 });
 
-db.sequelize.sync({ force: false }).then(() => {
-  console.log("Database synced");
+// User-Conversation relationships
+db.Conversation.belongsToMany(db.User, {
+  through: db.ConversationMember,
+  foreignKey: "conversationId",
+  as: "members",
 });
+db.User.belongsToMany(db.Conversation, {
+  through: db.ConversationMember,
+  foreignKey: "userId",
+  as: "conversations",
+});
+
+// Message relationships (depends on User and Conversation)
+db.Conversation.hasMany(db.Message, {
+  foreignKey: "conversationId",
+  as: "messages",
+});
+db.Message.belongsTo(db.Conversation, {
+  foreignKey: "conversationId",
+  as: "conversation",
+});
+db.User.hasMany(db.Message, { foreignKey: "sender", as: "sentMessages" });
+db.Message.belongsTo(db.User, { foreignKey: "sender", as: "senderUser" });
+
+// Message self-reference relationships (for replies)
+db.Message.belongsTo(db.Message, { as: "replyTo", foreignKey: "replyToId" });
+db.Message.hasMany(db.Message, { as: "replies", foreignKey: "replyToId" });
+
+// Reaction relationships (depends on Message and User)
+db.Message.hasMany(db.Reaction, { foreignKey: "messageId", as: "reactions" });
+db.Reaction.belongsTo(db.Message, { foreignKey: "messageId", as: "message" });
+db.User.hasMany(db.Reaction, { foreignKey: "userId", as: "reactions" });
+db.Reaction.belongsTo(db.User, { foreignKey: "userId", as: "user" });
+
+// Initialize default roles for the application
+async function initRoles() {
+  try {
+    await db.Role.bulkCreate([
+      { id: 1, name: "user" },
+      { id: 2, name: "moderator" },
+      { id: 3, name: "admin" },
+    ]);
+    console.log("Default roles initialized successfully");
+  } catch (error) {
+    console.error("Error initializing roles:", error);
+  }
+}
+
+// Add helper functions to db object
+db.resetDatabaseSchema = resetDatabaseSchema;
+db.initRoles = initRoles;
+db.tableExists = tableExists;
 
 module.exports = db;

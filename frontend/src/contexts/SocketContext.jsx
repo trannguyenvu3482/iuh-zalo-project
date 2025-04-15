@@ -560,7 +560,84 @@ export const SocketProvider = ({ children }) => {
         }
       }
     },
+    recallMessageSocket: (messageId, conversationId) => {
+      const socket = getSocket()
+      if (socket) {
+        // Update the message in the cache directly for instant feedback
+        if (queryClient) {
+          // Update the message in the conversation messages cache
+          queryClient.setQueryData(['conversation', conversationId], (old) => {
+            if (!old || !old.pages) return old
+
+            // Iterate through pages to find and update the message
+            const updatedPages = old.pages.map((page) => {
+              const updatedMessages = page.messages.map((message) => {
+                if (message.id === messageId) {
+                  return { ...message, isRecalled: true }
+                }
+                return message
+              })
+              return { ...page, messages: updatedMessages }
+            })
+
+            return { ...old, pages: updatedPages }
+          })
+        }
+
+        // Call the API to recall the message, which will emit the event to other clients
+        import('../api/apiMessage').then(({ recallMessage }) => {
+          recallMessage(messageId).catch((error) => {
+            console.error('Error recalling message:', error)
+            enqueueSnackbar('Failed to recall message', { variant: 'error' })
+          })
+        })
+      }
+    },
   }
+
+  // Handle message recall events from other clients
+  useEffect(() => {
+    if (!isAuthenticated || !isConnected) return
+
+    const handleMessageRecall = (data) => {
+      const { messageId, updatedMessage } = data
+
+      if (queryClient) {
+        // Update all conversations that might contain this message
+        queryClient.invalidateQueries(['conversations'])
+
+        // Update the specific conversation if we're viewing it
+        const conversationId = updatedMessage.conversationId
+        if (conversationId) {
+          // Update the message in the conversation messages cache
+          queryClient.setQueryData(['conversation', conversationId], (old) => {
+            if (!old || !old.pages) return old
+
+            // Iterate through pages to find and update the message
+            const updatedPages = old.pages.map((page) => {
+              const updatedMessages = page.messages.map((message) => {
+                if (message.id === messageId) {
+                  return { ...message, isRecalled: true }
+                }
+                return message
+              })
+              return { ...page, messages: updatedMessages }
+            })
+
+            return { ...old, pages: updatedPages }
+          })
+        }
+      }
+    }
+
+    // Get direct access to socket
+    const socket = getSocket()
+    socket.on('message_recalled', handleMessageRecall)
+
+    return () => {
+      socket.off('message_recalled', handleMessageRecall)
+    }
+  }, [isAuthenticated, isConnected, queryClient])
 
   return (
     <>

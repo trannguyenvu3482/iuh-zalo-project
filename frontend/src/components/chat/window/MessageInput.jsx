@@ -1,73 +1,227 @@
 import PropTypes from 'prop-types'
 import { useRef } from 'react'
-import { FaPaperclip, FaPaperPlane, FaSmile } from 'react-icons/fa'
+import { BsImage, BsMic } from 'react-icons/bs'
+import { FaPaperclip, FaPaperPlane, FaSmile, FaThumbsUp } from 'react-icons/fa'
+import { HiGif } from 'react-icons/hi2'
 
-const MessageInput = ({ message, setMessage, sendMessage, disabled }) => {
+const MessageInput = ({
+  message,
+  setMessage,
+  onSendMessage,
+  disabled,
+  setShowEmojiPicker,
+  showEmojiPicker,
+  setShowGifPicker,
+  showGifPicker,
+}) => {
   const inputRef = useRef(null)
+  const imageInputRef = useRef(null)
+  const fileInputRef = useRef(null)
 
+  // Handle text message submission
+  const handleSendMessage = (e) => {
+    e?.preventDefault()
+    if (!message?.trim() || disabled) return
+
+    // Send as text message
+    onSendMessage({
+      type: 'TEXT',
+      content: message,
+    })
+
+    // Clear the input
+    setMessage('')
+  }
+
+  // Handle keyboard shortcuts
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage(e)
+      handleSendMessage(e)
     }
   }
 
-  return (
-    <div className="border-t border-gray-200 bg-white p-4">
-      <div className="flex items-end gap-2">
-        <button type="button" className="text-gray-500 hover:text-gray-700">
-          <FaPaperclip className="h-5 w-5" />
-        </button>
+  // Handle the thumbs up / text send button
+  const handleSendButton = (e) => {
+    if (!message?.trim()) {
+      // Send a thumbs up if no text
+      onSendMessage({
+        type: 'TEXT',
+        content: '👍',
+      })
+    } else {
+      // Send the typed message
+      handleSendMessage(e)
+    }
+  }
 
-        <div className="relative flex-grow">
-          <textarea
-            ref={inputRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Aa"
-            className="w-full resize-none rounded-2xl border border-gray-300 bg-gray-100 p-3 pr-12 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            rows={1}
-            disabled={disabled}
-            style={{
-              minHeight: '44px',
-              maxHeight: '120px',
-            }}
-          />
+  // Handle image selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file || disabled) return
+
+    // Check if file is an image
+    if (file.type.startsWith('image/')) {
+      onSendMessage({
+        type: 'IMAGE',
+        file: file,
+      })
+    } else {
+      alert('Please select a valid image file')
+    }
+
+    // Reset the input to allow selecting the same file again
+    e.target.value = ''
+  }
+
+  // Handle file selection
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file || disabled) return
+
+    const fileType = file.type.startsWith('audio/')
+      ? 'AUDIO'
+      : file.type.startsWith('video/')
+        ? 'VIDEO'
+        : 'FILE'
+
+    onSendMessage({
+      type: fileType,
+      file: file,
+    })
+
+    // Reset the input to allow selecting the same file again
+    e.target.value = ''
+  }
+
+  // Handle GIF button
+  const handleGifButton = () => {
+    if (disabled) return
+    setShowGifPicker(!showGifPicker)
+  }
+
+  return (
+    <div className="border-t border-gray-300 bg-white">
+      {/* Hidden file inputs */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleImageChange}
+      />
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Top bar with action buttons */}
+      <div className="flex items-center justify-start border-b border-gray-300 px-2 py-1">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            className="absolute bottom-2 right-3 text-gray-500 hover:text-gray-700"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-200"
+            disabled={disabled}
+            onClick={handleGifButton}
           >
-            <FaSmile className="h-5 w-5" />
+            <HiGif className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-200"
+            disabled={disabled}
+            onClick={() => imageInputRef.current?.click()}
+          >
+            <BsImage className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-200"
+            disabled={disabled}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FaPaperclip className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-200"
+            disabled={disabled}
+          >
+            <BsMic className="h-5 w-5" />
           </button>
         </div>
+      </div>
 
-        <button
-          type="button"
-          onClick={(e) => sendMessage(e)}
-          disabled={!message.trim() || disabled}
-          className={`rounded-full p-2 ${
-            !message.trim() || disabled
-              ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-              : 'bg-blue-500 text-white hover:bg-blue-600'
-          }`}
-        >
-          <FaPaperPlane className="h-5 w-5" />
-        </button>
+      {/* Bottom bar with input and send/like button */}
+      <div className="relative">
+        <div className="relative h-fit max-h-[48px] w-full">
+          <textarea
+            ref={inputRef}
+            value={message || ''}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Nhập @, tin nhắn tới Nhóm 15 - Công Nghệ Mới - Zalo"
+            className="h-full w-full py-3.5 pl-4 pr-8 text-sm outline-none"
+            rows={1}
+            disabled={disabled}
+          />
+
+          {/* Action buttons positioned on the right side of input */}
+          <div className="absolute right-3 top-1 flex items-center gap-2">
+            <button
+              type="button"
+              className="text-gray-500 hover:text-gray-700"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              disabled={disabled}
+            >
+              <FaSmile className="h-5 w-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSendButton}
+              disabled={disabled}
+              className={`rounded-full p-2 ${
+                disabled
+                  ? 'cursor-not-allowed bg-gray-200 text-gray-400'
+                  : message?.trim()
+                    ? 'text-primary-blue'
+                    : 'text-yellow-600'
+              }`}
+            >
+              {message?.trim() ? (
+                <FaPaperPlane className="h-5 w-5" />
+              ) : (
+                <FaThumbsUp className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 MessageInput.propTypes = {
-  message: PropTypes.string.isRequired,
+  message: PropTypes.string,
   setMessage: PropTypes.func.isRequired,
-  sendMessage: PropTypes.func.isRequired,
+  onSendMessage: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
+  setShowEmojiPicker: PropTypes.func,
+  showEmojiPicker: PropTypes.bool,
+  setShowGifPicker: PropTypes.func,
+  showGifPicker: PropTypes.bool,
 }
 
 MessageInput.defaultProps = {
+  message: '',
   disabled: false,
+  setShowEmojiPicker: () => {},
+  showEmojiPicker: false,
+  setShowGifPicker: () => {},
+  showGifPicker: false,
 }
 
 export default MessageInput
