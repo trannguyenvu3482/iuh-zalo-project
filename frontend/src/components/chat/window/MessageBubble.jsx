@@ -8,6 +8,8 @@ import { FiAlertCircle, FiFile } from 'react-icons/fi'
 import { HiOutlineReply } from 'react-icons/hi'
 import { HiMiniGif } from 'react-icons/hi2'
 import ChatImageViewer from '../../chat/ChatImageViewer'
+import { recallMessage } from '../../../api/apiMessage';
+ 
 
 // Helper function to check if a string is an image URL
 const isImageUrl = (url) => {
@@ -42,14 +44,19 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   const isRecalled = message.isRecalled || false
 
   // Determine message type - prioritize the explicitly set type, then detect based on content/file
-  let messageType = message.type || 'TEXT'
+
+  let messageType = message.type || 'TEXT';
   if (!message.type) {
     if (isImageUrl(fileUrl)) {
-      messageType = fileUrl.toLowerCase().endsWith('.gif') ? 'GIF' : 'IMAGE'
-    } else if (isImageUrl(content)) {
-      messageType = content.toLowerCase().endsWith('.gif') ? 'GIF' : 'IMAGE'
-    }
-  }
+      messageType = fileUrl.toLowerCase().endsWith('.gif') ? 'GIF' : 'IMAGE';
+    } 
+  } else if (fileUrl.toLowerCase().endsWith('.docx')) {
+    messageType = 'DOCX';
+} else if ( fileUrl.toLowerCase().endsWith('.xlsx')) {
+  messageType = 'XLSX';
+} else if ( fileUrl.toLowerCase().endsWith('.pptx')) {
+  messageType = 'PPTX';
+}
 
   // Get sender information
   const sender = message.sender || {}
@@ -170,10 +177,16 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   }
 
   // Handle recall message
-  const handleRecallMessage = () => {
-    console.log('Recalled message:', message.id)
-    setIsMenuOpen(false)
-  }
+  const handleRecallMessage = async () => {
+    try {
+      console.log('Recalling message with ID:', message.id);
+      await recallMessage(message.id); // Call the API
+      console.log('Recalled message:', message.id);
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error('Failed to recall message:', error);
+    }
+  };
 
   // Handle delete message
   const handleDeleteMessage = () => {
@@ -187,7 +200,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
 
   // Render message content based on type
   const renderMessageContent = () => {
-    if (isRecalled) {
+    if (message.isRecalled) {
       return (
         <div className="flex items-center gap-1 text-sm italic">
           <FiAlertCircle className="h-4 w-4" />
@@ -197,8 +210,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
     }
 
     // Pre-compute file name outside of the switch
-    const fileName = (fileUrl || content).split('/').pop() || 'File'
-
+    const fileName = ((fileUrl || content) ? (fileUrl || content).split('/').pop() : 'FILE')
     switch (messageType) {
       case 'IMAGE':
         return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
@@ -212,7 +224,37 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
             </div>
           </div>
         )
-
+        case 'DOCX':
+          case 'XLSX':
+          case 'PPTX': {
+            // Use Microsoft Office Online Viewer for docx, xlsx, pptx
+            // fileUrl must be a public URL
+            const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl || content)}`;
+            return (
+              <div className="w-full max-w-[360px] h-[400px]">
+                <iframe
+                  src={officeViewerUrl}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  title={fileName}
+                  allowFullScreen
+                  className="rounded-md bg-white"
+                ></iframe>
+                <div className="mt-2 flex items-center gap-2">
+                  <FiFile className="h-5 w-5 text-blue-500" />
+                  <a
+                    href={fileUrl || content}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-500 underline"
+                  >
+                    Xem hoặc tải xuống: {fileName}
+                  </a>
+                </div>
+              </div>
+            );
+          }
       case 'VIDEO':
         return (
           <div className="w-full max-w-[240px]">
@@ -226,7 +268,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
             </video>
           </div>
         )
-
+    
       case 'AUDIO':
         return (
           <div className="w-full max-w-[240px]">
@@ -235,7 +277,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
             </audio>
           </div>
         )
-
+        
       case 'FILE':
         return (
           <div className="flex items-center gap-2 rounded-md bg-white/50 p-2">
