@@ -16,14 +16,15 @@ const isImageUrl = (url) => {
   )
 }
 
-const ChatMessage = ({ message, isLastMessage }) => {
+const ChatMessage = ({ message }) => {
   const { user } = useUserStore()
+
+  // Handle sender as either object or string
+  const senderId = message.senderId || (message.sender && message.sender.id)
 
   // Determine if the message is from the current user
   const isCurrentUser =
-    message.senderId === user?.id ||
-    message.sender === user?.id ||
-    message.isFromCurrentUser === true
+    senderId === user?.id || message.isFromCurrentUser === true
 
   // Extract message content
   const content = message.content || message.message || ''
@@ -33,15 +34,19 @@ const ChatMessage = ({ message, isLastMessage }) => {
 
   // Prepare sender info for image viewer
   const senderInfo = {
-    id: message.senderId || message.sender,
-    fullName: message.senderName || 'User',
-    avatar: message.senderAvatar,
+    id: senderId,
+    fullName:
+      message.sender?.fullName ||
+      message.sender?.name ||
+      message.senderName ||
+      'User',
+    avatar: message.sender?.avatar || message.senderAvatar,
   }
 
   console.log('Message display:', {
     text: content,
     isCurrentUser,
-    senderId: message.senderId,
+    senderId,
     sender: message.sender,
     isFromCurrentUser: message.isFromCurrentUser,
     userId: user?.id,
@@ -49,65 +54,43 @@ const ChatMessage = ({ message, isLastMessage }) => {
 
   return (
     <div
-      className={`mb-8 flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-      ref={
-        isLastMessage
-          ? (ref) => ref?.scrollIntoView({ behavior: 'smooth' })
-          : null
-      }
+      className={`mx-2 my-1 flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
     >
-      {/* Avatar for other user's messages */}
       {!isCurrentUser && (
         <div className="mr-2 h-8 w-8 flex-shrink-0">
           <img
-            src={
-              message.senderAvatar || 'https://avatar.iran.liara.run/public/44'
-            }
-            alt={message.senderName}
-            className="h-8 w-8 rounded-full object-cover"
+            src={senderInfo.avatar || 'https://via.placeholder.com/40'}
+            alt={senderInfo.fullName}
+            className="h-full w-full rounded-full object-cover"
           />
         </div>
       )}
-
-      {/* Message bubble */}
       <div
-        className={`relative max-w-[70%] rounded-lg px-3 py-2 ${
-          isCurrentUser
-            ? 'rounded-br-none bg-primary-blue text-white'
-            : 'rounded-bl-none bg-white text-gray-800 shadow-sm'
+        className={`max-w-[75%] rounded-lg p-2 ${
+          isCurrentUser ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-900'
         }`}
       >
-        {/* Sender name for group chats */}
-        {!isCurrentUser && message.senderName && (
-          <div className="mb-1 text-xs font-medium text-gray-600">
-            {message.senderName}
-          </div>
+        {!isCurrentUser && (
+          <p className="text-xs font-semibold">{senderInfo.fullName}</p>
         )}
 
-        {/* Message content - Text or Image */}
         {isImage ? (
           <ChatImageViewer imageUrl={content} sender={senderInfo} />
         ) : (
-          <div className="text-sm">{content}</div>
+          <p className="break-words text-sm">{content}</p>
         )}
 
-        {/* Timestamp */}
-        <div
-          className={`mt-1 text-right text-xs ${
-            isCurrentUser ? 'text-gray-200' : 'text-gray-400'
+        <p
+          className={`text-right text-xs ${
+            isCurrentUser ? 'text-blue-100' : 'text-gray-500'
           }`}
         >
           {message.timestamp
-            ? format(new Date(message.timestamp), 'HH:mm')
-            : format(new Date(), 'HH:mm')}
-        </div>
-
-        {/* Message status (for current user's messages) */}
-        {isCurrentUser && (
-          <div className="absolute -bottom-4 right-0 text-xs text-gray-500">
-            {message.readBy?.length > 0 ? 'Đã xem' : 'Đã gửi'}
-          </div>
-        )}
+            ? format(new Date(message.timestamp), 'h:mm a')
+            : message.created_at
+              ? format(new Date(message.created_at), 'h:mm a')
+              : ''}
+        </p>
       </div>
     </div>
   )
@@ -119,18 +102,22 @@ ChatMessage.propTypes = {
     content: PropTypes.string,
     message: PropTypes.string,
     senderId: PropTypes.string,
-    sender: PropTypes.string,
+    sender: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.shape({
+        id: PropTypes.string,
+        fullName: PropTypes.string,
+        name: PropTypes.string,
+        avatar: PropTypes.string,
+      }),
+    ]),
     senderName: PropTypes.string,
     senderAvatar: PropTypes.string,
     timestamp: PropTypes.string,
+    created_at: PropTypes.string,
     readBy: PropTypes.arrayOf(PropTypes.string),
     isFromCurrentUser: PropTypes.bool,
   }).isRequired,
-  isLastMessage: PropTypes.bool,
-}
-
-ChatMessage.defaultProps = {
-  isLastMessage: false,
 }
 
 export default ChatMessage

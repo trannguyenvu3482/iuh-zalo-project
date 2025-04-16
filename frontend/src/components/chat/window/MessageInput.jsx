@@ -2,9 +2,65 @@ import PropTypes from 'prop-types'
 import { useEffect, useRef, useState } from 'react'
 import { BsImage, BsMic } from 'react-icons/bs'
 import { FaPaperclip, FaPaperPlane, FaSmile, FaThumbsUp } from 'react-icons/fa'
+import { FiX } from 'react-icons/fi'
 import { HiGif } from 'react-icons/hi2'
 
 const MAX_CHARS = 2000
+
+// Reply bar component to display the message being replied to
+const ReplyBar = ({ replyMessage, onCancelReply }) => {
+  // Handle different message formats
+  const content = replyMessage.content || replyMessage.message || ''
+  const senderName =
+    replyMessage.sender?.fullName || replyMessage.sender?.name || 'User'
+
+  // Determine message type for display purposes
+  const messageType = replyMessage.type || 'TEXT'
+
+  // Create a preview of the message content
+  const getPreviewText = () => {
+    if (messageType === 'TEXT') {
+      return content.length > 50 ? content.substring(0, 50) + '...' : content
+    } else if (messageType === 'IMAGE') {
+      return '[Hình ảnh]'
+    } else if (messageType === 'GIF') {
+      return '[GIF]'
+    } else if (messageType === 'VIDEO') {
+      return '[Video]'
+    } else if (messageType === 'AUDIO') {
+      return '[Âm thanh]'
+    } else if (messageType === 'FILE') {
+      return '[Tệp]'
+    }
+    return '[Tin nhắn]'
+  }
+
+  return (
+    <div className="border-t border-gray-300 bg-gray-100 px-3 py-2">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="text-xs font-medium text-blue-600">
+            Trả lời {senderName}
+          </div>
+          <div className="mt-1 line-clamp-1 text-sm text-gray-600">
+            {getPreviewText()}
+          </div>
+        </div>
+        <button
+          onClick={onCancelReply}
+          className="ml-2 rounded-full p-1 hover:bg-gray-200"
+        >
+          <FiX className="h-5 w-5 text-gray-500" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+ReplyBar.propTypes = {
+  replyMessage: PropTypes.object.isRequired,
+  onCancelReply: PropTypes.func.isRequired,
+}
 
 const MessageInput = ({
   message,
@@ -15,6 +71,9 @@ const MessageInput = ({
   showEmojiPicker,
   setShowGifPicker,
   showGifPicker,
+  onToggleGifPicker,
+  replyMessage,
+  onCancelReply,
 }) => {
   const inputRef = useRef(null)
   const imageInputRef = useRef(null)
@@ -29,16 +88,24 @@ const MessageInput = ({
   // Handle text message submission
   const handleSendMessage = (e) => {
     e?.preventDefault()
-    if (!message?.trim() || disabled || charCount > MAX_CHARS) return
+    if (!message?.trim() && !replyMessage) return
+    if (disabled || charCount > MAX_CHARS) return
 
-    // Send as text message
+    // Send as text message with reply information if applicable
     onSendMessage({
       type: 'TEXT',
       content: message,
+      replyToId: replyMessage?.id,
+      replyToMessage: replyMessage,
     })
 
     // Clear the input
     setMessage('')
+
+    // Clear reply state if any
+    if (replyMessage && onCancelReply) {
+      onCancelReply()
+    }
   }
 
   // Handle keyboard shortcuts
@@ -51,7 +118,7 @@ const MessageInput = ({
 
   // Handle the thumbs up / text send button
   const handleSendButton = (e) => {
-    if (!message?.trim()) {
+    if (!message?.trim() && !replyMessage) {
       // Send a thumbs up if no text
       onSendMessage({
         type: 'TEXT',
@@ -65,8 +132,25 @@ const MessageInput = ({
 
   // Handle message input change
   const handleMessageChange = (e) => {
+    // Prevent any default scrolling behavior
+    if (e) {
+      e.stopPropagation()
+    }
+
+    // Store scroll position
+    const messagesContainer = document.querySelector('.flex-1.overflow-y-auto')
+    const currentScrollPosition = messagesContainer?.scrollTop
+
+    // Update the message text
     const newValue = e.target.value
     setMessage(newValue)
+
+    // Restore scroll position if needed
+    if (messagesContainer && typeof currentScrollPosition === 'number') {
+      requestAnimationFrame(() => {
+        messagesContainer.scrollTop = currentScrollPosition
+      })
+    }
   }
 
   // Handle image selection
@@ -79,7 +163,14 @@ const MessageInput = ({
       onSendMessage({
         type: 'IMAGE',
         file: file,
+        replyToId: replyMessage?.id,
+        replyToMessage: replyMessage,
       })
+
+      // Clear reply state if any
+      if (replyMessage && onCancelReply) {
+        onCancelReply()
+      }
     } else {
       alert('Please select a valid image file')
     }
@@ -102,7 +193,14 @@ const MessageInput = ({
     onSendMessage({
       type: fileType,
       file: file,
+      replyToId: replyMessage?.id,
+      replyToMessage: replyMessage,
     })
+
+    // Clear reply state if any
+    if (replyMessage && onCancelReply) {
+      onCancelReply()
+    }
 
     // Reset the input to allow selecting the same file again
     e.target.value = ''
@@ -110,22 +208,25 @@ const MessageInput = ({
 
   // Handle GIF button
   const handleGifButton = () => {
-    if (disabled) return
-    setShowGifPicker(!showGifPicker)
+    if (onToggleGifPicker) {
+      onToggleGifPicker()
+    } else {
+      setShowGifPicker(!showGifPicker)
+    }
   }
 
-  // Determine if we're close to or over the character limit
-  const isNearLimit = charCount > MAX_CHARS * 0.9
+  // Derive limits and indicators for character count
+  const isNearLimit = charCount > MAX_CHARS * 0.85
   const isOverLimit = charCount > MAX_CHARS
 
   return (
-    <div className="border-t border-gray-300 bg-white">
-      {/* Hidden file inputs */}
+    <div className="relative flex flex-col bg-white">
+      {/* Hidden inputs for file selection */}
       <input
         type="file"
+        accept="image/*"
         ref={imageInputRef}
         className="hidden"
-        accept="image/*"
         onChange={handleImageChange}
       />
       <input
@@ -134,6 +235,11 @@ const MessageInput = ({
         className="hidden"
         onChange={handleFileChange}
       />
+
+      {/* Reply bar - shown when replying to a message */}
+      {replyMessage && (
+        <ReplyBar replyMessage={replyMessage} onCancelReply={onCancelReply} />
+      )}
 
       {/* Top bar with action buttons */}
       <div className="flex items-center justify-start border-b border-gray-300 px-2 py-1">
@@ -180,7 +286,11 @@ const MessageInput = ({
             value={message || ''}
             onChange={handleMessageChange}
             onKeyDown={handleKeyDown}
-            placeholder="Nhập @, tin nhắn tới Nhóm 15 - Công Nghệ Mới - Zalo"
+            placeholder={
+              replyMessage
+                ? `Trả lời ${replyMessage.sender?.fullName || 'User'}...`
+                : 'Nhập @, tin nhắn tới Nhóm 15 - Công Nghệ Mới - Zalo'
+            }
             className={`h-full w-full py-3.5 pl-4 pr-28 text-sm outline-none transition-colors ${
               isOverLimit
                 ? 'border-2 border-red-500'
@@ -224,12 +334,12 @@ const MessageInput = ({
               className={`rounded-full p-2 ${
                 disabled || isOverLimit
                   ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-                  : message?.trim()
+                  : message?.trim() || replyMessage
                     ? 'text-primary-blue'
                     : 'text-yellow-600'
               }`}
             >
-              {message?.trim() ? (
+              {message?.trim() || replyMessage ? (
                 <FaPaperPlane className="h-5 w-5" />
               ) : (
                 <FaThumbsUp className="h-5 w-5" />
@@ -251,15 +361,21 @@ MessageInput.propTypes = {
   showEmojiPicker: PropTypes.bool,
   setShowGifPicker: PropTypes.func,
   showGifPicker: PropTypes.bool,
+  onToggleGifPicker: PropTypes.func,
+  replyMessage: PropTypes.object,
+  onCancelReply: PropTypes.func,
 }
 
 MessageInput.defaultProps = {
   message: '',
   disabled: false,
-  setShowEmojiPicker: () => {},
   showEmojiPicker: false,
-  setShowGifPicker: () => {},
   showGifPicker: false,
+  setShowEmojiPicker: () => {},
+  setShowGifPicker: () => {},
+  onToggleGifPicker: null,
+  replyMessage: null,
+  onCancelReply: () => {},
 }
 
 export default MessageInput

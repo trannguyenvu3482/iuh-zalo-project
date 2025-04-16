@@ -224,19 +224,35 @@ export const SocketProvider = ({ children }) => {
     const handleNewMessage = (message) => {
       console.log('Socket received new message:', message)
 
+      // Check if sender is an object or just an ID
+      let senderObj = message.sender
+      if (
+        typeof message.sender === 'string' ||
+        message.sender instanceof String
+      ) {
+        // If sender is just an ID, create a basic sender object
+        senderObj = {
+          id: message.sender,
+          fullName: message.senderName || 'Unknown User',
+          avatar: null,
+        }
+      }
+
       // Normalize the message format
       const normalizedMessage = {
         ...message,
         // Ensure consistent field names
         content: message.content || message.message,
         message: message.message || message.content,
-        senderId: message.senderId || message.sender,
-        sender: message.sender || message.senderId,
+        // Always keep the sender ID
+        senderId: message.senderId || (senderObj && senderObj.id),
+        // Keep or construct the sender object
+        sender: senderObj,
         // Identify message source
         isFromCurrentUser:
           message.isFromCurrentUser ||
           message.senderId === user.id ||
-          message.sender === user.id,
+          (senderObj && senderObj.id === user.id),
       }
 
       // Add new message to pending messages
@@ -254,7 +270,7 @@ export const SocketProvider = ({ children }) => {
       // Don't show notifications for messages from the current user
       const isFromCurrentUser =
         message.senderId === user.id ||
-        message.sender === user.id ||
+        (senderObj && senderObj.id === user.id) ||
         message.isFromCurrentUser === true
 
       // Only show notification for messages from other users

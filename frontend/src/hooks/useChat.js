@@ -368,20 +368,38 @@ export const useChat = (conversation, conversationId) => {
     [sendTypingStatus, conversationId],
   )
 
+  // More intelligent scroll handling - only scroll for new messages, not typing
+  const shouldScrollToBottom = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return false
+
+    // Check if we're already near the bottom (within 200px)
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      200
+
+    return isNearBottom
+  }, [])
+
   // Handle sending a message
-  const handleSendMessage = (e) => {
-    console.log('handleSendMessage', e)
+  const handleSendMessage = (
+    e,
+    type = 'TEXT',
+    content = message,
+    replyToMessage = null,
+  ) => {
+    console.log('handleSendMessage', e, type, content)
 
     if (e) {
       e.preventDefault()
     }
 
-    if (!message.trim()) return
+    if (!content.trim()) return
 
     // Create a temporary local message to show immediately
     const tempMessage = {
       id: `temp-${Date.now()}`,
-      content: message,
+      content: content,
       senderId: user?.id,
       sender: {
         id: user?.id,
@@ -390,6 +408,13 @@ export const useChat = (conversation, conversationId) => {
       },
       createdAt: new Date().toISOString(),
       isLocal: true, // Flag to identify local messages
+      type: type,
+    }
+
+    // Add reply info if provided
+    if (replyToMessage) {
+      tempMessage.replyToId = replyToMessage.id
+      tempMessage.replyToMessage = replyToMessage
     }
 
     // Add the temporary message to the local state
@@ -407,27 +432,29 @@ export const useChat = (conversation, conversationId) => {
     if (isConnected) {
       // For group chats
       if (conversation?.type === 'GROUP' && sendGroupMessage) {
-        sendGroupMessage(conversationId, message)
+        sendGroupMessage(conversationId, content)
       }
       // For private chats
       else if (sendPrivateMessage) {
         // Find the other user in the conversation
         const otherUser = conversation?.members?.find((m) => m.id !== user?.id)
         if (otherUser) {
-          sendPrivateMessage(otherUser.id, message, conversationId)
+          sendPrivateMessage(otherUser.id, content, conversationId)
         }
       }
     }
 
     // Also send the message via API as a fallback
-    sendMessageMutation({ content: message })
+    sendMessageMutation({ content })
 
-    // Scroll to bottom after sending
-    setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-      }
-    }, 100)
+    // Only scroll to bottom if we were already at the bottom
+    if (shouldScrollToBottom()) {
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100)
+    }
   }
 
   // Extract message groups from all pages
@@ -457,7 +484,8 @@ export const useChat = (conversation, conversationId) => {
     // If it's a group chat, use the conversation name and avatar
     if (conversation?.type === 'GROUP') {
       return {
-        name: conversation.name || 'Group Chat',
+        id: conversation.id,
+        fullName: conversation.name || 'Group Chat',
         avatar: conversation.avatar || 'https://via.placeholder.com/40',
         isOnline: false, // Groups don't have online status
       }
@@ -466,7 +494,8 @@ export const useChat = (conversation, conversationId) => {
     else {
       const otherMember = conversation?.members?.find((m) => m.id !== user?.id)
       return {
-        name: otherMember?.fullName || 'User',
+        id: otherMember?.id,
+        fullName: otherMember?.fullName || 'User',
         avatar: otherMember?.avatar || 'https://via.placeholder.com/40',
         isOnline: otherMember?.isOnline || false,
       }
@@ -546,17 +575,26 @@ export const useChat = (conversation, conversationId) => {
     }
   }, [isLoading, conversationId])
 
-  // Scroll to bottom when new messages are added
+  // Scroll to bottom when new messages are added, but only if we're near the bottom already
   useEffect(() => {
     if (
       messagesEndRef.current &&
       allMessages.length > prevLocalMessagesLength &&
-      !isLoadingMore
+      !isLoadingMore &&
+      shouldScrollToBottom() // Only scroll if we're already near the bottom
     ) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
       setPrevLocalMessagesLength(allMessages.length)
+    } else if (allMessages.length > prevLocalMessagesLength) {
+      // Just update the counter even if we don't scroll
+      setPrevLocalMessagesLength(allMessages.length)
     }
-  }, [allMessages.length, prevLocalMessagesLength, isLoadingMore])
+  }, [
+    allMessages.length,
+    prevLocalMessagesLength,
+    isLoadingMore,
+    shouldScrollToBottom,
+  ])
 
   // Return functions for the component to use
   return {

@@ -168,15 +168,39 @@ io.on("connection", (socket) => {
     socket.join(token);
   });
 
-  socket.on("chat message", (msg) => {
-    const { conversationId, receiverId, message, senderId, senderName } = msg;
+  socket.on("chat message", async (msg) => {
+    const { conversationId, receiverId, message, senderId } = msg;
+
+    // Get the sender user details
+    const User = db.User;
+    let senderDetails = null;
+
+    try {
+      if (senderId) {
+        senderDetails = await User.findByPk(senderId, {
+          attributes: ["id", "fullName", "avatar"],
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching sender details:", err);
+    }
+
+    // Create sender object
+    const sender = senderDetails
+      ? senderDetails.toJSON()
+      : {
+          id: senderId || socket.handshake.query.userId,
+          fullName:
+            msg.senderName || socket.handshake.query.name || "Unknown User",
+          avatar: null,
+        };
 
     if (conversationId) {
       // For group conversations, emit to the conversation room
       io.to(`conversation_${conversationId}`).emit("new_message", {
         content: message,
         senderId: senderId || socket.handshake.query.userId,
-        senderName: senderName,
+        sender: sender,
         conversationId,
         timestamp: new Date().toISOString(),
       });
@@ -188,7 +212,7 @@ io.on("connection", (socket) => {
         .emit("new_message", {
           content: message,
           senderId: senderUserId,
-          senderName: senderName,
+          sender: sender,
           receiverId,
           timestamp: new Date().toISOString(),
         });

@@ -4,6 +4,9 @@ import ImageLightbox from '../ImageLightbox'
 
 const ChatImageViewer = ({ imageUrl, sender }) => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
+  const isGif =
+    imageUrl?.toLowerCase().includes('.gif') ||
+    imageUrl?.toLowerCase().includes('giphy')
 
   const openLightbox = () => {
     setIsLightboxOpen(true)
@@ -22,8 +25,12 @@ const ChatImageViewer = ({ imageUrl, sender }) => {
         <img
           src={imageUrl}
           alt={`Image from ${sender?.fullName || 'user'}`}
-          className="max-h-72 w-auto object-contain"
+          className={`${isGif ? 'h-[auto] w-[auto]' : 'max-h-72 w-auto'} object-contain`}
           loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null
+            e.target.src = 'https://via.placeholder.com/150?text=Image+Error'
+          }}
         />
       </div>
 
