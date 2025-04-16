@@ -50,13 +50,29 @@ exports.getConversationMessages = async (
           as: "replyTo",
           attributes: ["id", "message", "sender", "created_at"],
         },
+        {
+          model: User,
+          as: "senderUser",
+          attributes: ["id", "fullName", "avatar"],
+        },
       ],
     });
 
     console.log(messages);
 
+    // Map the messages to include the sender object
+    const formattedMessages = messages.map((message) => {
+      const messageJSON = message.toJSON();
+      if (messageJSON.senderUser) {
+        // Replace the sender id with the sender object
+        messageJSON.sender = messageJSON.senderUser;
+        delete messageJSON.senderUser;
+      }
+      return messageJSON;
+    });
+
     return {
-      messages: messages.reverse(), // Reverse back to ASC order for the client
+      messages: formattedMessages.reverse(), // Reverse back to ASC order for the client
       pagination: {
         total: totalCount,
         offset: parseInt(offset),
@@ -245,8 +261,8 @@ exports.getRecentConversations = async (userId) => {
           include: [
             {
               model: User,
-              as: "senderUser", // Match the association name defined in models/index.js
-              attributes: ["id", "phoneNumber", "fullName"],
+              as: "sender", // Match the association name defined in models/index.js
+              attributes: ["id", "phoneNumber", "fullName", "avatar"],
             },
           ],
         });

@@ -199,14 +199,30 @@ const ChatWindow = ({ conversation }) => {
       const currentConversationId = activeConversationIdRef.current
 
       if (message.conversationId === currentConversationId) {
+        // Check if sender is an object or just an ID
+        let senderObj = message.sender
+        if (
+          typeof message.sender === 'string' ||
+          message.sender instanceof String
+        ) {
+          // If sender is just an ID, create a basic sender object
+          senderObj = {
+            id: message.sender,
+            fullName: message.senderName || 'Unknown User',
+            avatar: null,
+          }
+        }
+
         // Normalize the message format to ensure consistency
         const normalizedMessage = {
           ...message,
           // Ensure both field formats are present
           content: message.content || message.message,
           message: message.message || message.content,
-          senderId: message.senderId || message.sender,
-          sender: message.sender || message.senderId,
+          // Always keep the sender ID separately
+          senderId: message.senderId || (senderObj && senderObj.id),
+          // Keep or construct the sender object
+          sender: senderObj,
           timestamp: message.timestamp || message.created_at,
           created_at: message.created_at || message.timestamp,
           // Identify system messages
@@ -223,7 +239,7 @@ const ChatWindow = ({ conversation }) => {
           isFromCurrentUser:
             message.isFromCurrentUser ||
             message.senderId === user?.id ||
-            message.sender === user?.id,
+            (senderObj && senderObj.id === user?.id),
         }
 
         // Simply add the message to local state for immediate display
@@ -233,7 +249,11 @@ const ChatWindow = ({ conversation }) => {
             (m) =>
               (m.id && m.id === message.id) ||
               (m.content === (message.content || message.message) &&
-                m.senderId === (message.senderId || message.sender)),
+                m.senderId ===
+                  (message.senderId ||
+                    (typeof message.sender === 'string'
+                      ? message.sender
+                      : message.sender?.id))),
           )
 
           if (isDuplicate) {
@@ -247,7 +267,8 @@ const ChatWindow = ({ conversation }) => {
         if (
           !normalizedMessage.isSystemMessage &&
           normalizedMessage.senderId !== user?.id &&
-          normalizedMessage.sender !== user?.id &&
+          senderObj &&
+          senderObj.id !== user?.id &&
           normalizedMessage.id
         ) {
           markMessageAsRead(normalizedMessage.id, currentConversationId)
@@ -343,12 +364,14 @@ const ChatWindow = ({ conversation }) => {
     combined.forEach((msg) => {
       const messageId = msg.id || msg._localId
       const content = msg.content || msg.message
-      const sender = msg.senderId || msg.sender
+      const senderId =
+        msg.senderId ||
+        (typeof msg.sender === 'string' ? msg.sender : msg.sender?.id)
 
       // Use a combination of id, content and sender as the key
       const key = messageId
         ? messageId
-        : `${sender}:${content}:${msg.timestamp || msg.created_at}`
+        : `${senderId}:${content}:${msg.timestamp || msg.created_at}`
 
       // Prefer server messages (with IDs) over local ones
       if (!uniqueMessages.has(key) || !uniqueMessages.get(key).id) {
@@ -356,7 +379,8 @@ const ChatWindow = ({ conversation }) => {
           ...msg,
           isFromCurrentUser:
             msg.isFromCurrentUser ||
-            msg.sender === user?.id ||
+            (typeof msg.sender === 'string' && msg.sender === user?.id) ||
+            (msg.sender && msg.sender.id === user?.id) ||
             msg.senderId === user?.id,
         })
       }

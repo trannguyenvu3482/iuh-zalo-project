@@ -3,13 +3,14 @@ import Picker from '@emoji-mart/react'
 import { useQueryClient } from '@tanstack/react-query'
 import GifPicker from 'gif-picker-react'
 import PropTypes from 'prop-types'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useChat from '../../../hooks/useChat'
 import { useUser } from '../../../hooks/useUser'
 import instance from '../../../service/axios'
 import ProfileDialog from '../../Sidebar/ProfileDialog'
 import ChatHeader from './ChatHeader'
+import ChatSidebar from './ChatSidebar'
 import MessageInput from './MessageInput'
 import MessagesList from './MessagesList'
 
@@ -19,11 +20,16 @@ const ChatWindow = ({ conversation }) => {
   const currentUser = useUser()
   const [isCreatingConversation, setIsCreatingConversation] = useState(false)
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [firstMessage, setFirstMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showGifPicker, setShowGifPicker] = useState(false)
   const [localMediaMessages, setLocalMediaMessages] = useState([])
+  const [replyMessage, setReplyMessage] = useState(null)
+
+  // Add a flag to prevent auto scrolling during certain actions
+  const preventScrollRef = useRef(false)
 
   // Always call useChat to avoid conditional hooks
   const chatData = useChat(conversation, conversation?.id || '')
@@ -37,21 +43,104 @@ const ChatWindow = ({ conversation }) => {
   // Handle new conversation case (no ID yet)
   const isNewConversation = conversation?.isNew === true
 
+  // Combine server messages with local media messages - wrapped in useMemo
+  const allMessagesWithMedia = useMemo(() => {
+    return chatData.allMessages
+      ? [...chatData.allMessages, ...localMediaMessages]
+          .filter(
+            (message, index, self) =>
+              index ===
+              self.findIndex(
+                (m) =>
+                  m.id === message.id ||
+                  (m.isLocal &&
+                    message.isLocal &&
+                    m.createdAt === message.createdAt),
+              ),
+          )
+          .sort(
+            (a, b) =>
+              new Date(a.createdAt || a.timestamp || a.created_at) -
+              new Date(b.createdAt || b.timestamp || b.created_at),
+          )
+      : []
+  }, [chatData.allMessages, localMediaMessages])
+
+  // Reference to track whether initial scroll has happened
+  const initialScrollRef = useRef(false)
+
+  // Effect to scroll to bottom when message list first loads or changes
+  useEffect(() => {
+    if (
+      !isNewConversation &&
+      allMessagesWithMedia.length > 0 &&
+      chatData?.messagesEndRef?.current &&
+      !preventScrollRef.current // Don't scroll if prevented
+    ) {
+      // Scroll to bottom after initial load or when new messages arrive
+      if (
+        !initialScrollRef.current ||
+        chatData.messagesContainerRef?.current?.scrollTop > 0
+      ) {
+        setTimeout(() => {
+          chatData.messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+          initialScrollRef.current = true
+        }, 150)
+      }
+    }
+  }, [
+    isNewConversation,
+    allMessagesWithMedia,
+    chatData?.messagesEndRef,
+    chatData?.messagesContainerRef,
+  ])
+
   // Open profile dialog
   const openProfileDialog = (user) => {
-    setSelectedUser(user)
-    setIsProfileDialogOpen(true)
+    console.log('openProfileDialog called with user:', user)
+
+    // Make sure to only pass the user ID to open other user's profiles
+    // Don't pass additional data that would make it look like the current user
+    if (user && user.id) {
+      const userToOpen = {
+        id: user.id,
+        fullName: user.fullName || user.name,
+        avatar: user.avatar,
+      }
+
+      console.log('Setting selectedUser to:', userToOpen)
+      setSelectedUser(userToOpen)
+      setIsProfileDialogOpen(true)
+    } else {
+      console.error('Cannot open profile dialog: Missing user or user ID')
+    }
   }
 
   // Auto scroll when GIF picker is closed
   useEffect(() => {
-    if (!showGifPicker) {
-      setTimeout(scrollToBottom, 200)
+    // Only auto-scroll when closing the GIF picker AFTER sending a GIF
+    // Don't scroll when just opening/closing the picker for browsing
+    if (
+      !showGifPicker &&
+      !preventScrollRef.current &&
+      localMediaMessages.length > 0
+    ) {
+      // Check if there was a recent GIF message to determine if we should scroll
+      const hasRecentGif = localMediaMessages.some(
+        (msg) =>
+          msg.type === 'GIF' &&
+          Date.now() - new Date(msg.createdAt).getTime() < 1000,
+      )
+
+      if (hasRecentGif) {
+        setTimeout(scrollToBottom, 200)
+      }
     }
-  }, [showGifPicker])
+  }, [showGifPicker, localMediaMessages])
 
   // Handle GIF selection from the GIF picker
   const handleGifSelect = (gif) => {
+    // We'll handle scroll in the message sending logic, not here
     if (isNewConversation) {
       handleNewConversationMessage({
         type: 'GIF',
@@ -65,20 +154,181 @@ const ChatWindow = ({ conversation }) => {
       })
     }
     setShowGifPicker(false)
-    // Scroll to bottom after selecting a GIF
-    setTimeout(scrollToBottom, 300)
+    // Remove this auto-scroll - it will happen when the message is sent
+    // setTimeout(scrollToBottom, 300);
+  }
+
+  // Modify the toggle for showing GIF picker to prevent scrolling
+  const handleToggleGifPicker = () => {
+    // Set the prevention flag before toggling
+    preventScrollRef.current = true
+
+    // Store current scroll position
+    const messagesContainer = document.querySelector('.flex-1.overflow-y-auto')
+    const currentScrollTop = messagesContainer?.scrollTop
+
+    // Toggle GIF picker
+    setShowGifPicker(!showGifPicker)
+
+    // Restore scroll position
+    requestAnimationFrame(() => {
+      if (messagesContainer && typeof currentScrollTop === 'number') {
+        messagesContainer.scrollTop = currentScrollTop
+
+        // Reset the prevention flag after a delay
+        setTimeout(() => {
+          preventScrollRef.current = false
+        }, 300)
+      } else {
+        // Reset flag if we couldn't maintain scroll position
+        setTimeout(() => {
+          preventScrollRef.current = false
+        }, 300)
+      }
+    })
+  }
+
+  // Unified message handler for existing conversations
+  const handleExistingConversationMessage = async (messageData) => {
+    if (!conversation?.id) return
+
+    try {
+      let fileObject = null
+
+      // Store the actual file object for upload
+      if (messageData.file) {
+        fileObject = messageData.file
+      }
+
+      // For text messages, use the chat hook's built-in handler
+      if (messageData.type === 'TEXT' && chatData.handleSendMessage) {
+        chatData.setMessage('')
+        chatData.handleSendMessage(
+          null,
+          messageData.type,
+          messageData.content,
+          messageData.replyToMessage,
+        )
+        // Scroll to bottom after sending a text message
+        setTimeout(scrollToBottom, 200)
+
+        // Clear the reply message
+        setReplyMessage(null)
+      } else {
+        // For media messages or as fallback, use direct API call
+        // Find the receiver ID (first member who is not the current user)
+        const otherMember = conversation?.members?.find(
+          (m) => m.id !== currentUser.id,
+        )
+
+        if (!otherMember) {
+          console.error('Cannot find receiver for sending media')
+          alert('Error: Cannot identify message recipient')
+          return
+        }
+
+        // Show toast or loading indicator
+        console.log(`Sending ${messageData.type} message...`)
+
+        // Create a temporary message to show immediately
+        const tempMessage = {
+          id: `temp-${Date.now()}`,
+          content: messageData.content || '',
+          message: messageData.content || '',
+          type: messageData.type,
+          senderId: currentUser.id,
+          sender: {
+            id: currentUser.id,
+            fullName: currentUser.fullName,
+            avatar: currentUser.avatar,
+          },
+          createdAt: new Date().toISOString(),
+          isLocal: true,
+          isFromCurrentUser: true,
+        }
+
+        // Add reply information to the temporary message if replying
+        if (messageData.replyToMessage) {
+          tempMessage.replyToId = messageData.replyToMessage.id
+          tempMessage.replyToMessage = messageData.replyToMessage
+        }
+
+        // Add appropriate file URL handling for different message types
+        if (
+          fileObject &&
+          ['IMAGE', 'VIDEO', 'AUDIO', 'FILE'].includes(messageData.type)
+        ) {
+          // For file uploads, create a temporary object URL to display immediately
+          tempMessage.file = URL.createObjectURL(fileObject)
+        } else if (messageData.type === 'GIF') {
+          // For GIFs, the content contains the URL, so we set file to that URL
+          tempMessage.file = messageData.content
+        }
+
+        console.log('tempMessage', tempMessage)
+
+        // Add to local messages for immediate display
+        setLocalMediaMessages((prev) => [...prev, tempMessage])
+
+        // Create FormData for the message with file
+        const formData = new FormData()
+        formData.append('receiverId', otherMember.id)
+        formData.append('conversationId', conversation.id)
+        formData.append('message', messageData.content || '')
+        formData.append('type', messageData.type)
+
+        // Append reply information if replying
+        if (messageData.replyToMessage?.id) {
+          formData.append('replyToId', messageData.replyToMessage.id)
+        }
+
+        // Append file if it exists
+        if (fileObject && messageData.type !== 'GIF') {
+          formData.append('file', fileObject)
+        } else if (messageData.type === 'GIF') {
+          // For GIFs, the content contains the URL
+          formData.append('message', messageData.content)
+        }
+
+        // Send the message with file using axios directly
+        const response = await instance.post('/messages/private', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        })
+
+        console.log(`${messageData.type} message sent!`, response)
+
+        // Invalidate the messages query to fetch the updated messages
+        // This will refresh the messages without a full page reload
+        setTimeout(() => {
+          queryClient.invalidateQueries({
+            queryKey: ['messages', conversation.id],
+          })
+        }, 500)
+
+        // Clear the reply message
+        setReplyMessage(null)
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      alert('Failed to send message. Please try again.')
+    }
   }
 
   // Unified message handler for new conversations
   const handleNewConversationMessage = async (messageData) => {
-    if (isCreatingConversation) return
+    if (!conversation?.user?.id) {
+      console.error('Missing user information for new conversation')
+      return
+    }
 
     setIsCreatingConversation(true)
 
     try {
       let fileObject = null
 
-      // Store the file object for upload
+      // Store the actual file object for upload
       if (messageData.file) {
         fileObject = messageData.file
       }
@@ -106,6 +356,12 @@ const ChatWindow = ({ conversation }) => {
           isFromCurrentUser: true,
         }
 
+        // Add reply information if replying
+        if (messageData.replyToMessage) {
+          tempMessage.replyToId = messageData.replyToMessage.id
+          tempMessage.replyToMessage = messageData.replyToMessage
+        }
+
         // Add appropriate file URL handling for different message types
         if (
           fileObject &&
@@ -128,6 +384,11 @@ const ChatWindow = ({ conversation }) => {
       formData.append('receiverId', conversation.user.id)
       formData.append('message', messageData.content || '')
       formData.append('type', messageData.type)
+
+      // Append reply information if replying
+      if (messageData.replyToMessage?.id) {
+        formData.append('replyToId', messageData.replyToMessage.id)
+      }
 
       // Append file if it exists
       if (fileObject && messageData.type !== 'GIF') {
@@ -159,115 +420,12 @@ const ChatWindow = ({ conversation }) => {
       if (messageData.type === 'TEXT') {
         setFirstMessage('')
       }
+
+      // Clear the reply message
+      setReplyMessage(null)
     } catch (error) {
       console.error('Error sending message:', error)
       setIsCreatingConversation(false)
-      alert('Failed to send message. Please try again.')
-    }
-  }
-
-  // Unified message handler for existing conversations
-  const handleExistingConversationMessage = async (messageData) => {
-    if (!conversation?.id) return
-
-    try {
-      let fileObject = null
-
-      // Store the actual file object for upload
-      if (messageData.file) {
-        fileObject = messageData.file
-      }
-
-      // For text messages, use the chat hook's built-in handler
-      if (messageData.type === 'TEXT' && chatData.handleSendMessage) {
-        chatData.setMessage('')
-        chatData.handleSendMessage(null, messageData.type, messageData.content)
-        // Scroll to bottom after sending a text message
-        setTimeout(scrollToBottom, 200)
-      } else {
-        // For media messages or as fallback, use direct API call
-        // Find the receiver ID (first member who is not the current user)
-        const otherMember = conversation?.members?.find(
-          (m) => m.id !== chatData.receiverInfo?.id,
-        )
-
-        if (!otherMember) {
-          console.error('Cannot find receiver for sending media')
-          alert('Error: Cannot identify message recipient')
-          return
-        }
-
-        // Show toast or loading indicator
-        console.log(`Sending ${messageData.type} message...`)
-
-        // Create a temporary message to show immediately
-        const tempMessage = {
-          id: `temp-${Date.now()}`,
-          content: messageData.content || '',
-          message: messageData.content || '',
-          type: messageData.type,
-          senderId: currentUser.id,
-          sender: {
-            id: currentUser.id,
-            fullName: currentUser.fullName,
-            avatar: currentUser.avatar,
-          },
-          createdAt: new Date().toISOString(),
-          isLocal: true,
-          isFromCurrentUser: true,
-        }
-
-        // Add appropriate file URL handling for different message types
-        if (
-          fileObject &&
-          ['IMAGE', 'VIDEO', 'AUDIO', 'FILE'].includes(messageData.type)
-        ) {
-          // For file uploads, create a temporary object URL to display immediately
-          tempMessage.file = URL.createObjectURL(fileObject)
-        } else if (messageData.type === 'GIF') {
-          // For GIFs, the content contains the URL, so we set file to that URL
-          tempMessage.file = messageData.content
-        }
-
-        console.log('tempMessage', tempMessage)
-
-        // Add to local messages for immediate display
-        setLocalMediaMessages((prev) => [...prev, tempMessage])
-
-        // Create FormData for the message with file
-        const formData = new FormData()
-        formData.append('receiverId', otherMember.id)
-        formData.append('conversationId', conversation.id)
-        formData.append('message', messageData.content || '')
-        formData.append('type', messageData.type)
-
-        // Append file if it exists
-        if (fileObject && messageData.type !== 'GIF') {
-          formData.append('file', fileObject)
-        } else if (messageData.type === 'GIF') {
-          // For GIFs, the content contains the URL
-          formData.append('message', messageData.content)
-        }
-
-        // Send the message with file using axios directly
-        const response = await instance.post('/messages/private', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        })
-
-        console.log(`${messageData.type} message sent!`, response)
-
-        // Invalidate the messages query to fetch the updated messages
-        // This will refresh the messages without a full page reload
-        setTimeout(() => {
-          queryClient.invalidateQueries({
-            queryKey: ['messages', conversation.id],
-          })
-        }, 500)
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
       alert('Failed to send message. Please try again.')
     }
   }
@@ -281,29 +439,11 @@ const ChatWindow = ({ conversation }) => {
     }
   }
 
-  // Combine server messages with local media messages
-  const allMessagesWithMedia = chatData.allMessages
-    ? [...chatData.allMessages, ...localMediaMessages]
-        .filter(
-          (message, index, self) =>
-            index ===
-            self.findIndex(
-              (m) =>
-                m.id === message.id ||
-                (m.isLocal &&
-                  message.isLocal &&
-                  m.createdAt === message.createdAt),
-            ),
-        )
-        .sort(
-          (a, b) =>
-            new Date(a.createdAt || a.timestamp || a.created_at) -
-            new Date(b.createdAt || b.timestamp || b.created_at),
-        )
-    : []
-
   // Function to scroll to bottom of messages
   const scrollToBottom = () => {
+    // Skip scrolling if prevented
+    if (preventScrollRef.current) return
+
     if (isNewConversation) {
       // For new conversations, scroll the container element
       const container = document.querySelector('.flex-1.overflow-y-auto')
@@ -318,14 +458,16 @@ const ChatWindow = ({ conversation }) => {
 
   // Auto scroll to bottom when sending messages
   useEffect(() => {
-    if (localMediaMessages.length > 0) {
+    if (localMediaMessages.length > 0 && !preventScrollRef.current) {
+      // Add condition
       setTimeout(scrollToBottom, 100)
     }
   }, [localMediaMessages, chatData?.messagesEndRef])
 
   // Auto scroll after sending the first message
   useEffect(() => {
-    if (isCreatingConversation) {
+    if (isCreatingConversation && !preventScrollRef.current) {
+      // Add condition
       setTimeout(scrollToBottom, 100)
     }
   }, [isCreatingConversation])
@@ -334,7 +476,7 @@ const ChatWindow = ({ conversation }) => {
   const fixGifPickerPosition = () => {
     if (showGifPicker) {
       return (
-        <div className="absolute bottom-0 left-0 right-0 z-10">
+        <div className="absolute bottom-16 left-0 right-0 z-20">
           <GifPicker
             tenorApiKey={import.meta.env.VITE_TENOR_API_KEY}
             onGifClick={handleGifSelect}
@@ -348,66 +490,199 @@ const ChatWindow = ({ conversation }) => {
     return null
   }
 
+  // Function to render emoji picker with fixed position
+  const renderEmojiPicker = () => {
+    if (showEmojiPicker) {
+      return (
+        <div className="absolute bottom-16 right-0 z-20">
+          <Picker
+            theme="light"
+            data={data}
+            locale="vi"
+            navPosition="bottom"
+            previewPosition="none"
+            skinTonePosition="none"
+            onEmojiSelect={(e) => {
+              // Set the emoji in the message
+              setMessage((prev) => prev + e.native)
+            }}
+          />
+        </div>
+      )
+    }
+    return null
+  }
+
+  // Function to render emoji picker with fixed position for new conversations
+  const renderNewConversationEmojiPicker = () => {
+    if (showEmojiPicker) {
+      return (
+        <div className="absolute bottom-16 right-0 z-20">
+          <Picker
+            theme="light"
+            data={data}
+            locale="vi"
+            navPosition="bottom"
+            previewPosition="none"
+            skinTonePosition="none"
+            onEmojiSelect={(e) => {
+              setFirstMessage((prev) => prev + e.native)
+            }}
+          />
+        </div>
+      )
+    }
+    return null
+  }
+
+  // Function to handle replying to a message
+  const handleReply = (message) => {
+    // Completely disable all automatic scrolling
+    preventScrollRef.current = true
+
+    // Store current scroll position
+    const currentScrollTop = chatData?.messagesContainerRef?.current?.scrollTop
+    const messagesContainer = chatData?.messagesContainerRef?.current
+
+    // Set reply message without letting the component re-render trigger a scroll
+    setReplyMessage(message)
+
+    // Use requestAnimationFrame to maintain scroll position after DOM updates
+    requestAnimationFrame(() => {
+      if (messagesContainer && typeof currentScrollTop === 'number') {
+        messagesContainer.scrollTop = currentScrollTop
+
+        // Focus input without causing scroll
+        const inputElement = document.querySelector('textarea')
+        if (inputElement) {
+          // Use setTimeout to ensure the focus happens after any layout changes
+          setTimeout(() => {
+            inputElement.focus({ preventScroll: true })
+
+            // Double-check scroll position after focus
+            if (messagesContainer.scrollTop !== currentScrollTop) {
+              messagesContainer.scrollTop = currentScrollTop
+            }
+
+            // Reset the prevent scroll flag after everything is stable
+            setTimeout(() => {
+              preventScrollRef.current = false
+            }, 500)
+          }, 50)
+        }
+      } else {
+        // Reset flag if we couldn't maintain scroll position
+        setTimeout(() => {
+          preventScrollRef.current = false
+        }, 500)
+      }
+    })
+  }
+
+  // Function to cancel replying
+  const handleCancelReply = () => {
+    setReplyMessage(null)
+  }
+
   // Special UI for new conversations
   if (isNewConversation) {
     const receiverInfo = conversation.user
 
     return (
-      <div className="flex h-full flex-col overflow-hidden bg-gray-200">
-        <ChatHeader
-          receiverInfo={receiverInfo}
-          onAvatarClick={() => openProfileDialog(receiverInfo)}
-        />
+      <div className="flex h-full overflow-hidden">
+        <div className="flex h-full flex-1 flex-col overflow-hidden bg-gray-200">
+          <ChatHeader
+            receiverInfo={receiverInfo}
+            onAvatarClick={() => openProfileDialog(receiverInfo)}
+            onMenuClick={() => {
+              // Completely disable automatic scrolling
+              preventScrollRef.current = true
 
-        <div className="relative flex-1 overflow-y-auto p-4">
-          <div className="flex h-full flex-col items-center justify-center">
-            <div
-              className="mb-4 h-20 w-20 cursor-pointer overflow-hidden rounded-full"
-              onClick={() => openProfileDialog(receiverInfo)}
-            >
-              <img
-                src={receiverInfo?.avatar || 'https://via.placeholder.com/100'}
-                alt={receiverInfo?.fullName || 'User'}
-                className="h-full w-full rounded-full border border-gray-300 object-cover object-center"
-              />
+              // Capture current scroll position
+              const messagesContainer = document.querySelector(
+                '.flex-1.overflow-y-auto',
+              )
+              const currentScrollTop = messagesContainer?.scrollTop
+
+              // Toggle sidebar
+              setIsSidebarOpen(!isSidebarOpen)
+
+              // Use requestAnimationFrame to maintain scroll position after DOM updates
+              requestAnimationFrame(() => {
+                if (messagesContainer && typeof currentScrollTop === 'number') {
+                  messagesContainer.scrollTop = currentScrollTop
+
+                  // Double-check scroll position after a short delay to account for any layout shifts
+                  setTimeout(() => {
+                    if (messagesContainer.scrollTop !== currentScrollTop) {
+                      messagesContainer.scrollTop = currentScrollTop
+                    }
+
+                    // Reset the prevent scroll flag after everything is stable
+                    setTimeout(() => {
+                      preventScrollRef.current = false
+                    }, 300)
+                  }, 50)
+                } else {
+                  // Reset flag if we couldn't maintain scroll position
+                  setTimeout(() => {
+                    preventScrollRef.current = false
+                  }, 300)
+                }
+              })
+            }}
+            isSidebarOpen={isSidebarOpen}
+          />
+
+          <div className="relative flex-1 overflow-y-auto p-4">
+            <div className="flex h-full flex-col items-center justify-center">
+              <div
+                className="mb-4 h-20 w-20 cursor-pointer overflow-hidden rounded-full"
+                onClick={() => openProfileDialog(receiverInfo)}
+              >
+                <img
+                  src={
+                    receiverInfo?.avatar || 'https://via.placeholder.com/100'
+                  }
+                  alt={receiverInfo?.fullName || 'User'}
+                  className="h-full w-full rounded-full border border-gray-300 object-cover object-center"
+                />
+              </div>
+              <h3 className="mb-1 text-xl font-semibold">
+                {receiverInfo?.fullName}
+              </h3>
+              <p className="mb-4 text-center text-gray-600">
+                Đây là cuộc hội thoại đầu tiên với {receiverInfo?.fullName}.
+                <br />
+                Gửi tin nhắn để bắt đầu cuộc trò chuyện.
+              </p>
             </div>
-            <h3 className="mb-1 text-xl font-semibold">
-              {receiverInfo?.fullName}
-            </h3>
-            <p className="mb-4 text-center text-gray-600">
-              Đây là cuộc hội thoại đầu tiên với {receiverInfo?.fullName}.
-              <br />
-              Gửi tin nhắn để bắt đầu cuộc trò chuyện.
-            </p>
           </div>
-          {showEmojiPicker && (
-            <div className="absolute bottom-0 right-0 z-10">
-              <Picker
-                theme="light"
-                data={data}
-                locale="vi"
-                navPosition="bottom"
-                previewPosition="none"
-                skinTonePosition="none"
-                onEmojiSelect={(e) => {
-                  setFirstMessage(firstMessage + e.native)
-                }}
-              />
-            </div>
-          )}
-          {fixGifPickerPosition()}
+
+          {/* Fixed position container for pickers */}
+          <div className="relative">
+            {showEmojiPicker && renderNewConversationEmojiPicker()}
+            {showGifPicker && fixGifPickerPosition()}
+          </div>
+
+          <MessageInput
+            message={firstMessage}
+            setMessage={setFirstMessage}
+            onSendMessage={handleSendMessage}
+            disabled={isCreatingConversation}
+            setShowEmojiPicker={setShowEmojiPicker}
+            showEmojiPicker={showEmojiPicker}
+            onToggleGifPicker={handleToggleGifPicker}
+            showGifPicker={showGifPicker}
+            replyMessage={replyMessage}
+            onCancelReply={handleCancelReply}
+          />
         </div>
 
-        <MessageInput
-          message={firstMessage}
-          setMessage={setFirstMessage}
-          onSendMessage={handleSendMessage}
-          disabled={isCreatingConversation}
-          setShowEmojiPicker={setShowEmojiPicker}
-          showEmojiPicker={showEmojiPicker}
-          setShowGifPicker={setShowGifPicker}
-          showGifPicker={showGifPicker}
-        />
+        {/* Chat Sidebar */}
+        {isSidebarOpen && (
+          <ChatSidebar isOpen={isSidebarOpen} receiverInfo={receiverInfo} />
+        )}
 
         {/* Profile Dialog */}
         {selectedUser && (
@@ -452,56 +727,128 @@ const ChatWindow = ({ conversation }) => {
   } = chatData
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white">
-      <ChatHeader
-        receiverInfo={receiverInfo}
-        onStartCall={handleStartCall}
-        onAvatarClick={() => openProfileDialog(receiverInfo)}
-      />
+    <div className="flex h-full overflow-hidden">
+      <div className="flex h-full flex-1 flex-col overflow-hidden bg-gray-200">
+        <ChatHeader
+          receiverInfo={receiverInfo}
+          onStartCall={handleStartCall}
+          onAvatarClick={openProfileDialog}
+          onMenuClick={() => {
+            // Completely disable automatic scrolling
+            preventScrollRef.current = true
 
-      <div className="overflow-y-auto">
-        <MessagesList
-          messages={allMessagesWithMedia}
-          typingUsers={typingUsers}
-          messagesEndRef={messagesEndRef}
-          messagesContainerRef={messagesContainerRef}
-          isLoading={isLoading}
-          isFetchingNextPage={isFetchingNextPage}
-          onUserClick={openProfileDialog}
+            // Capture current scroll position
+            const messagesContainer = document.querySelector(
+              '.flex-1.overflow-y-auto',
+            )
+            const currentScrollTop = messagesContainer?.scrollTop
+
+            // Toggle sidebar
+            setIsSidebarOpen(!isSidebarOpen)
+
+            // Use requestAnimationFrame to maintain scroll position after DOM updates
+            requestAnimationFrame(() => {
+              if (messagesContainer && typeof currentScrollTop === 'number') {
+                messagesContainer.scrollTop = currentScrollTop
+
+                // Double-check scroll position after a short delay to account for any layout shifts
+                setTimeout(() => {
+                  if (messagesContainer.scrollTop !== currentScrollTop) {
+                    messagesContainer.scrollTop = currentScrollTop
+                  }
+
+                  // Reset the prevent scroll flag after everything is stable
+                  setTimeout(() => {
+                    preventScrollRef.current = false
+                  }, 300)
+                }, 50)
+              } else {
+                // Reset flag if we couldn't maintain scroll position
+                setTimeout(() => {
+                  preventScrollRef.current = false
+                }, 300)
+              }
+            })
+          }}
+          isSidebarOpen={isSidebarOpen}
         />
 
-        {showEmojiPicker && (
-          <Picker
-            theme="light"
-            data={data}
-            locale="vi"
-            navPosition="bottom"
-            previewPosition="none"
-            skinTonePosition="none"
-            onEmojiSelect={(e) => {
-              setMessage((prev) => prev + e.native)
-            }}
+        <div className="relative flex-1 overflow-y-auto">
+          <MessagesList
+            messages={allMessagesWithMedia}
+            typingUsers={typingUsers}
+            messagesEndRef={messagesEndRef}
+            messagesContainerRef={messagesContainerRef}
+            isLoading={isLoading}
+            isFetchingNextPage={isFetchingNextPage}
+            onUserClick={openProfileDialog}
+            onReply={handleReply}
+            preventScroll={preventScrollRef.current}
           />
+        </div>
+
+        {/* Fixed position container for pickers */}
+        <div className="relative">
+          {showEmojiPicker && renderEmojiPicker()}
+          {showGifPicker && fixGifPickerPosition()}
+        </div>
+
+        <MessageInput
+          message={message || ''}
+          setMessage={(newText) => {
+            // Store scroll position before setting message
+            const messagesContainer = document.querySelector(
+              '.flex-1.overflow-y-auto',
+            )
+            const currentScrollTop = messagesContainer?.scrollTop
+
+            // Set the message
+            setMessage(newText)
+
+            // Restore scroll position
+            if (messagesContainer && typeof currentScrollTop === 'number') {
+              requestAnimationFrame(() => {
+                messagesContainer.scrollTop = currentScrollTop
+              })
+            }
+          }}
+          onSendMessage={handleSendMessage}
+          disabled={false}
+          setShowEmojiPicker={(newState) => {
+            // Store scroll position
+            const messagesContainer = document.querySelector(
+              '.flex-1.overflow-y-auto',
+            )
+            const currentScrollTop = messagesContainer?.scrollTop
+
+            // Set the emoji picker state
+            setShowEmojiPicker(newState)
+
+            // Restore scroll position
+            if (messagesContainer && typeof currentScrollTop === 'number') {
+              requestAnimationFrame(() => {
+                messagesContainer.scrollTop = currentScrollTop
+              })
+            }
+          }}
+          showEmojiPicker={showEmojiPicker}
+          onToggleGifPicker={handleToggleGifPicker}
+          showGifPicker={showGifPicker}
+          replyMessage={replyMessage}
+          onCancelReply={handleCancelReply}
+        />
+
+        {!isConnected && (
+          <div className="bg-red-100 p-2 text-center text-xs text-red-800">
+            You&apos;re currently offline. Messages will be sent when you
+            reconnect.
+          </div>
         )}
-        {fixGifPickerPosition()}
       </div>
 
-      <MessageInput
-        message={message || ''}
-        setMessage={setMessage}
-        onSendMessage={handleSendMessage}
-        disabled={false}
-        setShowEmojiPicker={setShowEmojiPicker}
-        showEmojiPicker={showEmojiPicker}
-        setShowGifPicker={setShowGifPicker}
-        showGifPicker={showGifPicker}
-      />
-
-      {!isConnected && (
-        <div className="bg-red-100 p-2 text-center text-xs text-red-800">
-          You&apos;re currently offline. Messages will be sent when you
-          reconnect.
-        </div>
+      {/* Chat Sidebar */}
+      {isSidebarOpen && (
+        <ChatSidebar isOpen={isSidebarOpen} receiverInfo={receiverInfo} />
       )}
 
       {/* Profile Dialog */}

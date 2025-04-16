@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types'
+import { useEffect, useRef } from 'react'
 import { useUserStore } from '../../../zustand/userStore'
 import MessageBubble from './MessageBubble'
 import TypingIndicator from './TypingIndicator'
@@ -11,8 +12,50 @@ const MessagesList = ({
   isLoading,
   isFetchingNextPage,
   onUserClick,
+  onReply,
+  preventScroll,
 }) => {
   const { user } = useUserStore()
+  const prevMessagesLengthRef = useRef(0)
+
+  // Scroll to bottom when new messages are loaded
+  useEffect(() => {
+    if (
+      !isLoading &&
+      messages.length > 0 &&
+      messagesEndRef.current &&
+      !preventScroll
+    ) {
+      // Only auto-scroll when:
+      // 1. New messages arrive (length increased)
+      // 2. We're already near the bottom
+      // 3. The initial load completes
+      // 4. preventScroll is NOT true
+
+      const shouldScrollToBottom =
+        messages.length > prevMessagesLengthRef.current ||
+        (messagesContainerRef.current &&
+          isNearBottom(messagesContainerRef.current)) ||
+        prevMessagesLengthRef.current === 0
+
+      if (shouldScrollToBottom) {
+        setTimeout(() => {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+      }
+
+      prevMessagesLengthRef.current = messages.length
+    }
+  }, [messages, isLoading, messagesEndRef, preventScroll])
+
+  // Check if user is already near the bottom of the scroll
+  const isNearBottom = (container) => {
+    const threshold = 200 // pixels
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      threshold
+    )
+  }
 
   if (isLoading) {
     return (
@@ -42,9 +85,14 @@ const MessagesList = ({
           key={message.id || message._localId || index}
           message={message}
           isCurrentUser={
-            message.senderId === user?.id || message.sender === user?.id
+            message.senderId === user?.id ||
+            message.sender?.id === user?.id ||
+            (typeof message.sender === 'string' &&
+              message.sender === user?.id) ||
+            message.isFromCurrentUser === true
           }
           onUserClick={onUserClick}
+          onReply={onReply}
         />
       ))}
 
@@ -64,6 +112,8 @@ MessagesList.propTypes = {
   isLoading: PropTypes.bool,
   isFetchingNextPage: PropTypes.bool,
   onUserClick: PropTypes.func,
+  onReply: PropTypes.func,
+  preventScroll: PropTypes.bool,
 }
 
 MessagesList.defaultProps = {
@@ -71,6 +121,8 @@ MessagesList.defaultProps = {
   isLoading: false,
   isFetchingNextPage: false,
   onUserClick: () => {},
+  onReply: () => {},
+  preventScroll: false,
 }
 
 export default MessagesList

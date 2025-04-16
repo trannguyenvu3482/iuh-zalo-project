@@ -1,21 +1,52 @@
 import PropTypes from 'prop-types'
 import { FaEllipsisH } from 'react-icons/fa'
 
-const ChatHeader = ({ receiverInfo, onStartCall, onAvatarClick }) => {
+const ChatHeader = ({
+  receiverInfo,
+  onStartCall,
+  onAvatarClick,
+  onMenuClick,
+  isSidebarOpen,
+}) => {
+  // For debugging only - shows what we're working with
+  console.log('receiverInfo in ChatHeader:', JSON.stringify(receiverInfo))
+
+  // Ensure we have avatar and fullName with fallbacks
+  const avatar = receiverInfo?.avatar || 'https://via.placeholder.com/40'
+  const fullName = receiverInfo?.fullName || 'Unknown User'
+
+  // Create a properly structured user object that matches the expected format in ProfileDialog
+  const handleAvatarClick = () => {
+    console.log('Avatar clicked in ChatHeader, receiverInfo:', receiverInfo)
+
+    if (onAvatarClick && receiverInfo && receiverInfo.id) {
+      // The userId needs to be passed correctly for the ProfileDialog
+      // Create a properly structured user object with the same format as MessageBubble
+      const userForDialog = {
+        id: receiverInfo.id,
+        fullName: receiverInfo.fullName || receiverInfo.name,
+        avatar: receiverInfo.avatar,
+      }
+
+      console.log('Passing to openProfileDialog:', userForDialog)
+      onAvatarClick(userForDialog)
+    } else {
+      console.warn('Cannot open profile dialog: Missing receiverInfo or id')
+    }
+  }
+
   return (
     <div className="border-b border-gray-200 bg-white px-4 py-2 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
-            src={receiverInfo?.avatar}
-            alt={receiverInfo?.fullName}
+            src={avatar}
+            alt={fullName}
             className="h-12 w-12 cursor-pointer rounded-full border border-gray-300 object-cover"
-            onClick={onAvatarClick}
+            onClick={handleAvatarClick}
           />
           <div className="flex flex-col items-start gap-0.5">
-            <h3 className="ml-1 text-lg font-medium">
-              {receiverInfo?.fullName}
-            </h3>
+            <h3 className="ml-1 text-lg font-medium">{fullName}</h3>
             <span className="rounded-full bg-gray-300 px-2 py-1 text-xs">
               {receiverInfo?.isFriend ? '' : 'Người lạ'}
             </span>
@@ -58,9 +89,13 @@ const ChatHeader = ({ receiverInfo, onStartCall, onAvatarClick }) => {
             </svg>
           </button>
 
-          {/* Menu Button */}
-          <button type="button" className="rounded-full p-2 hover:bg-gray-100">
-            <FaEllipsisH className="h-5 w-5 text-gray-600" />
+          {/* Menu Button - Toggle for Sidebar */}
+          <button
+            type="button"
+            className={`rounded-full p-2 transition-colors ${isSidebarOpen ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100'}`}
+            onClick={onMenuClick}
+          >
+            <FaEllipsisH className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -70,17 +105,23 @@ const ChatHeader = ({ receiverInfo, onStartCall, onAvatarClick }) => {
 
 ChatHeader.propTypes = {
   receiverInfo: PropTypes.shape({
-    fullName: PropTypes.string.isRequired,
+    fullName: PropTypes.string,
+    name: PropTypes.string,
     avatar: PropTypes.string.isRequired,
     isFriend: PropTypes.bool,
+    id: PropTypes.string,
   }).isRequired,
   onStartCall: PropTypes.func,
   onAvatarClick: PropTypes.func,
+  onMenuClick: PropTypes.func,
+  isSidebarOpen: PropTypes.bool,
 }
 
 ChatHeader.defaultProps = {
   onStartCall: () => {},
   onAvatarClick: () => {},
+  onMenuClick: () => {},
+  isSidebarOpen: false,
 }
 
 export default ChatHeader
