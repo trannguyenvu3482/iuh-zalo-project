@@ -14,6 +14,8 @@ const messageFileFilter = (req, file, cb) => {
   const allowedTypes = [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",// .pptx
     "application/x-rar-compressed", // .rar
     "application/zip", // .zip
     "image/jpeg",
@@ -27,7 +29,7 @@ const messageFileFilter = (req, file, cb) => {
   } else {
     cb(
       new ValidationError(
-        "Invalid file type. Only PDF, DOCX, RAR, ZIP, and images are allowed."
+        "Invalid file type. Only PDF, DOCX, XLSX, PPTX, RAR, ZIP, and images are allowed."
       ),
       false
     );

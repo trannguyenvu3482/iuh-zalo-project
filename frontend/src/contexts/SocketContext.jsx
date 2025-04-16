@@ -115,17 +115,7 @@ export const SocketProvider = ({ children }) => {
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
 
   // Clear unread messages flag when window gets focus
-  useEffect(() => {
-    const handleFocus = () => {
-      setHasUnreadMessages(false)
-    }
-
-    window.addEventListener('focus', handleFocus)
-
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [])
+  
 
   // Initialize socket when user is authenticated
   useEffect(() => {
