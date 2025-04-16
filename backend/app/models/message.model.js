@@ -9,15 +9,19 @@ module.exports = (sequelize, DataTypes) => {
       },
       message: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
       },
       sender: {
         type: DataTypes.UUID,
         allowNull: true, // Allow null for system messages
       },
-      receiver: {
+      conversationId: {
         type: DataTypes.UUID,
-        allowNull: true,
+        allowNull: false,
+        references: {
+          model: "conversations",
+          key: "id",
+        },
       },
       group: {
         type: DataTypes.INTEGER,
@@ -28,33 +32,49 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: false,
       },
+      isRecalled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      type: {
+        type: DataTypes.ENUM(
+          "TEXT",
+          "IMAGE",
+          "VIDEO",
+          "FILE",
+          "AUDIO",
+          "SYSTEM",
+          "GIF"
+        ),
+        allowNull: false,
+        defaultValue: "TEXT",
+      },
       file: {
         type: DataTypes.STRING,
         allowNull: true,
       },
       replyToId: {
-        // New field for replying to a message
+        // Self-referencing field for replying to a message
         type: DataTypes.UUID,
         allowNull: true,
-        references: {
-          model: "message", // Self-referencing
-          key: "id",
-        },
+        // Remove explicit references to prevent "relation 'message' does not exist" error
+        // We'll handle these associations in the index.js file
       },
       isSystemMessage: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
-        defaultValue: false
+        defaultValue: false,
       },
       systemEventType: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
       },
       read: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
-        defaultValue: false
-      }
+        defaultValue: false,
+      },
     },
     {
       timestamps: true,
@@ -63,8 +83,9 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
-  Message.belongsTo(Message, { as: "replyTo", foreignKey: "replyToId" });
-  Message.hasMany(Message, { as: "replies", foreignKey: "replyToId" });
+  // Remove these associations - they'll be defined in index.js instead
+  // Message.belongsTo(Message, { as: "replyTo", foreignKey: "replyToId" });
+  // Message.hasMany(Message, { as: "replies", foreignKey: "replyToId" });
 
   return Message;
 };

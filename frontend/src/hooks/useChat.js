@@ -344,34 +344,38 @@ export const useChat = (conversation, conversationId) => {
   ])
 
   // Update the input field and send typing status
-  const handleMessageChange = (value) => {
-    // Handle both direct string values and event objects
-    const newValue = typeof value === 'string' ? value : value.target?.value
+  const handleMessageChange = useCallback(
+    (newValue) => {
+      console.log('newValue', newValue)
 
-    setMessage(newValue)
+      setMessage(newValue || '')
+      console.log('useChat updating message to:', newValue)
 
-    // Send typing status
-    if (sendTypingStatus && conversationId) {
-      // Clear any existing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-
-      // Send "typing" status
-      sendTypingStatus(conversationId, true)
-
-      // Set a timeout to send "stopped typing" status after 2 seconds
-      typingTimeoutRef.current = setTimeout(() => {
-        if (sendTypingStatus && conversationId) {
-          sendTypingStatus(conversationId, false)
+      if (sendTypingStatus && conversationId) {
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current)
         }
-      }, 2000)
-    }
-  }
+
+        sendTypingStatus(conversationId, true)
+
+        typingTimeoutRef.current = setTimeout(() => {
+          if (sendTypingStatus && conversationId) {
+            sendTypingStatus(conversationId, false)
+          }
+        }, 2000)
+      }
+    },
+    [sendTypingStatus, conversationId],
+  )
 
   // Handle sending a message
   const handleSendMessage = (e) => {
-    e.preventDefault()
+    console.log('handleSendMessage', e)
+
+    if (e) {
+      e.preventDefault()
+    }
+
     if (!message.trim()) return
 
     // Create a temporary local message to show immediately
@@ -554,10 +558,10 @@ export const useChat = (conversation, conversationId) => {
     }
   }, [allMessages.length, prevLocalMessagesLength, isLoadingMore])
 
+  // Return functions for the component to use
   return {
     message,
-    setMessage,
-    handleMessageChange, // Return both for flexibility
+    setMessage: handleMessageChange,
     allMessages,
     typingUsers,
     messagesEndRef,
@@ -567,7 +571,6 @@ export const useChat = (conversation, conversationId) => {
     receiverInfo,
     isLoading,
     isFetchingNextPage,
-    hasNextPage,
     isConnected,
   }
 }
