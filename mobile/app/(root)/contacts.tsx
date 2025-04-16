@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { router } from "expo-router";
 
 export type ContactSection = {
   id: string;
@@ -19,6 +20,18 @@ export type Contact = {
 export type GroupedContacts = {
   [key: string]: Contact[];
 };
+
+interface ContactItemProps {
+  id: string;
+  avatar?: string;
+  name: string;
+  lastMessage: string;
+  time: string;
+  unseen?: boolean;
+  unseenCount?: number;
+  isGroup?: boolean;
+  onPress?: () => void;
+}
 
 const sections: ContactSection[] = [
   {
@@ -108,6 +121,7 @@ const Contacts = () => {
     <TouchableOpacity
       key={item.id}
       className="flex-row items-center px-4 py-3 bg-white"
+      onPress={() => router.push(`/chat/${item.id}`)} // Điều hướng đến màn hình chat
     >
       <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
         <Ionicons name="person" size={20} color="#9CA3AF" />

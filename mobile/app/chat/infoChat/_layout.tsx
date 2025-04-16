@@ -9,12 +9,6 @@ const Layout = () => {
           headerShown: false,
         }}
       />
-      <Stack.Screen
-        name="infoChat"
-        options={{
-          headerShown: false,
-        }}
-      />
     </Stack>
   );
 };
