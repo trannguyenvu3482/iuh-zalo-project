@@ -48,7 +48,7 @@ export default function ChatHeader({
             <TouchableOpacity className="mr-5">
               <Ionicons name="videocam-outline" size={26} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/chat/infoChat/[id]")}>
               <Ionicons name="list-outline" size={26} color="white" />
             </TouchableOpacity>
           </View>
