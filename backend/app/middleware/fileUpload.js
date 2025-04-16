@@ -12,16 +12,27 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB for all uploads
 // File filter for message attachments
 const messageFileFilter = (req, file, cb) => {
   const allowedTypes = [
-    "application/pdf",
+    "application/pdf", // .pdf
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",// .pptx
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+    "application/msword", // .doc
+    "application/vnd.ms-powerpoint", // .ppt
+    "application/vnd.ms-excel", // .xls
+    "text/plain", // .txt
+    "text/csv", // .csv
+    "application/vnd.oasis.opendocument.text", // .odt
+    "text/html", // .html, .htm
+    "image/tiff", // .tiff
+    "image/bmp", // .bmp
+    "video/mp4", // .mp4
     "application/x-rar-compressed", // .rar
     "application/zip", // .zip
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/gif",
+    "image/jpeg", // .jpeg
+    "image/jpg", // .jpg
+    "image/png", // .png
+    "image/gif", // .gif
+    "image/webp", // .webp
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
@@ -29,7 +40,7 @@ const messageFileFilter = (req, file, cb) => {
   } else {
     cb(
       new ValidationError(
-        "Invalid file type. Only PDF, DOCX, XLSX, PPTX, RAR, ZIP, and images are allowed."
+        "Invalid file type. Only PDF, DOCX, XLSX, PPTX, DOC, PPT, XLS, TXT, CSV, ODT, HTML, TIFF, BMP, MP4, RAR, ZIP, and images are allowed."
       ),
       false
     );

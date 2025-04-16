@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import PropTypes from 'prop-types'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { AiOutlineEye } from 'react-icons/ai'
 import { BiCopy, BiShareAlt, BiTrash } from 'react-icons/bi'
 import { FaEllipsisH, FaStar } from 'react-icons/fa'
@@ -9,6 +9,7 @@ import { HiOutlineReply } from 'react-icons/hi'
 import { HiMiniGif } from 'react-icons/hi2'
 import ChatImageViewer from '../../chat/ChatImageViewer'
 import { recallMessage } from '../../../api/apiMessage';
+import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
  
 
 // Helper function to check if a string is an image URL
@@ -56,6 +57,28 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   messageType = 'XLSX';
 } else if ( fileUrl.toLowerCase().endsWith('.pptx')) {
   messageType = 'PPTX';
+} else if ( fileUrl.toLowerCase().endsWith('.doc')) {
+  messageType = 'DOC';
+} else if ( fileUrl.toLowerCase().endsWith('.ppt')) {
+  messageType = 'PPT';
+} else if ( fileUrl.toLowerCase().endsWith('.xls')) {
+  messageType = 'XLS';
+} else if ( fileUrl.toLowerCase().endsWith('.txt')) {
+  messageType = 'TXT';
+} else if ( fileUrl.toLowerCase().endsWith('.csv')) {
+  messageType = 'CSV';
+} else if ( fileUrl.toLowerCase().endsWith('.odt')) {
+  messageType = 'ODT';
+} else if (fileUrl.toLowerCase().endsWith('.html') || fileUrl.toLowerCase().endsWith('.htm')) {
+  messageType = 'HTML';
+} else if (fileUrl.toLowerCase().endsWith('.tiff')) {
+  messageType = 'TIFF';
+} else if (fileUrl.toLowerCase().endsWith('.bmp')) {
+  messageType = 'BMP';
+} else if (fileUrl.toLowerCase().endsWith('.mp4')) {
+  messageType = 'MP4';
+} else if (fileUrl.toLowerCase().endsWith('.pdf')) {
+  messageType = 'PDF';
 }
 
   // Get sender information
@@ -210,11 +233,11 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
     }
 
     // Pre-compute file name outside of the switch
-    const fileName = ((fileUrl || content) ? (fileUrl || content).split('/').pop() : 'FILE')
+    
     switch (messageType) {
       case 'IMAGE':
-        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
-
+        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />;
+  
       case 'GIF':
         return (
           <div className="relative w-auto">
@@ -223,89 +246,63 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
               <HiMiniGif className="h-4 w-4" />
             </div>
           </div>
-        )
-        case 'DOCX':
-          case 'XLSX':
-          case 'PPTX': {
-            // Use Microsoft Office Online Viewer for docx, xlsx, pptx
-            // fileUrl must be a public URL
-            const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl || content)}`;
-            return (
-              <div className="w-full max-w-[360px] h-[400px]">
-                <iframe
-                  src={officeViewerUrl}
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  title={fileName}
-                  allowFullScreen
-                  className="rounded-md bg-white"
-                ></iframe>
-                <div className="mt-2 flex items-center gap-2">
-                  <FiFile className="h-5 w-5 text-blue-500" />
-                  <a
-                    href={fileUrl || content}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-500 underline"
-                  >
-                    Xem hoặc tải xuống: {fileName}
-                  </a>
-                </div>
-              </div>
-            );
-          }
-      case 'VIDEO':
+        );
+  
+  
+      case 'DOCX':
+      case 'XLSX':
+      case 'PPTX':
+      case 'DOC':
+      case 'PPT':
+      case 'XLS':
+      case 'PDF':
+      case 'TXT':
+      case 'CSV':
+      case 'ODT':
+      case 'HTML': 
+      case 'TIFF': {
+        const memoizedDocViewer = useMemo(() => {
+          return (
+            <DocViewer
+              documents={[{ uri: fileUrl || content }]}
+              pluginRenderers={DocViewerRenderers}
+              style={{ height: '100%', width: '100%', overflow: 'hidden' }}
+              config={{
+                header: {
+                  disableHeader: true,
+                },
+                loadingRenderer: {
+                  overrideComponent: () => <div>Loading document...</div>,
+                  showLoadingTimeout: false,
+                },
+              }}
+            />
+          );
+        }, [fileUrl]);
+      
         return (
-          <div className="w-full max-w-[240px]">
-            <video
-              controls
-              className="rounded-md"
-              src={fileUrl || content}
-              style={{ maxWidth: '100%' }}
-            >
-              Your browser does not support the video tag.
+          <div
+            className="flex w-full max-w-[360px] max-h-[400px] h-auto overflow-hidden"
+            style={{ height: 'auto', maxHeight: '100%' }}
+          >
+            {memoizedDocViewer}
+          </div>
+        );
+      }
+      case 'BMP':
+        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />;
+  
+      case 'MP4':
+        return (
+          <div className="w-full max-w-[360px] h-[400px]">
+            <video controls className="w-full h-full rounded-md">
+              <source src={fileUrl || content} type="video/mp4" />
             </video>
           </div>
-        )
-    
-      case 'AUDIO':
-        return (
-          <div className="w-full max-w-[240px]">
-            <audio controls className="w-full" src={fileUrl || content}>
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        )
-        
-      case 'FILE':
-        return (
-          <div className="flex items-center gap-2 rounded-md bg-white/50 p-2">
-            <FiFile className="h-6 w-6 text-blue-500" />
-            <div>
-              <p className="text-sm font-medium">{fileName}</p>
-              <a
-                href={fileUrl || content}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-500 underline"
-              >
-                Tải xuống
-              </a>
-            </div>
-          </div>
-        )
-
-      case 'SYSTEM':
-        return (
-          <div className="flex items-center justify-center gap-1 text-sm italic">
-            <FiAlertCircle className="h-4 w-4" />
-            <span>{content}</span>
-          </div>
-        )
-
+        );
+  
       default:
-        return <p className="break-words text-sm">{content}</p>
+        return <p className="break-words text-sm">{content}</p>;
     }
   }
 
