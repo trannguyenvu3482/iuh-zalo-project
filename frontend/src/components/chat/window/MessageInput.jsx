@@ -132,25 +132,9 @@ const MessageInput = ({
 
   // Handle message input change
   const handleMessageChange = (e) => {
-    // Prevent any default scrolling behavior
-    if (e) {
-      e.stopPropagation()
-    }
-
-    // Store scroll position
-    const messagesContainer = document.querySelector('.flex-1.overflow-y-auto')
-    const currentScrollPosition = messagesContainer?.scrollTop
-
-    // Update the message text
+    // Simply update the message text without scroll manipulation
     const newValue = e.target.value
     setMessage(newValue)
-
-    // Restore scroll position if needed
-    if (messagesContainer && typeof currentScrollPosition === 'number') {
-      requestAnimationFrame(() => {
-        messagesContainer.scrollTop = currentScrollPosition
-      })
-    }
   }
 
   // Handle image selection

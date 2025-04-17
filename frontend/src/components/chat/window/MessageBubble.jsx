@@ -1,16 +1,15 @@
 import { format } from 'date-fns'
 import PropTypes from 'prop-types'
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AiOutlineEye } from 'react-icons/ai'
 import { BiCopy, BiShareAlt, BiTrash } from 'react-icons/bi'
 import { FaEllipsisH, FaStar } from 'react-icons/fa'
-import { FiAlertCircle, FiFile } from 'react-icons/fi'
+import { FiAlertCircle } from 'react-icons/fi'
 import { HiOutlineReply } from 'react-icons/hi'
 import { HiMiniGif } from 'react-icons/hi2'
+import { recallMessage } from '../../../api/apiMessage'
 import ChatImageViewer from '../../chat/ChatImageViewer'
-import { recallMessage } from '../../../api/apiMessage';
-import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
- 
+import DocumentPreview from '../../chat/DocumentPreview'
 
 // Helper function to check if a string is an image URL
 const isImageUrl = (url) => {
@@ -23,6 +22,12 @@ const isImageUrl = (url) => {
     url.includes('/images/') ||
     url.includes('image/')
   )
+}
+
+// Get file name from URL
+const getFilenameFromUrl = (url) => {
+  if (!url || typeof url !== 'string') return 'File'
+  return url.split('/').pop().split('#')[0].split('?')[0]
 }
 
 const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
@@ -45,41 +50,43 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   const isRecalled = message.isRecalled || false
 
   // Determine message type - prioritize the explicitly set type, then detect based on content/file
-
-  let messageType = message.type || 'TEXT';
+  let messageType = message.type || 'TEXT'
   if (!message.type) {
     if (isImageUrl(fileUrl)) {
-      messageType = fileUrl.toLowerCase().endsWith('.gif') ? 'GIF' : 'IMAGE';
-    } 
+      messageType = fileUrl.toLowerCase().endsWith('.gif') ? 'GIF' : 'IMAGE'
+    }
   } else if (fileUrl.toLowerCase().endsWith('.docx')) {
-    messageType = 'DOCX';
-} else if ( fileUrl.toLowerCase().endsWith('.xlsx')) {
-  messageType = 'XLSX';
-} else if ( fileUrl.toLowerCase().endsWith('.pptx')) {
-  messageType = 'PPTX';
-} else if ( fileUrl.toLowerCase().endsWith('.doc')) {
-  messageType = 'DOC';
-} else if ( fileUrl.toLowerCase().endsWith('.ppt')) {
-  messageType = 'PPT';
-} else if ( fileUrl.toLowerCase().endsWith('.xls')) {
-  messageType = 'XLS';
-} else if ( fileUrl.toLowerCase().endsWith('.txt')) {
-  messageType = 'TXT';
-} else if ( fileUrl.toLowerCase().endsWith('.csv')) {
-  messageType = 'CSV';
-} else if ( fileUrl.toLowerCase().endsWith('.odt')) {
-  messageType = 'ODT';
-} else if (fileUrl.toLowerCase().endsWith('.html') || fileUrl.toLowerCase().endsWith('.htm')) {
-  messageType = 'HTML';
-} else if (fileUrl.toLowerCase().endsWith('.tiff')) {
-  messageType = 'TIFF';
-} else if (fileUrl.toLowerCase().endsWith('.bmp')) {
-  messageType = 'BMP';
-} else if (fileUrl.toLowerCase().endsWith('.mp4')) {
-  messageType = 'MP4';
-} else if (fileUrl.toLowerCase().endsWith('.pdf')) {
-  messageType = 'PDF';
-}
+    messageType = 'DOCX'
+  } else if (fileUrl.toLowerCase().endsWith('.xlsx')) {
+    messageType = 'XLSX'
+  } else if (fileUrl.toLowerCase().endsWith('.pptx')) {
+    messageType = 'PPTX'
+  } else if (fileUrl.toLowerCase().endsWith('.doc')) {
+    messageType = 'DOC'
+  } else if (fileUrl.toLowerCase().endsWith('.ppt')) {
+    messageType = 'PPT'
+  } else if (fileUrl.toLowerCase().endsWith('.xls')) {
+    messageType = 'XLS'
+  } else if (fileUrl.toLowerCase().endsWith('.txt')) {
+    messageType = 'TXT'
+  } else if (fileUrl.toLowerCase().endsWith('.csv')) {
+    messageType = 'CSV'
+  } else if (fileUrl.toLowerCase().endsWith('.odt')) {
+    messageType = 'ODT'
+  } else if (
+    fileUrl.toLowerCase().endsWith('.html') ||
+    fileUrl.toLowerCase().endsWith('.htm')
+  ) {
+    messageType = 'HTML'
+  } else if (fileUrl.toLowerCase().endsWith('.tiff')) {
+    messageType = 'TIFF'
+  } else if (fileUrl.toLowerCase().endsWith('.bmp')) {
+    messageType = 'BMP'
+  } else if (fileUrl.toLowerCase().endsWith('.mp4')) {
+    messageType = 'MP4'
+  } else if (fileUrl.toLowerCase().endsWith('.pdf')) {
+    messageType = 'PDF'
+  }
 
   // Get sender information
   const sender = message.sender || {}
@@ -202,14 +209,14 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   // Handle recall message
   const handleRecallMessage = async () => {
     try {
-      console.log('Recalling message with ID:', message.id);
-      await recallMessage(message.id); // Call the API
-      console.log('Recalled message:', message.id);
-      setIsMenuOpen(false);
+      console.log('Recalling message with ID:', message.id)
+      await recallMessage(message.id) // Call the API
+      console.log('Recalled message:', message.id)
+      setIsMenuOpen(false)
     } catch (error) {
-      console.error('Failed to recall message:', error);
+      console.error('Failed to recall message:', error)
     }
-  };
+  }
 
   // Handle delete message
   const handleDeleteMessage = () => {
@@ -232,12 +239,13 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
       )
     }
 
-    // Pre-compute file name outside of the switch
-    
+    // Get filename for document types
+    const fileName = getFilenameFromUrl(fileUrl || content)
+
     switch (messageType) {
       case 'IMAGE':
-        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />;
-  
+        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
+
       case 'GIF':
         return (
           <div className="relative w-auto">
@@ -246,63 +254,47 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
               <HiMiniGif className="h-4 w-4" />
             </div>
           </div>
-        );
-  
-  
+        )
+
+      // Document types
+      case 'PDF':
       case 'DOCX':
       case 'XLSX':
       case 'PPTX':
       case 'DOC':
       case 'PPT':
       case 'XLS':
-      case 'PDF':
       case 'TXT':
       case 'CSV':
       case 'ODT':
-      case 'HTML': 
-      case 'TIFF': {
-        const memoizedDocViewer = useMemo(() => {
-          return (
-            <DocViewer
-              documents={[{ uri: fileUrl || content }]}
-              pluginRenderers={DocViewerRenderers}
-              style={{ height: '100%', width: '100%', overflow: 'hidden' }}
-              config={{
-                header: {
-                  disableHeader: true,
-                },
-                loadingRenderer: {
-                  overrideComponent: () => <div>Loading document...</div>,
-                  showLoadingTimeout: false,
-                },
-              }}
-            />
-          );
-        }, [fileUrl]);
-      
+      case 'HTML':
+      case 'TIFF':
         return (
-          <div
-            className="flex w-full max-w-[360px] max-h-[400px] h-auto overflow-hidden"
-            style={{ height: 'auto', maxHeight: '100%' }}
-          >
-            {memoizedDocViewer}
-          </div>
-        );
-      }
+          <DocumentPreview
+            fileUrl={fileUrl || content}
+            fileType={messageType}
+            fileName={fileName}
+          />
+        )
+
       case 'BMP':
-        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />;
-  
+        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
+
       case 'MP4':
         return (
-          <div className="w-full max-w-[360px] h-[400px]">
-            <video controls className="w-full h-full rounded-md">
+          <div className="h-auto w-full max-w-[360px]">
+            <video
+              controls
+              className="w-full rounded-md"
+              style={{ maxHeight: '300px' }}
+            >
               <source src={fileUrl || content} type="video/mp4" />
             </video>
           </div>
-        );
-  
+        )
+
       default:
-        return <p className="break-words text-sm">{content}</p>;
+        return <p className="break-words text-sm">{content}</p>
     }
   }
 
@@ -331,7 +323,23 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
       previewText = '[Video]'
     } else if (replyType === 'AUDIO') {
       previewText = '[Âm thanh]'
-    } else if (replyType === 'FILE') {
+    } else if (
+      replyType === 'FILE' ||
+      [
+        'PDF',
+        'DOCX',
+        'XLSX',
+        'PPTX',
+        'DOC',
+        'PPT',
+        'XLS',
+        'TXT',
+        'CSV',
+        'ODT',
+        'HTML',
+        'TIFF',
+      ].includes(replyType)
+    ) {
       previewText = '[Tệp]'
     } else {
       previewText = '[Tin nhắn]'
