@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
-
+import { router } from "expo-router";
 import QRCodeButton from "./QRCodeButton";
 
 interface SearchHeaderProps {
@@ -44,6 +44,13 @@ const SearchHeader = ({
             <QRCodeButton className="mr-4" />
             <TouchableOpacity
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={() =>
+                router.push({
+                  pathname: "/friend/AddFriend",
+
+
+                })
+              }
             >
               <Ionicons name="add-outline" size={24} color="white" />
             </TouchableOpacity>
