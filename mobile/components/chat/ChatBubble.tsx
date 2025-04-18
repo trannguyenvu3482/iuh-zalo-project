@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { ResizeMode, Video } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { useRef, useState } from "react";
@@ -17,7 +17,6 @@ import ImageViewer from "react-native-image-zoom-viewer";
 
 // eslint-disable-next-line import/order
 import {
-  formatFileSize,
   getFileExtension,
   getFileIconName,
   isGifFile,
@@ -26,6 +25,30 @@ import {
 } from "../../utils/fileUtils";
 import ReactionPanel from "./ReactionPanel";
 import { Message, Reaction, REACTION_ICONS } from "./types";
+
+// Function to truncate filename with ellipsis in the middle, preserving extension
+const truncateFilename = (filename: string, maxLength: number = 20): string => {
+  if (!filename || filename.length <= maxLength) return filename;
+
+  // Get the extension
+  const lastDotIndex = filename.lastIndexOf(".");
+  if (lastDotIndex === -1) {
+    // No extension found
+    const halfLength = Math.floor(maxLength / 2) - 1;
+    return `${filename.substring(0, halfLength)}...${filename.substring(filename.length - halfLength)}`;
+  }
+
+  const extension = filename.substring(lastDotIndex);
+  const nameWithoutExt = filename.substring(0, lastDotIndex);
+
+  // Determine how many characters we can keep
+  const availableChars = maxLength - extension.length - 3; // 3 for the ellipsis
+  if (availableChars <= 0) return filename; // Extension itself is too long
+
+  // Take some chars from the beginning
+  const charsToKeep = Math.floor(availableChars);
+  return `${nameWithoutExt.substring(0, charsToKeep)}...${extension}`;
+};
 
 interface ChatBubbleProps {
   message: Message;
@@ -51,7 +74,9 @@ const ChatBubble = ({
     height: 0,
   });
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isFullscreenVideo, setIsFullscreenVideo] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [videoAspectRatio, setVideoAspectRatio] = useState(1); // Default to square
   const videoRef = useRef(null);
 
   // Improved pan responder with proper typing
@@ -139,18 +164,23 @@ const ChatBubble = ({
   };
 
   const handleFilePress = () => {
-    const fileUrl =
-      message.fileUrl ||
-      message.file?.url ||
-      message.file?.uri ||
-      message.content;
+    // For GIFs, we use the content/message field since that's where the URL is stored
+    const isGif = message.type === "GIF";
+    const fileUrl = isGif
+      ? message.content
+      : message.fileUrl ||
+        message.file?.url ||
+        message.file?.uri ||
+        message.content;
+
     if (!fileUrl) return;
 
     // Check if it's an image
     const isImage =
       message.fileType?.startsWith("image/") ||
       message.file?.type?.startsWith("image/") ||
-      isImageFile(fileUrl);
+      isImageFile(fileUrl) ||
+      isGif;
 
     // Check if it's a video
     const isVideo =
@@ -161,8 +191,8 @@ const ChatBubble = ({
     if (isImage) {
       setIsImageViewerOpen(true);
     } else if (isVideo) {
-      // For videos, toggle playback state
-      setIsVideoPlaying(!isVideoPlaying);
+      // We now handle video play/pause directly in the component
+      // No need to do anything here as it's handled by the TouchableOpacity
     } else {
       openFile(fileUrl).catch((error: Error) =>
         console.error("Error opening file URL:", error),
@@ -304,33 +334,71 @@ const ChatBubble = ({
 
   // Render file message
   const renderFileMessage = () => {
-    const fileUrl =
-      message.fileUrl ||
-      message.file?.url ||
-      message.file?.uri ||
-      message.content;
+    // For GIFs, we use the content/message field since that's where the URL is stored
+    const isGif = message.type === "GIF";
+    const fileUrl = isGif
+      ? message.content
+      : message.fileUrl ||
+        message.file?.url ||
+        message.file?.uri ||
+        message.content;
+
     if (!fileUrl) return null;
 
-    const fileName =
-      message.fileName ||
-      message.file?.name ||
-      message.file?.filename ||
-      fileUrl.split("/").pop() ||
-      "File";
+    // Extract file name from various sources
+    let fileName =
+      message.fileName || message.file?.name || message.file?.filename;
+
+    // If we still don't have a fileName, extract it from the URL
+    if (!fileName && fileUrl) {
+      try {
+        const urlParts = fileUrl.split("/");
+        let lastPart = urlParts[urlParts.length - 1];
+        // Remove query parameters if any
+        lastPart = lastPart.split("?")[0];
+        // Remove hash parameters if any
+        lastPart = lastPart.split("#")[0];
+        // Try to decode URI components
+        fileName = decodeURIComponent(lastPart);
+      } catch (e) {
+        console.error("Error parsing filename from URL:", e);
+        fileName = "File";
+      }
+    }
+
+    if (!fileName) {
+      fileName = "File";
+    }
+
     const fileType =
       message.fileType || message.file?.type || message.file?.mimeType || "";
     const fileSize = message.fileSize || message.file?.size;
 
-    const isImage = fileType.startsWith("image/") || isImageFile(fileUrl);
+    const isImage =
+      fileType.startsWith("image/") || isImageFile(fileUrl) || isGif;
     const isVideo =
       fileType.startsWith("video/") ||
       ["mp4", "mov", "avi", "webm"].includes(getFileExtension(fileUrl));
-    const isGif = message.type === "GIF";
 
-    if (isImage) {
+    if (isGif) {
       return (
-        <TouchableOpacity onPress={handleFilePress} className="mt-1">
-          <View className="relative">
+        <View className="mt-1">
+          <TouchableOpacity onPress={handleFilePress} className="relative">
+            <Image
+              source={{ uri: fileUrl }}
+              className="h-48 w-48 rounded-md"
+              resizeMode="cover"
+            />
+            <View className="absolute bottom-2 left-2 bg-black/50 rounded px-1.5 py-0.5">
+              <Text className="text-white text-xs font-medium">GIF</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    } else if (isImage) {
+      return (
+        <View className="mt-1">
+          <TouchableOpacity onPress={handleFilePress} className="relative">
             <Image
               source={{ uri: fileUrl }}
               className="w-48 h-48 rounded-md object-cover"
@@ -341,64 +409,197 @@ const ChatBubble = ({
                 <Text className="text-white text-xs font-medium">GIF</Text>
               </View>
             )}
-          </View>
-        </TouchableOpacity>
-      );
-    } else if (isGif) {
-      return (
-        <TouchableOpacity onPress={handleFilePress} className="mt-1">
-          <Image source={{ uri: fileUrl }} className="w-48 h-48 rounded-md" />
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
       );
     } else if (isVideo) {
+      // Calculate dimensions based on aspect ratio
+      const maxWidth = 240; // Maximum width of video preview
+      const maxHeight = 320; // Maximum height of video preview
+      const width = Math.min(
+        maxWidth,
+        videoAspectRatio > 1 ? maxWidth : maxHeight * videoAspectRatio,
+      );
+      const height = Math.min(
+        maxHeight,
+        videoAspectRatio > 1 ? maxWidth / videoAspectRatio : maxHeight,
+      );
+
       return (
         <View className="mt-1">
-          <TouchableOpacity onPress={handleFilePress} className="relative">
+          <View
+            style={{
+              width,
+              height,
+              borderRadius: 8,
+              overflow: "hidden",
+              backgroundColor: "#000",
+              position: "relative",
+            }}
+          >
             <Video
               ref={videoRef}
               source={{ uri: fileUrl }}
-              className="h-48 w-48 rounded-md bg-black"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                bottom: 0,
+                right: 0,
+                width: "100%",
+                height: "100%",
+              }}
               resizeMode={ResizeMode.CONTAIN}
-              useNativeControls={isVideoPlaying}
+              useNativeControls={isFullscreenVideo}
               isLooping={false}
-              shouldPlay={isVideoPlaying}
+              shouldPlay={isVideoPlaying || isFullscreenVideo}
+              onPlaybackStatusUpdate={(status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  setIsVideoPlaying(false);
+                }
+              }}
+              onReadyForDisplay={(data) => {
+                // Extract video dimensions and calculate aspect ratio
+                if (
+                  data &&
+                  data.naturalSize &&
+                  typeof data.naturalSize === "object"
+                ) {
+                  const { width, height } = data.naturalSize;
+                  if (width && height && width > 0 && height > 0) {
+                    const ratio = width / height;
+                    console.log(
+                      "Video dimensions:",
+                      width,
+                      "x",
+                      height,
+                      "ratio:",
+                      ratio,
+                    );
+                    setVideoAspectRatio(ratio);
+                  }
+                }
+              }}
             />
-            {!isVideoPlaying && (
-              <View className="absolute inset-0 items-center justify-center">
+
+            {!isVideoPlaying ? (
+              // Play button overlay when video is not playing
+              <TouchableOpacity
+                onPress={() => setIsVideoPlaying(true)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
                 <View className="bg-black/40 rounded-full p-3">
                   <Ionicons name="play" size={24} color="white" />
                 </View>
-              </View>
+              </TouchableOpacity>
+            ) : (
+              // When video is playing, clicking again opens fullscreen
+              <TouchableOpacity
+                onPress={() => setIsFullscreenVideo(true)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+              />
             )}
-          </TouchableOpacity>
-          {fileName && (
-            <Text className="text-xs mt-1 text-gray-500" numberOfLines={1}>
-              {fileName}
-            </Text>
-          )}
+          </View>
+
+          {/* Fullscreen Video Modal */}
+          <Modal
+            visible={isFullscreenVideo}
+            transparent
+            animationType="fade"
+            onRequestClose={() => {
+              setIsFullscreenVideo(false);
+              // Keep the inline player playing when exiting fullscreen
+              setIsVideoPlaying(true);
+            }}
+          >
+            <View className="flex-1 bg-black justify-center">
+              <Video
+                source={{ uri: fileUrl }}
+                style={{
+                  width: "100%",
+                  aspectRatio: videoAspectRatio,
+                  alignSelf: "center",
+                }}
+                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls
+                isLooping={false}
+                shouldPlay
+                onPlaybackStatusUpdate={(status) => {
+                  // If the video finishes in fullscreen, update our state
+                  if (status.isLoaded && status.didJustFinish) {
+                    setIsFullscreenVideo(false);
+                    setIsVideoPlaying(false);
+                  }
+                }}
+                onReadyForDisplay={(data) => {
+                  // Also update aspect ratio data from fullscreen player
+                  if (
+                    data &&
+                    data.naturalSize &&
+                    typeof data.naturalSize === "object"
+                  ) {
+                    const { width, height } = data.naturalSize;
+                    if (width && height && width > 0 && height > 0) {
+                      const ratio = width / height;
+                      setVideoAspectRatio(ratio);
+                    }
+                  }
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  setIsFullscreenVideo(false);
+                  // Keep the inline player playing when exiting fullscreen
+                  setIsVideoPlaying(true);
+                }}
+                className="absolute top-10 right-4 bg-black/50 rounded-full p-2"
+              >
+                <Ionicons name="close" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          </Modal>
         </View>
       );
     } else {
       // Document file
-      const iconName = getFileIconName(fileType, fileUrl);
+      const iconName = getFileIconName(fileType, fileUrl) as any;
+
+      // Get a reliable filename
+      const displayFileName = fileName || fileUrl?.split("/")?.pop() || "File";
+
       return (
         <TouchableOpacity
           onPress={handleFilePress}
-          className="flex-row items-center mt-1 p-2 bg-gray-100 rounded-md"
+          className="flex-row items-center mt-1 p-2 bg-gray-100 rounded-md gap-2"
         >
-          <Ionicons
+          <FontAwesome5
             name={iconName}
             size={24}
             color={isSender ? "#4B68D9" : "#666"}
           />
-          <View className="ml-2 flex-1">
-            <Text className="font-medium" numberOfLines={1}>
-              {fileName}
-            </Text>
-            <Text className="text-xs text-gray-500">
-              {fileSize ? formatFileSize(Number(fileSize)) : ""}
-            </Text>
-          </View>
+          <Text className="font-medium text-gray-800 flex-1" numberOfLines={1}>
+            {truncateFilename(displayFileName, 20) || "Unknown File"}
+          </Text>
+          <TouchableOpacity
+            onPress={() => openFile(fileUrl)}
+            className="p-2 ml-2 bg-blue-500 rounded-xl"
+          >
+            <Ionicons name="download-outline" size={20} color="white" />
+          </TouchableOpacity>
         </TouchableOpacity>
       );
     }
@@ -545,11 +746,23 @@ const ChatBubble = ({
       {/* Image Viewer Modal */}
       <Modal visible={isImageViewerOpen} transparent>
         <ImageViewer
-          imageUrls={[{ url: message.fileUrl || message.content || "" }]}
+          imageUrls={[
+            {
+              url:
+                message.type === "GIF"
+                  ? message.content
+                  : message.fileUrl ||
+                    message.file?.url ||
+                    message.file?.uri ||
+                    message.content ||
+                    "",
+            },
+          ]}
           enableSwipeDown
           onSwipeDown={() => setIsImageViewerOpen(false)}
           onClick={() => setIsImageViewerOpen(false)}
           backgroundColor="rgba(0,0,0,0.9)"
+          renderIndicator={() => <></>}
         />
         <TouchableOpacity
           onPress={() => setIsImageViewerOpen(false)}

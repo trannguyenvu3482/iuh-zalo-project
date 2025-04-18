@@ -25,19 +25,11 @@ exports.sendPrivateMessage = [
       if (!senderId) throw new UnauthorizedError("Authentication required");
       if (!receiverId) throw new ValidationError("Receiver ID is required");
 
-      console.log(`File present: ${!!file}`);
-
       // Check if either message or file is provided
       // Allow empty string for message when there's a file
       if ((!message && !file) || (message === "" && !file)) {
         throw new ValidationError("Either message or file is required");
       }
-
-      console.log(
-        `Sending private message: ${senderId} -> ${receiverId}: "${
-          message || "[FILE]"
-        }"`
-      );
 
       // Allow messaging between non-friends by default
       const options = {
@@ -76,10 +68,6 @@ exports.sendPrivateMessage = [
         newMessage = result.message;
         conversationId = result.conversationId;
       }
-
-      console.log(
-        `Message sent successfully to conversation: ${conversationId}`
-      );
 
       if (io) {
         // Emit to both sender and receiver rooms
@@ -168,8 +156,6 @@ exports.recallMessage = async (req, res, next) => {
 
     if (!userId) throw new UnauthorizedError("Authentication required");
     if (!messageId) throw new ValidationError("Message ID is required");
-
-    console.log(`Recalling message ${messageId} by user ${userId}`);
 
     const updatedMessage = await messageService.recallMessage(
       messageId,
