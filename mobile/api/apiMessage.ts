@@ -1,68 +1,130 @@
 import axiosInstance from "../lib/axios";
 
-const BASE_URL = "/messages";
-
 /**
- * Get messages for a specific conversation
+ * Get messages for a conversation with pagination
  */
-const getMessages = async (
+export const getMessages = async (
   conversationId: string,
-  params?: { limit?: number; before?: string },
+  options: { limit?: number; offset?: number } = {},
 ) => {
-  return await axiosInstance.get(`${BASE_URL}/${conversationId}`, { params });
+  const { limit = 20, offset = 0 } = options;
+  const response = await axiosInstance.get(
+    `/conversations/${conversationId}/messages`,
+    { params: { limit, offset } },
+  );
+  return response.data;
 };
 
 /**
- * Send a new message
+ * Send a new message to a private chat
  */
-const sendMessage = async (
-  conversationId: string,
-  content: string,
-  type: string = "text",
-) => {
-  return await axiosInstance.post(`${BASE_URL}/${conversationId}`, {
-    content,
+export const sendPrivateMessage = async ({
+  receiverId,
+  content,
+  type = "TEXT",
+  file,
+  conversationId,
+}: {
+  receiverId: string;
+  content: string;
+  type?: string;
+  file?: string;
+  conversationId?: string;
+}) => {
+  const payload: {
+    receiverId: string;
+    message: string;
+    type: string;
+    file?: string;
+    conversationId?: string;
+  } = {
+    receiverId,
+    message: content,
+    type,
+  };
+
+  if (file) {
+    payload.file = file;
+  }
+
+  if (conversationId) {
+    payload.conversationId = conversationId;
+  }
+
+  const response = await axiosInstance.post(`/messages/private`, payload);
+  return response.data;
+};
+
+/**
+ * Send a new message to a group chat
+ */
+export const sendGroupMessage = async ({
+  conversationId,
+  content,
+  type = "TEXT",
+}: {
+  conversationId: string;
+  content: string;
+  type?: string;
+}) => {
+  const response = await axiosInstance.post(`/messages/group`, {
+    conversationId,
+    message: content,
     type,
   });
+  return response.data;
+};
+
+/**
+ * Send a new message (detect if private or group automatically)
+ */
+export const sendMessage = async ({
+  conversationId,
+  content,
+  receiverId,
+  type = "TEXT",
+  file,
+}: {
+  conversationId: string;
+  content: string;
+  receiverId?: string;
+  type?: string;
+  file?: string;
+}) => {
+  if (receiverId) {
+    return sendPrivateMessage({ receiverId, content, type, file });
+  }
+  return sendGroupMessage({ conversationId, content, type });
+};
+
+/**
+ * Mark messages as read
+ */
+export const markMessagesAsRead = async (conversationId: string) => {
+  const response = await axiosInstance.put(`/messages/${conversationId}/read`);
+  return response.data;
 };
 
 /**
  * Delete a message
  */
-const deleteMessage = async (messageId: string) => {
-  return await axiosInstance.delete(`${BASE_URL}/${messageId}`);
+export const deleteMessage = async (messageId: string) => {
+  const response = await axiosInstance.delete(`/messages/${messageId}`);
+  return response.data;
 };
 
 /**
- * Edit a message
+ * Get unread message count
  */
-const editMessage = async (messageId: string, content: string) => {
-  return await axiosInstance.put(`${BASE_URL}/${messageId}`, { content });
+export const getUnreadMessageCount = async () => {
+  const response = await axiosInstance.get("/messages/unread/count");
+  return response.data;
 };
 
 /**
- * React to a message
+ * Recall a message
  */
-const reactToMessage = async (messageId: string, reaction: string) => {
-  return await axiosInstance.post(`${BASE_URL}/${messageId}/reactions`, {
-    reaction,
-  });
-};
-
-/**
- * Remove a reaction from a message
- */
-const removeReaction = async (messageId: string, reactionId: string) => {
-  return await axiosInstance.delete(
-    `${BASE_URL}/${messageId}/reactions/${reactionId}`,
-  );
-};
-
-export {
-  deleteMessage,
-  editMessage,
-  getMessages,
-  reactToMessage,
-  removeReaction,
-  sendMessage,
+export const recallMessage = async (messageId: string) => {
+  const response = await axiosInstance.post(`/messages/recall`, { messageId });
+  return response.data;
 };
