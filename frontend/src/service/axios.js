@@ -77,8 +77,8 @@ const addCacheInterceptor = (instance) => {
 
       // Handle refresh token
       if (
-        error.response?.data?.statusCode === 1 &&
-        error.response?.status === 401 &&
+        error.response?.data?.statusCode === 0 &&
+        error.response?.data?.message === 'Invalid or expired token' &&
         !originalRequest._retry
       ) {
         originalRequest._retry = true

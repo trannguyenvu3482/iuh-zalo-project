@@ -22,6 +22,7 @@ interface ChatInputProps {
   onMessageChange: (text: string) => void;
   onSend: () => void;
   onSendVoice?: (uri: string, duration: number) => void;
+  onSendFile?: () => void;
   replyingTo: Message | null;
   onCancelReply: () => void;
 }
@@ -53,6 +54,7 @@ export default function ChatInput({
   onMessageChange,
   onSend,
   onSendVoice,
+  onSendFile,
   replyingTo,
   onCancelReply,
 }: ChatInputProps) {
@@ -196,12 +198,8 @@ export default function ChatInput({
           </TouchableOpacity>
         ) : (
           <View className="flex-row items-center gap-5">
-            <TouchableOpacity>
-              <Ionicons
-                name="ellipsis-horizontal-outline"
-                size={24}
-                color="#666"
-              />
+            <TouchableOpacity onPress={onSendFile}>
+              <Ionicons name="document-attach-outline" size={24} color="#666" />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleStartRecording}>
               <Ionicons name="mic-outline" size={24} color="#666" />
