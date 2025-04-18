@@ -6,7 +6,10 @@ import { router } from "expo-router";
 const FriendRequests = () => {
   // State để quản lý tab hiện tại
   const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
-
+  const [receivedRequest, setReceivedRequest] = useState([]);
+const [sentRequest, setSentRequest] = useState([]);
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState<string | null>(null);
   // Dữ liệu mẫu cho lời mời kết bạn
   const receivedRequests = [
     {
@@ -50,6 +53,7 @@ const FriendRequests = () => {
     },
   ];
 
+  
   return (
     <View className="flex-1 bg-gray-100">
       {/* Header */}
