@@ -202,7 +202,21 @@ const Contacts = () => {
       )}
     </TouchableOpacity>
   );
-
+  const handleSectionPress = (sectionId: string) => {
+    switch (sectionId) {
+      case "friend-requests":
+        router.push("/friend/lists/friend-requests"); // Đường dẫn đến màn hình lời mời kết bạn
+        break;
+      case "phone-contacts":
+        router.push("/friend/lists/phone-contacts"); // Đường dẫn đến màn hình danh bạ máy
+        break;
+      case "birthdays":
+        router.push("/friend/lists/birthdays"); // Đường dẫn đến màn hình sinh nhật
+        break;
+      default:
+        console.warn("Không tìm thấy màn hình phù hợp");
+    }
+  };
   return (
     <View className="flex-1 bg-gray-50">
       <View className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200">
@@ -235,30 +249,31 @@ const Contacts = () => {
             {activeTab === "friends" && (
               <View className="mb-2">
                 {sections.map((section) => (
-                  <TouchableOpacity
-                    key={section.id}
-                    className="flex-row items-center px-4 py-3 bg-white"
-                  >
-                    <View className="w-8 h-8 rounded-xl bg-primary items-center justify-center">
-                      <Ionicons name={section.icon} size={16} color="white" />
-                    </View>
-                    <View className="flex-1 ml-3">
-                      <View className="flex-row items-center">
-                        <Text className="text-base font-medium text-gray-900">
-                          {section.title}
-                        </Text>
-                        {section.count && (
-                          <View className="ml-1 px-1.5">
-                            <Text className="text-gray-500">({section.count})</Text>
-                          </View>
-                        )}
-                      </View>
-                      {section.subtitle && (
-                        <Text className="text-sm text-gray-500">{section.subtitle}</Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+  <TouchableOpacity
+    key={section.id}
+    className="flex-row items-center px-4 py-3 bg-white"
+    onPress={() => handleSectionPress(section.id)}
+  >
+    <View className="w-8 h-8 rounded-xl bg-primary items-center justify-center">
+      <Ionicons name={section.icon} size={16} color="white" />
+    </View>
+    <View className="flex-1 ml-3">
+      <View className="flex-row items-center">
+        <Text className="text-base font-medium text-gray-900">
+          {section.title}
+        </Text>
+        {section.count && (
+          <View className="ml-1 px-1.5">
+            <Text className="text-gray-500">({section.count})</Text>
+          </View>
+        )}
+      </View>
+      {section.subtitle && (
+        <Text className="text-sm text-gray-500">{section.subtitle}</Text>
+      )}
+    </View>
+  </TouchableOpacity>
+))}
               </View>
             )}
 
