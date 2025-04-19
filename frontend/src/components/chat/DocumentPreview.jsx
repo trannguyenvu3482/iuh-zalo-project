@@ -158,9 +158,7 @@ const DocumentPreview = ({ fileUrl, fileType, fileSize, fileName }) => {
     setDisplaySize(fileSize ? formatFileSize(fileSize) : '')
 
     // Clean up modal on unmount
-    return () => {
-      if (isModalOpen) setIsModalOpen(false)
-    }
+  
   }, [fileUrl, fileSize, fileName, isModalOpen])
 
   // Inject custom CSS when modal is opened
@@ -185,72 +183,61 @@ const DocumentPreview = ({ fileUrl, fileType, fileSize, fileName }) => {
   // After the document viewer is rendered, apply some fixes for Office iframes
   useEffect(() => {
     if (isModalOpen && isOfficeDocument() && viewerContainerRef.current) {
-      // Set loading state
-      setIsLoading(true)
+      // Prevent re-triggering if iframe already exists
+      const existingIframe = document.querySelector(
+        '.office-frame-container iframe, .plugin-office-container iframe, iframe[src*="officeapps.live.com"]',
+      );
+      if (existingIframe) {
+        setIsLoading(false);
+        return;
+      }
 
-      let timeoutId
+      // Set loading state
+      setIsLoading(true);
+
+      let timeoutId;
 
       // Wait for iframe to be created
       const checkForIframe = setInterval(() => {
-        // Target Microsoft Office Online iframes more specifically
         const iframe = document.querySelector(
           '.office-frame-container iframe, .plugin-office-container iframe, iframe[src*="officeapps.live.com"]',
-        )
+        );
         if (iframe) {
-          clearInterval(checkForIframe)
+          clearInterval(checkForIframe);
 
           // Apply height directly to the iframe
-          iframe.style.height = '100%'
-          iframe.style.minHeight = '70vh'
-          iframe.style.position = 'absolute'
-          iframe.style.top = '0'
-          iframe.style.left = '0'
-          iframe.style.width = '100%'
-
-          // Also fix the container
-          const container = iframe.parentElement
-          if (container) {
-            container.style.height = '100%'
-            container.style.position = 'relative'
-            container.style.flex = '1'
-
-            // Walk up the DOM tree and set all parent divs to full height
-            let parent = container.parentElement
-            while (parent && parent !== viewerContainerRef.current) {
-              parent.style.height = '100%'
-              parent.style.flex = '1'
-              parent.style.display = 'flex'
-              parent.style.flexDirection = 'column'
-              parent = parent.parentElement
-            }
-          }
+          iframe.style.height = '100%';
+          iframe.style.minHeight = '70vh';
+          iframe.style.position = 'absolute';
+          iframe.style.top = '0';
+          iframe.style.left = '0';
+          iframe.style.width = '100%';
 
           // Add load event listener to iframe
           iframe.addEventListener('load', () => {
-            setIsLoading(false)
-          })
+            setIsLoading(false);
+          });
 
           // Set a fallback timeout in case the load event doesn't fire
           timeoutId = setTimeout(() => {
-            setIsLoading(false)
-          }, 5000)
+            setIsLoading(false);
+          }, 5000);
         }
-      }, 300)
+      }, 300);
 
       // Maximum waiting time for iframe to appear
       const maxWaitTimeout = setTimeout(() => {
-        clearInterval(checkForIframe)
-        // If we haven't found an iframe by this time, just stop loading
-        setIsLoading(false)
-      }, 10000)
+        clearInterval(checkForIframe);
+        setIsLoading(false);
+      }, 10000);
 
       return () => {
-        clearInterval(checkForIframe)
-        clearTimeout(timeoutId)
-        clearTimeout(maxWaitTimeout)
-      }
+        clearInterval(checkForIframe);
+        clearTimeout(timeoutId);
+        clearTimeout(maxWaitTimeout);
+      };
     }
-  }, [isModalOpen, isOfficeDocument])
+  }, [isModalOpen, isOfficeDocument]);
 
   // Make sure we always reset loading state when modal is closed
   useEffect(() => {
@@ -362,8 +349,11 @@ const DocumentPreview = ({ fileUrl, fileType, fileSize, fileName }) => {
             <div
               ref={viewerContainerRef}
               className={`flex-1 overflow-hidden ${isOfficeDocument() ? 'office-viewer' : ''}`}
-              style={{ height: 'calc(100% - 110px)' }}
+              style={{ height: 'calc(100% - 110px)', position: 'relative' }} // Ensure relative positioning for the button
             >
+              {/* Close Button */}
+              
+
               {isLoading && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-white">
                   <div className="text-center">
