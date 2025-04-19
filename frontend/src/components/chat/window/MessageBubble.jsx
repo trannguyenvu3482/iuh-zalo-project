@@ -275,7 +275,10 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
             fileType={messageType}
             fileName={fileName}
           />
+          
+
         )
+        
 
       case 'BMP':
         return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
