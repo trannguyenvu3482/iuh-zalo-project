@@ -1,8 +1,17 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
+import { getConversations } from "../../api/apiConversation";
 import ConversationItem from "../../components/ConversationItem";
+import { formatTimeAgo } from "../../utils/dateUtils";
 
 type FilterOption = {
   id: string;
@@ -13,108 +22,25 @@ type FilterOption = {
 type Conversation = {
   id: string;
   name: string;
-  lastMessage: string;
-  time: string;
   avatar?: string;
-  unseen?: boolean;
-  unseenCount?: number;
-  isGroup?: boolean;
+  type: string;
+  lastMessage: {
+    content: string;
+    sender: {
+      id: string;
+      fullName: string;
+    };
+    createdAt: string;
+  } | null;
+  unreadCount: number;
 };
-
-// Temporary mock data
-const mockConversations: Conversation[] = [
-  {
-    id: "1",
-    name: "Đông Nhi",
-    lastMessage: "Có gì check giúp em với nhennn",
-    time: "15 phút trước",
-    avatar:
-      "https://p16-sign-sg.tiktokcdn.com/tos-alisg-avt-0068/277800c6380fe2ec40459775013b1c9d~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=14579&refresh_token=1618fbe7&x-expires=1743789600&x-signature=8ocZ32EWjEyVM8pQXNHaCSZdgJM%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=my",
-    unseen: true,
-    unseenCount: 2,
-  },
-  {
-    id: "2",
-    name: "Ngọc Phát",
-    lastMessage: "Ê check bài tập lớn đi br",
-    time: "1 giờ trước",
-    unseen: true,
-    unseenCount: 1,
-  },
-  {
-    id: "3",
-    name: "DH17KTPMC",
-    lastMessage: "Nguyễn Trọng Tiến: Kính gửi các thầy cô thông báo...",
-    time: "10 phút trước",
-    isGroup: true,
-    unseen: true,
-    unseenCount: 5,
-  },
-  {
-    id: "4",
-    name: "Mẹ",
-    lastMessage: "Con ăn cơm chưa?",
-    time: "2 giờ trước",
-    avatar: "https://i.pravatar.cc/150?img=12",
-    unseen: false,
-  },
-  {
-    id: "5",
-    name: "Nhóm học tập",
-    lastMessage: "Huy: Tôi đã hoàn thành bài tập và gửi lên drive rồi",
-    time: "3 giờ trước",
-    isGroup: true,
-    unseen: true,
-    unseenCount: 8,
-  },
-  {
-    id: "6",
-    name: "Zalo Official",
-    lastMessage: "Cập nhật mới: Tính năng chat nhóm đã được cải thiện...",
-    time: "5 giờ trước",
-    avatar: "https://i.pravatar.cc/150?img=1",
-    unseen: true,
-    unseenCount: 1,
-  },
-  {
-    id: "7",
-    name: "Anh trai",
-    lastMessage: "Ok, anh sẽ đón em lúc 5h chiều",
-    time: "Hôm qua",
-    avatar: "https://i.pravatar.cc/150?img=8",
-    unseen: false,
-  },
-  {
-    id: "8",
-    name: "Nhóm lớp",
-    lastMessage: "Admin: Thông báo về lịch học tuần tới...",
-    time: "Hôm qua",
-    isGroup: true,
-    unseen: true,
-    unseenCount: 12,
-  },
-  {
-    id: "9",
-    name: "Bạn thân",
-    lastMessage: "Đi chơi không?",
-    time: "Hôm qua",
-    avatar: "https://i.pravatar.cc/150?img=5",
-    unseen: false,
-  },
-  {
-    id: "10",
-    name: "Nhóm dự án",
-    lastMessage: "Minh: Tôi đã cập nhật lại file thiết kế...",
-    time: "2 ngày trước",
-    isGroup: true,
-    unseen: true,
-    unseenCount: 3,
-  },
-];
 
 const Messages = () => {
   const [activeTab, setActiveTab] = useState("priority");
   const [showFilter, setShowFilter] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const tabs = [
     { id: "priority", label: "Ưu tiên" },
@@ -125,6 +51,34 @@ const Messages = () => {
     { id: "unread", label: "Chưa đọc", icon: "mail" },
     { id: "mentions", label: "Nhắc đến tôi", icon: "at" },
   ];
+
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getConversations();
+        setConversations(response.data);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err);
+        setError("Không thể tải tin nhắn. Vui lòng thử lại sau.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, []);
+
+  const getLastMessageText = (conversation: Conversation) => {
+    if (!conversation.lastMessage) return "Chưa có tin nhắn";
+
+    if (conversation.type === "GROUP") {
+      return `${conversation.lastMessage.sender.fullName}: ${conversation.lastMessage.content}`;
+    }
+
+    return conversation.lastMessage.content;
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -161,23 +115,58 @@ const Messages = () => {
 
       {/* Content */}
       <ScrollView className="flex-1">
-        {mockConversations.map((conversation) => (
-          <ConversationItem
-            key={conversation.id}
-            id={conversation.id}
-            avatar={conversation.avatar}
-            name={conversation.name}
-            lastMessage={conversation.lastMessage}
-            time={conversation.time}
-            unseen={conversation.unseen}
-            unseenCount={conversation.unseenCount}
-            isGroup={conversation.isGroup}
-            onPress={() => {
-              // Handle conversation press
-              console.log("Pressed conversation:", conversation.id);
-            }}
-          />
-        ))}
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center py-10">
+            <ActivityIndicator size="large" color="#257dfd" />
+          </View>
+        ) : error ? (
+          <View className="flex-1 items-center justify-center py-10">
+            <Text className="text-red-500">{error}</Text>
+            <TouchableOpacity
+              className="mt-4 px-4 py-2 bg-primary rounded-md"
+              onPress={() => {
+                setIsLoading(true);
+                getConversations()
+                  .then((response) => {
+                    setConversations(response.data);
+                    setError(null);
+                  })
+                  .catch((err) => {
+                    console.error(err);
+                    setError("Không thể tải tin nhắn. Vui lòng thử lại sau.");
+                  })
+                  .finally(() => setIsLoading(false));
+              }}
+            >
+              <Text className="text-white">Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        ) : conversations.length === 0 ? (
+          <View className="flex-1 items-center justify-center py-10">
+            <Text className="text-gray-500">Không có cuộc trò chuyện nào</Text>
+          </View>
+        ) : (
+          conversations.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              id={conversation.id}
+              avatar={conversation.avatar}
+              name={conversation.name}
+              lastMessage={getLastMessageText(conversation)}
+              time={
+                conversation.lastMessage
+                  ? formatTimeAgo(new Date(conversation.lastMessage.createdAt))
+                  : ""
+              }
+              unseen={conversation.unreadCount > 0}
+              unseenCount={conversation.unreadCount}
+              isGroup={conversation.type === "GROUP"}
+              onPress={() => {
+                console.log("Pressed conversation:", conversation.id);
+              }}
+            />
+          ))
+        )}
       </ScrollView>
 
       {/* Filter Modal */}

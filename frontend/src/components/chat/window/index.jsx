@@ -160,32 +160,41 @@ const ChatWindow = ({ conversation }) => {
 
   // Modify the toggle for showing GIF picker to prevent scrolling
   const handleToggleGifPicker = () => {
-    // Set the prevention flag before toggling
-    preventScrollRef.current = true
-
-    // Store current scroll position
+    // Get the current scroll position
     const messagesContainer = document.querySelector('.flex-1.overflow-y-auto')
-    const currentScrollTop = messagesContainer?.scrollTop
+    const currentScrollTop = messagesContainer?.scrollTop || 0
+
+    // Set the prevention flag to true BEFORE any state changes
+    preventScrollRef.current = true
 
     // Toggle GIF picker
     setShowGifPicker(!showGifPicker)
 
-    // Restore scroll position
-    requestAnimationFrame(() => {
-      if (messagesContainer && typeof currentScrollTop === 'number') {
+    // Ensure scroll position is maintained
+    if (messagesContainer) {
+      // First set it immediately
+      messagesContainer.scrollTop = currentScrollTop
+
+      // Then use both requestAnimationFrame and setTimeout to guarantee it sticks
+      requestAnimationFrame(() => {
         messagesContainer.scrollTop = currentScrollTop
 
-        // Reset the prevention flag after a delay
         setTimeout(() => {
-          preventScrollRef.current = false
-        }, 300)
-      } else {
-        // Reset flag if we couldn't maintain scroll position
-        setTimeout(() => {
-          preventScrollRef.current = false
-        }, 300)
-      }
-    })
+          if (messagesContainer.scrollTop !== currentScrollTop) {
+            messagesContainer.scrollTop = currentScrollTop
+          }
+          // Reset prevention flag after a delay
+          setTimeout(() => {
+            preventScrollRef.current = false
+          }, 200)
+        }, 50)
+      })
+    } else {
+      // Reset prevention flag after a delay if no container
+      setTimeout(() => {
+        preventScrollRef.current = false
+      }, 300)
+    }
   }
 
   // Unified message handler for existing conversations
@@ -667,10 +676,86 @@ const ChatWindow = ({ conversation }) => {
 
           <MessageInput
             message={firstMessage}
-            setMessage={setFirstMessage}
+            setMessage={(newText) => {
+              // Get the current scroll position
+              const messagesContainer = document.querySelector(
+                '.flex-1.overflow-y-auto',
+              )
+              const currentScrollTop = messagesContainer?.scrollTop || 0
+
+              // Set the prevention flag to true BEFORE any state changes
+              preventScrollRef.current = true
+
+              // Update the message
+              setFirstMessage(newText)
+
+              // Ensure scroll position is maintained
+              if (messagesContainer) {
+                // First set it immediately
+                messagesContainer.scrollTop = currentScrollTop
+
+                // Then use both requestAnimationFrame and setTimeout to guarantee it sticks
+                requestAnimationFrame(() => {
+                  messagesContainer.scrollTop = currentScrollTop
+
+                  setTimeout(() => {
+                    if (messagesContainer.scrollTop !== currentScrollTop) {
+                      messagesContainer.scrollTop = currentScrollTop
+                    }
+                    // Reset prevention flag after a delay
+                    setTimeout(() => {
+                      preventScrollRef.current = false
+                    }, 100)
+                  }, 20)
+                })
+              } else {
+                // Reset prevention flag after a delay if no container
+                setTimeout(() => {
+                  preventScrollRef.current = false
+                }, 150)
+              }
+            }}
             onSendMessage={handleSendMessage}
             disabled={isCreatingConversation}
-            setShowEmojiPicker={setShowEmojiPicker}
+            setShowEmojiPicker={(newState) => {
+              // Get the current scroll position
+              const messagesContainer = document.querySelector(
+                '.flex-1.overflow-y-auto',
+              )
+              const currentScrollTop = messagesContainer?.scrollTop || 0
+
+              // Set the prevention flag to true BEFORE any state changes
+              preventScrollRef.current = true
+
+              // Toggle emoji picker state
+              setShowEmojiPicker(newState)
+
+              // Ensure scroll position is maintained
+              if (messagesContainer) {
+                // First set it immediately
+                messagesContainer.scrollTop = currentScrollTop
+
+                // Then use both requestAnimationFrame and setTimeout to guarantee it sticks
+                requestAnimationFrame(() => {
+                  messagesContainer.scrollTop = currentScrollTop
+
+                  setTimeout(() => {
+                    if (messagesContainer.scrollTop !== currentScrollTop) {
+                      messagesContainer.scrollTop = currentScrollTop
+                    }
+                    // Reset prevention flag after a delay
+                    setTimeout(() => {
+                      preventScrollRef.current = false
+                    }, 200)
+                  }, 50)
+                })
+              } else {
+                // Reset prevention flag after a delay if no container
+                setTimeout(() => {
+                  preventScrollRef.current = false
+                }, 300)
+              }
+            }}
             showEmojiPicker={showEmojiPicker}
             onToggleGifPicker={handleToggleGifPicker}
             showGifPicker={showGifPicker}
@@ -796,39 +881,83 @@ const ChatWindow = ({ conversation }) => {
         <MessageInput
           message={message || ''}
           setMessage={(newText) => {
-            // Store scroll position before setting message
+            // Get the current scroll position
             const messagesContainer = document.querySelector(
               '.flex-1.overflow-y-auto',
             )
-            const currentScrollTop = messagesContainer?.scrollTop
+            const currentScrollTop = messagesContainer?.scrollTop || 0
 
-            // Set the message
+            // Set the prevention flag to true BEFORE any state changes
+            preventScrollRef.current = true
+
+            // Update the message
             setMessage(newText)
 
-            // Restore scroll position
-            if (messagesContainer && typeof currentScrollTop === 'number') {
+            // Ensure scroll position is maintained
+            if (messagesContainer) {
+              // First set it immediately
+              messagesContainer.scrollTop = currentScrollTop
+
+              // Then use both requestAnimationFrame and setTimeout to guarantee it sticks
               requestAnimationFrame(() => {
                 messagesContainer.scrollTop = currentScrollTop
+
+                setTimeout(() => {
+                  if (messagesContainer.scrollTop !== currentScrollTop) {
+                    messagesContainer.scrollTop = currentScrollTop
+                  }
+                  // Reset prevention flag after a delay
+                  setTimeout(() => {
+                    preventScrollRef.current = false
+                  }, 100)
+                }, 20)
               })
+            } else {
+              // Reset prevention flag after a delay if no container
+              setTimeout(() => {
+                preventScrollRef.current = false
+              }, 150)
             }
           }}
           onSendMessage={handleSendMessage}
           disabled={false}
           setShowEmojiPicker={(newState) => {
-            // Store scroll position
+            // Get the current scroll position
             const messagesContainer = document.querySelector(
               '.flex-1.overflow-y-auto',
             )
-            const currentScrollTop = messagesContainer?.scrollTop
+            const currentScrollTop = messagesContainer?.scrollTop || 0
 
-            // Set the emoji picker state
+            // Set the prevention flag to true BEFORE any state changes
+            preventScrollRef.current = true
+
+            // Toggle emoji picker state
             setShowEmojiPicker(newState)
 
-            // Restore scroll position
-            if (messagesContainer && typeof currentScrollTop === 'number') {
+            // Ensure scroll position is maintained
+            if (messagesContainer) {
+              // First set it immediately
+              messagesContainer.scrollTop = currentScrollTop
+
+              // Then use both requestAnimationFrame and setTimeout to guarantee it sticks
               requestAnimationFrame(() => {
                 messagesContainer.scrollTop = currentScrollTop
+
+                setTimeout(() => {
+                  if (messagesContainer.scrollTop !== currentScrollTop) {
+                    messagesContainer.scrollTop = currentScrollTop
+                  }
+                  // Reset prevention flag after a delay
+                  setTimeout(() => {
+                    preventScrollRef.current = false
+                  }, 200)
+                }, 50)
               })
+            } else {
+              // Reset prevention flag after a delay if no container
+              setTimeout(() => {
+                preventScrollRef.current = false
+              }, 300)
             }
           }}
           showEmojiPicker={showEmojiPicker}
