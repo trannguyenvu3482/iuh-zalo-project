@@ -220,8 +220,11 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
 
   // Handle delete message
   const handleDeleteMessage = () => {
-    console.log('Delete just for me:', message.id)
-    setIsMenuOpen(false)
+    console.log('Delete just for me:', message.id);
+    setIsMenuOpen(false);
+
+    // Mark the message as deleted
+    message.isDeleted = true;
   }
 
   // Handle reply information
@@ -365,6 +368,10 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
         </div>
       </div>
     )
+  }
+
+  if (message.isDeleted) {
+    return null; // Do not render the message if it is marked as deleted
   }
 
   return (
@@ -651,6 +658,7 @@ MessageBubble.propTypes = {
     isSystemMessage: PropTypes.bool,
     replyToId: PropTypes.string,
     replyToMessage: PropTypes.object,
+    isDeleted: PropTypes.bool, // Add this line
   }).isRequired,
   isCurrentUser: PropTypes.bool.isRequired,
   onUserClick: PropTypes.func,
