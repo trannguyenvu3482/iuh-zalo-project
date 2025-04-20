@@ -17,8 +17,7 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
 // API URLs configuration for different environments
 // Determine the best API URL to use based on the platform and environment
 const API_URLS = [
-  "http://localhost:8081/api",
-  "https://main-gradually-octopus.ngrok-free.app/api",
+  "http://192.168.137.146:8081/api",
 ];
 
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes

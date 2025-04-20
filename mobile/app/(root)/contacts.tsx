@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
-
+import { getFriends} from "../../api/apiFriends";
 export type ContactSection = {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -54,16 +54,7 @@ const sections: ContactSection[] = [
 ];
 
 const allContacts: Contact[] = [
-  { id: "1", name: "Anh Cường" },
-  { id: "2", name: "Bảo" },
-  { id: "3", name: "Cường" },
-  { id: "4", name: "Châu" },
-  { id: "5", name: "Dũng" },
-  { id: "6", name: "An Nhiên" },
-  { id: "7", name: "Bình" },
-  { id: "8", name: "Đạt" },
-  { id: "9", name: "Dương" },
-  { id: "10", name: "Cẩm Ly" },
+  
 ];
 
 const recentContacts: Contact[] = [
@@ -102,7 +93,19 @@ const Contacts = () => {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [sortType, setSortType] = useState("lastActivity"); // State cho sắp xếp
   const [isSortMenuVisible, setSortMenuVisible] = useState(false); // Hiển thị menu sắp xếp
-
+  //Ham vua response vua put vao mang contact
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const response = await getFriends();
+        allContacts.push(...response.data); // Thêm dữ liệu vào mảng allContacts
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+      }
+    };
+    fetchContacts();
+  }
+  , []);
   const tabs = [
     { id: "friends", label: "Bạn bè" },
     { id: "groups", label: "Nhóm" },
