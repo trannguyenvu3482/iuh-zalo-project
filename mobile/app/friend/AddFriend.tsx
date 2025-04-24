@@ -12,7 +12,8 @@ import {
 } from "react-native";
 
 import { useUserStore } from "~/store/userStore"; // Import user store
-
+import { searchUserByPhoneNumber,searchUserByPhoneNumberPublic } from "../../api/apiUser";
+import {sendFriendRequest } from "../../api/apiFriends";
 const AddFriend = () => {
   const { user, setUser, token } = useUserStore(); // Lấy thông tin người dùng từ user store
   const [phoneNumber, setPhoneNumber] = useState(""); // State lưu số điện thoại
@@ -31,11 +32,28 @@ const AddFriend = () => {
     setIsValid(isValidPhoneNumber(text)); // Cập nhật trạng thái hợp lệ
   };
 
+  const sendFriendRQ = async () => {
+    if (isValid) {
+      try {
+        const response = await searchUserByPhoneNumber(phoneNumber); // Gọi API với số điện thoại
+        
+        Alert.alert("Thành công", phoneNumber);
+      } catch (error) {
+        console.error("Error searching user:", error);
+        
+      }
+    } else {
+      Alert.alert("Lỗi", "Số điện thoại không hợp lệ. Vui lòng nhập lại.");
+    }
+  };
+
   // Hàm xử lý khi nhấn nút gửi
   const handleSend = () => {
     if (!isValid) {
       Alert.alert("Lỗi", "Số điện thoại không hợp lệ. Vui lòng nhập lại.");
       return;
+    }else{
+      sendFriendRQ();
     }
     Alert.alert(
       "Thành công",
@@ -66,6 +84,9 @@ const AddFriend = () => {
     }
   }, [userId, user, setUser]);
 
+  // Hàm tìm kiếm người dùng theo số điện thoại
+  
+  
   return (
     <ScrollView className="flex-1 bg-gray-100">
       {/* Header */}
@@ -104,11 +125,7 @@ const AddFriend = () => {
             value={phoneNumber}
             onChangeText={handlePhoneNumberChange} // Cập nhật state khi nhập
           />
-          {phoneNumber.length > 0 && (
-            <TouchableOpacity onPress={clearPhoneNumber}>
-              <Ionicons name="close-circle" size={20} color="gray" />
-            </TouchableOpacity>
-          )}
+         
           <TouchableOpacity
             onPress={handleSend}
             disabled={!isValid} // Vô hiệu hóa nút nếu số điện thoại không hợp lệ
