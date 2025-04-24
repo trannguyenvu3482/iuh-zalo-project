@@ -170,6 +170,13 @@ io.on("connection", (socket) => {
 
   socket.on("chat message", async (msg) => {
     const { conversationId, receiverId, message, senderId } = msg;
+    console.log("Received chat message:", {
+      conversationId,
+      receiverId,
+      message: message?.substring(0, 20),
+      senderId,
+      senderName: msg.senderName,
+    });
 
     // Get the sender user details
     const User = db.User;
@@ -185,7 +192,7 @@ io.on("connection", (socket) => {
       console.error("Error fetching sender details:", err);
     }
 
-    // Create sender object
+    // Create sender object with fullName preserved
     const sender = senderDetails
       ? senderDetails.toJSON()
       : {
@@ -201,6 +208,7 @@ io.on("connection", (socket) => {
         content: message,
         senderId: senderId || socket.handshake.query.userId,
         sender: sender,
+        senderName: sender.fullName, // Explicitly include sender name
         conversationId,
         timestamp: new Date().toISOString(),
       });
@@ -213,6 +221,7 @@ io.on("connection", (socket) => {
           content: message,
           senderId: senderUserId,
           sender: sender,
+          senderName: sender.fullName, // Explicitly include sender name
           receiverId,
           timestamp: new Date().toISOString(),
         });

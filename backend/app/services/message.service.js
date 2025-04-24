@@ -207,6 +207,11 @@ exports.createPrivateTextMessage = async (
   options = {}
 ) => {
   try {
+    console.log("Creating private text message with options:", {
+      messageContent,
+      type: options.type,
+    });
+
     const sender = await User.findByPk(senderId);
     const receiver = await User.findByPk(receiverId);
     if (!sender || !receiver)
@@ -230,24 +235,24 @@ exports.createPrivateTextMessage = async (
     let messageType = options.type || "TEXT";
     let fileUrl = null;
 
-    // Check if the message content is a GIF or image URL
-    if (
-      !options.type &&
-      messageContent &&
-      messageContent.startsWith("http") &&
-      /\.gif$/i.test(messageContent)
-    ) {
-      messageType = "GIF";
+    // For explicitly typed GIF messages, handle them correctly
+    if (messageType === "GIF") {
       // For GIFs, we keep the URL in the message field, not file field
       fileUrl = null;
-    } else if (
+    }
+    // Auto-detect GIFs and images from URLs if type is not explicitly set
+    else if (
       !options.type &&
       messageContent &&
-      messageContent.startsWith("http") &&
-      /\.(jpe?g|png|webp|bmp)$/i.test(messageContent)
+      messageContent.startsWith("http")
     ) {
-      messageType = "IMAGE";
-      fileUrl = messageContent;
+      if (/\.gif$/i.test(messageContent)) {
+        messageType = "GIF";
+        fileUrl = null;
+      } else if (/\.(jpe?g|png|webp|bmp)$/i.test(messageContent)) {
+        messageType = "IMAGE";
+        fileUrl = messageContent;
+      }
     }
 
     // Create the message
@@ -444,6 +449,11 @@ exports.createGroupTextMessage = async (
   options = {}
 ) => {
   try {
+    console.log("Creating group text message with options:", {
+      messageContent,
+      type: options.type,
+    });
+
     // Verify conversation exists and user is a member
     const conversation = await Conversation.findOne({
       where: { id: conversationId, type: "GROUP" },
@@ -459,24 +469,24 @@ exports.createGroupTextMessage = async (
     let messageType = options.type || "TEXT";
     let fileUrl = null;
 
-    // Check if the message content is a GIF or image URL
-    if (
-      !options.type &&
-      messageContent &&
-      messageContent.startsWith("http") &&
-      /\.gif$/i.test(messageContent)
-    ) {
-      messageType = "GIF";
+    // For explicitly typed GIF messages, handle them correctly
+    if (messageType === "GIF") {
       // For GIFs, we keep the URL in the message field, not file field
       fileUrl = null;
-    } else if (
+    }
+    // Auto-detect GIFs and images from URLs if type is not explicitly set
+    else if (
       !options.type &&
       messageContent &&
-      messageContent.startsWith("http") &&
-      /\.(jpe?g|png|webp|bmp)$/i.test(messageContent)
+      messageContent.startsWith("http")
     ) {
-      messageType = "IMAGE";
-      fileUrl = messageContent;
+      if (/\.gif$/i.test(messageContent)) {
+        messageType = "GIF";
+        fileUrl = null;
+      } else if (/\.(jpe?g|png|webp|bmp)$/i.test(messageContent)) {
+        messageType = "IMAGE";
+        fileUrl = messageContent;
+      }
     }
 
     // Create the message
