@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useSnackbar } from 'notistack'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getConversationMessages, sendNewMessage } from '../api/apiMessage'
 import { useSocket } from '../contexts/SocketContext'
 import { useUser } from './useUser'
@@ -24,6 +24,7 @@ export const useChat = (conversation, conversationId) => {
     onMessageRead,
     setActiveConversation,
     setHasUnreadMessages,
+    pendingMessages,
   } = useSocket()
   const [message, setMessage] = useState('')
   const [typingUsers, setTypingUsers] = useState([])
@@ -203,16 +204,70 @@ export const useChat = (conversation, conversationId) => {
 
       // If the message is for the current conversation, add it to local messages
       if (message.conversationId === currentConversationId) {
+        console.log('Received new message for current conversation:', message)
+
+        // Preserve the original sender name from the server first
+        const originalSenderName =
+          message.senderName ||
+          (message.sender && typeof message.sender === 'object'
+            ? message.sender.fullName
+            : null)
+
+        // Check if sender is an object or just an ID
+        let senderObj = message.sender
+
+        if (
+          typeof message.sender === 'string' ||
+          message.sender instanceof String
+        ) {
+          // If sender is just an ID, create a basic sender object
+          senderObj = {
+            id: message.sender,
+            fullName: originalSenderName || 'Unknown User',
+            avatar: null,
+          }
+        } else if (message.sender === null || message.sender === undefined) {
+          // If sender is null/undefined but we have senderId and senderName
+          if (message.senderId) {
+            senderObj = {
+              id: message.senderId,
+              fullName: originalSenderName || 'Unknown User',
+              avatar: message.avatar || null,
+            }
+          }
+        } else if (typeof message.sender === 'object') {
+          // Ensure sender object has fullName
+          senderObj = {
+            ...message.sender,
+            fullName:
+              originalSenderName || message.sender.fullName || 'Unknown User',
+          }
+        }
+
+        console.log('Normalized sender object:', senderObj)
+
         // Normalize the message format to ensure consistency
         const normalizedMessage = {
           ...message,
+          id:
+            message.id ||
+            `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           // Ensure both field formats are present
           content: message.content || message.message,
           message: message.message || message.content,
-          senderId: message.senderId || message.sender,
-          sender: message.sender || message.senderId,
-          timestamp: message.timestamp || message.created_at,
-          created_at: message.created_at || message.timestamp,
+          // Always keep the sender ID separately
+          senderId: message.senderId || (senderObj && senderObj.id),
+          // Keep or construct the sender object
+          sender: senderObj,
+          // Make sure to keep the sender name explicit
+          senderName:
+            originalSenderName ||
+            (senderObj && senderObj.fullName) ||
+            'Unknown User',
+          timestamp:
+            message.timestamp || message.created_at || new Date().toISOString(),
+          created_at:
+            message.created_at || message.timestamp || new Date().toISOString(),
           // Identify system messages
           isSystemMessage:
             message.isSystemMessage ||
@@ -227,45 +282,58 @@ export const useChat = (conversation, conversationId) => {
           isFromCurrentUser:
             message.isFromCurrentUser ||
             message.senderId === user?.id ||
-            message.sender === user?.id,
+            (senderObj && senderObj.id === user?.id),
         }
 
         // Add the message to local state, avoiding duplicates
         setLocalMessages((prev) => {
+          // More robust duplicate detection
           const isDuplicate = prev.some(
             (m) =>
-              (m.id && m.id === message.id) ||
-              (m.content === (message.content || message.message) &&
-                m.senderId === (message.senderId || message.sender)),
+              (m.id && m.id === normalizedMessage.id) || // Same ID
+              // Or same content, sender and similar timestamp (within 2 seconds)
+              (m.content === normalizedMessage.content &&
+                m.senderId === normalizedMessage.senderId &&
+                Math.abs(
+                  new Date(m.timestamp || m.created_at) -
+                    new Date(
+                      normalizedMessage.timestamp ||
+                        normalizedMessage.created_at,
+                    ),
+                ) < 2000),
           )
 
           if (isDuplicate) {
+            console.log('Duplicate message detected, not adding to local state')
             return prev
           }
 
+          console.log('Adding new message to local state', normalizedMessage)
           return [...prev, normalizedMessage]
         })
+
+        // Immediately invalidate the query cache to force a refresh
+        // This ensures that even if the socket message doesn't update the UI,
+        // the query will fetch the latest messages
+        if (!message.isFromCurrentUser) {
+          setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: ['messages', currentConversationId],
+            })
+          }, 100)
+        }
 
         // Mark the message as read if it's not from the current user
         if (
           !normalizedMessage.isSystemMessage &&
-          normalizedMessage.senderId !== user?.id &&
-          normalizedMessage.sender !== user?.id &&
-          normalizedMessage.id &&
-          markMessageAsRead
+          !normalizedMessage.isFromCurrentUser &&
+          normalizedMessage.id
         ) {
           markMessageAsRead(normalizedMessage.id, currentConversationId)
         }
-
-        // Scroll to bottom when new message arrives
-        setTimeout(() => {
-          if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-          }
-        }, 100)
       }
     },
-    [user?.id, markMessageAsRead],
+    [user?.id, markMessageAsRead, queryClient],
   )
 
   // Handle typing status updates
@@ -299,17 +367,32 @@ export const useChat = (conversation, conversationId) => {
 
   // Set up message and typing status event listeners
   useEffect(() => {
+    // Only set up handlers if the conversation ID is available
+    if (!conversationId) return
+
+    console.log(
+      `Setting up message listeners for conversation: ${conversationId}`,
+    )
+
+    // Message handler registration
+    let messageUnsubscribe = null
     if (onNewMessage) {
-      onNewMessage(handleNewMessage)
+      messageUnsubscribe = onNewMessage(handleNewMessage)
+      console.log('Registered new message handler')
     }
 
+    // Typing status handler registration
+    let typingUnsubscribe = null
     if (onTypingStatus) {
-      onTypingStatus(handleTypingStatus)
+      typingUnsubscribe = onTypingStatus(handleTypingStatus)
+      console.log('Registered typing status handler')
     }
 
-    // Handle message read status updates
+    // Message read status handler registration
+    let messageReadUnsubscribe = null
     if (onMessageRead) {
       const handleMessageRead = ({ messageId, userId }) => {
+        console.log(`Message ${messageId} read by user ${userId}`)
         // Update local message read status
         setLocalMessages((prev) =>
           prev.map((msg) =>
@@ -320,22 +403,33 @@ export const useChat = (conversation, conversationId) => {
         )
       }
 
-      onMessageRead(handleMessageRead)
+      messageReadUnsubscribe = onMessageRead(handleMessageRead)
+      console.log('Registered message read handler')
     }
 
-    // Cleanup event listeners
+    // Cleanup event listeners when component unmounts or conversationId changes
     return () => {
-      if (onNewMessage) {
-        onNewMessage(null)
+      console.log(
+        `Cleaning up message listeners for conversation: ${conversationId}`,
+      )
+
+      if (messageUnsubscribe) {
+        messageUnsubscribe()
+        console.log('Unregistered message handler')
       }
-      if (onTypingStatus) {
-        onTypingStatus(null)
+
+      if (typingUnsubscribe) {
+        typingUnsubscribe()
+        console.log('Unregistered typing status handler')
       }
-      if (onMessageRead) {
-        onMessageRead(null)
+
+      if (messageReadUnsubscribe) {
+        messageReadUnsubscribe()
+        console.log('Unregistered message read handler')
       }
     }
   }, [
+    conversationId,
     handleNewMessage,
     handleTypingStatus,
     onNewMessage,
@@ -380,6 +474,158 @@ export const useChat = (conversation, conversationId) => {
 
     return isNearBottom
   }, [])
+
+  // Memoized calculation for combining server and local messages
+  const allMessages = useMemo(() => {
+    console.log('Recomputing allMessages')
+
+    // Get messages from all sources
+    const serverMessages = messagesPages
+      ? messagesPages.pages.flatMap((page) => page.messages || [])
+      : []
+
+    // Log counts for debugging
+    console.log(
+      `Combining sources: ${serverMessages.length} server messages, ${localMessages.length} local messages`,
+    )
+
+    // When we have messages from multiple sources, combine them with sophisticated deduplication
+    const combined = [...serverMessages, ...localMessages]
+
+    // Create a map to deduplicate messages
+    const uniqueMessages = new Map()
+
+    // Process all messages
+    combined.forEach((msg) => {
+      if (!msg) return // Skip null/undefined messages
+
+      // Get consistent values for comparison
+      const messageId = msg.id || msg._localId
+      const content = msg.content || msg.message || ''
+      const senderId =
+        msg.senderId ||
+        (typeof msg.sender === 'string' ? msg.sender : msg.sender?.id)
+      const timestamp =
+        msg.timestamp ||
+        msg.created_at ||
+        msg.createdAt ||
+        new Date().toISOString()
+
+      // Use a combination of id, content and sender as the key
+      const key = messageId || `${senderId}:${content}:${timestamp}`
+
+      // Skip messages without content or necessary identifiers
+      if (!content && !messageId) return
+
+      // Prefer server messages (with IDs) over local ones, but newer messages over older ones
+      const existingMsg = uniqueMessages.get(key)
+      const shouldReplace =
+        !existingMsg ||
+        (msg.id && !existingMsg.id) ||
+        new Date(msg.timestamp || msg.created_at || msg.createdAt || 0) >
+          new Date(
+            existingMsg.timestamp ||
+              existingMsg.created_at ||
+              existingMsg.createdAt ||
+              0,
+          )
+
+      if (shouldReplace) {
+        // Normalize and enhance message format to include proper sender info
+        let senderObj = msg.sender
+
+        // Preserve the original sender name from the server
+        const originalSenderName =
+          msg.senderName ||
+          (msg.sender && typeof msg.sender === 'object'
+            ? msg.sender.fullName
+            : null)
+
+        // Convert string/ID sender to object with name
+        if (typeof msg.sender === 'string' || msg.sender instanceof String) {
+          senderObj = {
+            id: msg.sender,
+            fullName: originalSenderName || 'Unknown User',
+          }
+        }
+        // If sender is null but we have senderId and senderName
+        else if (msg.sender === null || msg.sender === undefined) {
+          if (msg.senderId) {
+            senderObj = {
+              id: msg.senderId,
+              fullName: originalSenderName || 'Unknown User',
+            }
+          }
+        }
+        // If sender object exists but missing name
+        else if (typeof msg.sender === 'object' && msg.sender) {
+          senderObj = {
+            ...msg.sender,
+            fullName:
+              originalSenderName || msg.sender.fullName || 'Unknown User',
+          }
+        }
+
+        console.log(
+          'Normalizing message sender from:',
+          msg.sender,
+          'to:',
+          senderObj,
+        )
+
+        const normalizedMsg = {
+          ...msg,
+          id:
+            msg.id ||
+            `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: msg.content || msg.message,
+          message: msg.message || msg.content,
+          senderId:
+            msg.senderId ||
+            (typeof msg.sender === 'string' ? msg.sender : msg.sender?.id),
+          sender: senderObj,
+          senderName:
+            originalSenderName ||
+            (senderObj && senderObj.fullName) ||
+            'Unknown User',
+          timestamp:
+            msg.timestamp ||
+            msg.created_at ||
+            msg.createdAt ||
+            new Date().toISOString(),
+          created_at:
+            msg.created_at ||
+            msg.timestamp ||
+            msg.createdAt ||
+            new Date().toISOString(),
+          isFromCurrentUser:
+            msg.isFromCurrentUser ||
+            msg.senderId === user?.id ||
+            (typeof msg.sender === 'string' && msg.sender === user?.id) ||
+            (msg.sender && msg.sender.id === user?.id),
+        }
+
+        uniqueMessages.set(key, normalizedMsg)
+      }
+    })
+
+    // Convert map to array and sort by timestamp
+    const result = Array.from(uniqueMessages.values())
+      .filter((msg) => msg && (msg.content || msg.message)) // Remove any empty messages
+      .sort((a, b) => {
+        const timeA = new Date(
+          a.timestamp || a.created_at || a.createdAt || 0,
+        ).getTime()
+        const timeB = new Date(
+          b.timestamp || b.created_at || b.createdAt || 0,
+        ).getTime()
+        return timeA - timeB
+      })
+
+    console.log(`Combined and deduplicated to ${result.length} messages`)
+
+    return result
+  }, [messagesPages, localMessages, user?.id])
 
   // Handle sending a message
   const handleSendMessage = (
@@ -456,28 +702,6 @@ export const useChat = (conversation, conversationId) => {
       }, 100)
     }
   }
-
-  // Extract message groups from all pages
-  const serverMessages = messagesPages?.pages
-    ? messagesPages.pages.flatMap((page) => page.messages || page.data || [])
-    : []
-
-  // Combine server messages with local messages
-  const allMessages = [...serverMessages, ...localMessages]
-    // Remove duplicates based on id
-    .filter(
-      (message, index, self) =>
-        index ===
-        self.findIndex(
-          (m) => (m.id || m._localId) === (message.id || message._localId),
-        ),
-    )
-    // Sort by createdAt/timestamp
-    .sort(
-      (a, b) =>
-        new Date(a.createdAt || a.timestamp || a.created_at) -
-        new Date(b.createdAt || b.timestamp || b.created_at),
-    )
 
   // Function to get receiver information for display
   const getReceiverInfo = () => {
@@ -575,6 +799,146 @@ export const useChat = (conversation, conversationId) => {
     }
   }, [isLoading, conversationId])
 
+  // Effect to sync pendingMessages to localMessages for the current conversation
+  useEffect(() => {
+    if (!conversationId || !pendingMessages || pendingMessages.length === 0)
+      return
+
+    console.log('Processing pending messages for conversation:', conversationId)
+
+    // Filter messages for this conversation
+    const relevantMessages = pendingMessages.filter(
+      (msg) => msg.conversationId === conversationId,
+    )
+
+    if (relevantMessages.length === 0) return
+
+    console.log(
+      `Found ${relevantMessages.length} pending messages for current conversation`,
+    )
+
+    // Add messages to local state, avoiding duplicates
+    setLocalMessages((prevMessages) => {
+      const uniqueMessages = [...prevMessages]
+      let addedCount = 0
+
+      relevantMessages.forEach((msg) => {
+        // Check if this message already exists in our state
+        const isDuplicate = prevMessages.some(
+          (existingMsg) =>
+            (existingMsg.id && existingMsg.id === msg.id) ||
+            (existingMsg.content === (msg.content || msg.message) &&
+              existingMsg.senderId === (msg.senderId || msg.sender?.id) &&
+              Math.abs(
+                new Date(
+                  existingMsg.timestamp ||
+                    existingMsg.created_at ||
+                    existingMsg.createdAt,
+                ) -
+                  new Date(
+                    msg.timestamp ||
+                      msg.created_at ||
+                      msg.createdAt ||
+                      new Date(),
+                  ),
+              ) < 2000),
+        )
+
+        if (!isDuplicate) {
+          // Normalize and enhance message format to include proper sender info
+          let senderObj = msg.sender
+
+          // Preserve the original sender name from the server
+          const originalSenderName =
+            msg.senderName ||
+            (msg.sender && typeof msg.sender === 'object'
+              ? msg.sender.fullName
+              : null)
+
+          // Convert string/ID sender to object with name
+          if (typeof msg.sender === 'string' || msg.sender instanceof String) {
+            senderObj = {
+              id: msg.sender,
+              fullName: originalSenderName || 'Unknown User',
+            }
+          }
+          // If sender is null but we have senderId and senderName
+          else if (msg.sender === null || msg.sender === undefined) {
+            if (msg.senderId) {
+              senderObj = {
+                id: msg.senderId,
+                fullName: originalSenderName || 'Unknown User',
+              }
+            }
+          }
+          // If sender object exists but missing name
+          else if (typeof msg.sender === 'object' && msg.sender) {
+            senderObj = {
+              ...msg.sender,
+              fullName:
+                originalSenderName || msg.sender.fullName || 'Unknown User',
+            }
+          }
+
+          console.log(
+            'Normalizing message sender from:',
+            msg.sender,
+            'to:',
+            senderObj,
+          )
+
+          const normalizedMsg = {
+            ...msg,
+            id:
+              msg.id ||
+              `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: msg.content || msg.message,
+            message: msg.message || msg.content,
+            senderId:
+              msg.senderId ||
+              (typeof msg.sender === 'string' ? msg.sender : msg.sender?.id),
+            sender: senderObj,
+            senderName:
+              originalSenderName ||
+              (senderObj && senderObj.fullName) ||
+              'Unknown User',
+            timestamp:
+              msg.timestamp ||
+              msg.created_at ||
+              msg.createdAt ||
+              new Date().toISOString(),
+            created_at:
+              msg.created_at ||
+              msg.timestamp ||
+              msg.createdAt ||
+              new Date().toISOString(),
+            isFromCurrentUser:
+              msg.isFromCurrentUser ||
+              msg.senderId === user?.id ||
+              (typeof msg.sender === 'string' && msg.sender === user?.id) ||
+              (msg.sender && msg.sender.id === user?.id),
+          }
+
+          uniqueMessages.push(normalizedMsg)
+          addedCount++
+        }
+      })
+
+      if (addedCount > 0) {
+        console.log(`Added ${addedCount} new messages from pendingMessages`)
+        // Force the query to refetch in the background to ensure consistency
+        queryClient.invalidateQueries({
+          queryKey: ['messages', conversationId],
+          refetchType: 'none', // Just mark as stale but don't refetch immediately
+        })
+
+        return uniqueMessages
+      }
+
+      return prevMessages
+    })
+  }, [conversationId, pendingMessages, user?.id, queryClient])
+
   // Scroll to bottom when new messages are added, but only if we're near the bottom already
   useEffect(() => {
     if (
@@ -594,6 +958,71 @@ export const useChat = (conversation, conversationId) => {
     prevLocalMessagesLength,
     isLoadingMore,
     shouldScrollToBottom,
+  ])
+
+  // Debug effect to monitor message updates and force refresh if needed
+  useEffect(() => {
+    // Skip if no conversation ID or during loading
+    if (!conversationId || isLoading) return
+
+    // Check if we have pending messages that should be displayed
+    const hasPendingForConversation = pendingMessages?.some(
+      (msg) => msg.conversationId === conversationId,
+    )
+
+    console.log(`[Debug] Conversation ${conversationId}:`, {
+      messagesCount: allMessages.length,
+      localMessagesCount: localMessages.length,
+      pendingMessagesCount: pendingMessages?.length || 0,
+      hasPendingForConversation,
+      isLoading,
+    })
+
+    // If we have pending messages for this conversation but they're not in allMessages
+    // force a refresh to make sure they get displayed
+    if (
+      hasPendingForConversation &&
+      pendingMessages.length > 0 &&
+      allMessages.length === 0
+    ) {
+      console.log(
+        '[Debug] Detected pending messages not showing in UI, forcing refresh',
+      )
+
+      // Force refresh the queries
+      queryClient.invalidateQueries({
+        queryKey: ['messages', conversationId],
+      })
+
+      // Also directly process the pending messages into local messages
+      const relevantMessages = pendingMessages.filter(
+        (msg) => msg.conversationId === conversationId,
+      )
+
+      if (relevantMessages.length > 0) {
+        console.log(
+          `[Debug] Directly adding ${relevantMessages.length} messages to local state`,
+        )
+        setLocalMessages((prev) => [
+          ...prev,
+          ...relevantMessages.map((msg) => ({
+            ...msg,
+            id:
+              msg.id ||
+              `force-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: msg.content || msg.message,
+            message: msg.message || msg.content,
+          })),
+        ])
+      }
+    }
+  }, [
+    conversationId,
+    allMessages.length,
+    pendingMessages,
+    localMessages.length,
+    isLoading,
+    queryClient,
   ])
 
   // Return functions for the component to use

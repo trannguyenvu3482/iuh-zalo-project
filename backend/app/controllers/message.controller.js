@@ -13,13 +13,23 @@ exports.sendPrivateMessage = [
   upload.single("file"),
   async (req, res, next) => {
     try {
-      const { receiverId, message, name, avatar, replyToId, type } = req.body;
+      let { receiverId, message, name, avatar, replyToId, type } = req.body;
       const senderId = req.user?.id;
       const file = req.file;
 
-      console.log(`User from request:`, {
-        userId: senderId,
-        authenticated: !!senderId,
+      // Handle the case where message is an array (multiple fields with same name in form data)
+      if (Array.isArray(message)) {
+        console.log("Message is an array, using first non-empty value");
+        message = message.find((m) => m && m.trim() !== "") || "";
+      }
+
+      console.log("Send private message request:", {
+        body: {
+          ...req.body,
+          message: message, // Log the processed message
+        },
+        file: file ? `${file.mimetype} (${file.size} bytes)` : null,
+        type: type,
       });
 
       if (!senderId) throw new UnauthorizedError("Authentication required");
@@ -95,11 +105,26 @@ exports.sendPrivateMessage = [
 exports.sendGroupMessage = [
   upload.single("file"),
   async (req, res, next) => {
-    const { conversationId, message, replyToId, type } = req.body;
-    const senderId = req.user?.id;
-    const file = req.file;
-
     try {
+      let { conversationId, message, replyToId, type } = req.body;
+      const senderId = req.user?.id;
+      const file = req.file;
+
+      // Handle the case where message is an array (multiple fields with same name in form data)
+      if (Array.isArray(message)) {
+        console.log("Message is an array, using first non-empty value");
+        message = message.find((m) => m && m.trim() !== "") || "";
+      }
+
+      console.log("Send group message request:", {
+        body: {
+          conversationId,
+          message, // Log the processed message
+          type,
+        },
+        file: file ? `${file.mimetype} (${file.size} bytes)` : null,
+      });
+
       if (!senderId) throw new UnauthorizedError("Authentication required");
       if (!conversationId)
         throw new ValidationError("Conversation ID is required");
@@ -143,6 +168,7 @@ exports.sendGroupMessage = [
 
       successResponse(res, "Group message sent successfully", newMessage, 201);
     } catch (error) {
+      console.error("Error in sendGroupMessage controller:", error);
       next(error);
     }
   },

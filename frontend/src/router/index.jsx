@@ -39,6 +39,27 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: '/chats/:id',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <PrivateRoute>
+              <ChatsPage />
+            </PrivateRoute>
+          </Suspense>
+        ),
+      },
+      {
+        path: '/chats',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <PrivateRoute>
+              <ChatsPage />
+            </PrivateRoute>
+          </Suspense>
+        ),
+      },
+      // Keep old routes temporarily for backward compatibility
+      {
         path: '/chat/:id',
         element: (
           <Suspense fallback={<LoadingSpinner />}>

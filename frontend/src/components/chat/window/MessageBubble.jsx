@@ -90,7 +90,23 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
 
   // Get sender information
   const sender = message.sender || {}
-  const senderName = sender.fullName || sender.name || 'User 2'
+  let senderName = ''
+
+  // Try different ways to get the sender name
+  if (sender.fullName) {
+    senderName = sender.fullName
+  } else if (sender.name) {
+    senderName = sender.name
+  } else if (message.senderName) {
+    senderName = message.senderName
+  } else if (typeof sender === 'string') {
+    // If sender is a string (ID), try to get name from message
+    senderName = message.senderName || 'Unknown User'
+  } else {
+    // Default fallback
+    senderName = isCurrentUser ? 'You' : 'User'
+  }
+
   const senderAvatar = sender.avatar || 'https://via.placeholder.com/40'
 
   // Format the time
@@ -220,11 +236,11 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
 
   // Handle delete message
   const handleDeleteMessage = () => {
-    console.log('Delete just for me:', message.id);
-    setIsMenuOpen(false);
+    console.log('Delete just for me:', message.id)
+    setIsMenuOpen(false)
 
     // Mark the message as deleted
-    message.isDeleted = true;
+    message.isDeleted = true
   }
 
   // Handle reply information
@@ -278,10 +294,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
             fileType={messageType}
             fileName={fileName}
           />
-          
-
         )
-        
 
       case 'BMP':
         return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
@@ -371,7 +384,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   }
 
   if (message.isDeleted) {
-    return null; // Do not render the message if it is marked as deleted
+    return null // Do not render the message if it is marked as deleted
   }
 
   return (
@@ -649,7 +662,8 @@ MessageBubble.propTypes = {
     content: PropTypes.string,
     message: PropTypes.string,
     file: PropTypes.string,
-    sender: PropTypes.object,
+    sender: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
+    senderName: PropTypes.string,
     timestamp: PropTypes.string,
     createdAt: PropTypes.string,
     created_at: PropTypes.string,
@@ -658,7 +672,7 @@ MessageBubble.propTypes = {
     isSystemMessage: PropTypes.bool,
     replyToId: PropTypes.string,
     replyToMessage: PropTypes.object,
-    isDeleted: PropTypes.bool, // Add this line
+    isDeleted: PropTypes.bool,
   }).isRequired,
   isCurrentUser: PropTypes.bool.isRequired,
   onUserClick: PropTypes.func,
