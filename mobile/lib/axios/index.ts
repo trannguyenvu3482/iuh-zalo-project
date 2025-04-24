@@ -18,6 +18,7 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
 // Determine the best API URL to use based on the platform and environment
 const API_URLS = [
   "http://192.168.137.146:8081/api",
+  "https://strongly-boss-finch.ngrok-free.app/api",
 ];
 
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes

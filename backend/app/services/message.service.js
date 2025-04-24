@@ -78,13 +78,11 @@ const getOrCreatePrivateConversation = async (
   });
 
   const conversationIds = memberOf.map((m) => m.conversationId);
-  console.log(`Found ${conversationIds.length} conversations for sender`);
 
   let conversation;
 
   if (conversationIds.length === 0) {
     // Create new conversation if none exists
-    console.log("No existing conversations, creating new one");
     conversation = await Conversation.create({
       id: uuidv4(),
       type: "PRIVATE",
@@ -114,7 +112,6 @@ const getOrCreatePrivateConversation = async (
 
     if (!existingConversation) {
       // Create new conversation if none exists with both users
-      console.log("No existing conversation with both users, creating new one");
       conversation = await Conversation.create({
         id: uuidv4(),
         type: "PRIVATE",
@@ -130,7 +127,6 @@ const getOrCreatePrivateConversation = async (
         },
       ]);
     } else {
-      console.log(`Found existing conversation: ${existingConversation.id}`);
       conversation = existingConversation;
     }
   }
@@ -155,8 +151,6 @@ const validateFriendship = async (senderId, receiverId, options = {}) => {
       ],
     },
   });
-
-  console.log(`Friendship check: ${!!areFriends}`);
 
   // Get configuration for friendship checks
   const { requireFriendship = false } = options;
@@ -213,10 +207,6 @@ exports.createPrivateTextMessage = async (
   options = {}
 ) => {
   try {
-    console.log(
-      `Creating private text message: senderId=${senderId}, receiverId=${receiverId}`
-    );
-
     const sender = await User.findByPk(senderId);
     const receiver = await User.findByPk(receiverId);
     if (!sender || !receiver)
@@ -240,7 +230,7 @@ exports.createPrivateTextMessage = async (
     let messageType = options.type || "TEXT";
     let fileUrl = null;
 
-    // Check if the message content is a GIF URL
+    // Check if the message content is a GIF or image URL
     if (
       !options.type &&
       messageContent &&
@@ -248,7 +238,8 @@ exports.createPrivateTextMessage = async (
       /\.gif$/i.test(messageContent)
     ) {
       messageType = "GIF";
-      fileUrl = messageContent;
+      // For GIFs, we keep the URL in the message field, not file field
+      fileUrl = null;
     } else if (
       !options.type &&
       messageContent &&
@@ -313,10 +304,6 @@ exports.createPrivateFileMessage = async (
   options = {}
 ) => {
   try {
-    console.log(
-      `Creating private file message: senderId=${senderId}, receiverId=${receiverId}`
-    );
-
     if (!file) {
       throw new ValidationError("File is required for file messages");
     }
@@ -355,13 +342,22 @@ exports.createPrivateFileMessage = async (
       }
     }
 
+    // For GIFs, we store the URL in the message field instead of the file field
+    let messageField = messageContent || null;
+    let fileField = fileUrl;
+
+    if (messageType === "GIF") {
+      messageField = fileUrl;
+      fileField = null;
+    }
+
     // Create the message
     const message = await Message.create({
       id: uuidv4(),
-      message: messageContent || null,
+      message: messageField,
       sender: senderId,
       conversationId: conversation.id,
-      file: fileUrl,
+      file: fileField,
       replyToId,
       type: messageType,
       isSystemMessage: false,
@@ -471,7 +467,8 @@ exports.createGroupTextMessage = async (
       /\.gif$/i.test(messageContent)
     ) {
       messageType = "GIF";
-      fileUrl = messageContent;
+      // For GIFs, we keep the URL in the message field, not file field
+      fileUrl = null;
     } else if (
       !options.type &&
       messageContent &&
@@ -562,13 +559,22 @@ exports.createGroupFileMessage = async (
       }
     }
 
+    // For GIFs, we store the URL in the message field instead of the file field
+    let messageField = messageContent || null;
+    let fileField = fileUrl;
+
+    if (messageType === "GIF") {
+      messageField = fileUrl;
+      fileField = null;
+    }
+
     // Create the message
     const message = await Message.create({
       id: uuidv4(),
-      message: messageContent || null,
+      message: messageField,
       sender: senderId,
       conversationId,
-      file: fileUrl,
+      file: fileField,
       replyToId,
       type: messageType,
       isSystemMessage: false,
@@ -709,7 +715,6 @@ exports.recallMessage = async (messageId, userId) => {
     message.isRecalled = true;
     await message.save();
 
-    console.log(`Message ${messageId} recalled by user ${userId}`);
     return message;
   } catch (error) {
     console.error("Error recalling message:", error);
