@@ -71,9 +71,8 @@ exports.sendPrivateMessage = [
 
       if (io) {
         // Emit to both sender and receiver rooms
-        io.to(`user_${senderId}`)
-          .to(`user_${receiverId}`)
-          .emit("new_message", newMessage);
+        io.to(`user_${senderId}`).emit("new_message", newMessage);
+        io.to(`user_${receiverId}`).emit("new_message", newMessage);
         // Emit typing stopped event
         io.to(`conversation_${conversationId}`).emit("user_stopped_typing", {
           userId: senderId,

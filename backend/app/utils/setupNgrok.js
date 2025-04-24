@@ -7,7 +7,7 @@ const setupNgrok = async () => {
   const listener = await ngrok.connect({
     addr: process.env.PORT || 8080,
     authtoken_from_env: true,
-    domain: "main-gradually-octopus.ngrok-free.app",
+    domain: "strongly-boss-finch.ngrok-free.app",
     region: "au",
   });
   console.log(`Ngrok tunnel established at: ${listener.url()}`);

@@ -13,7 +13,18 @@ const getConversations = async () => {
  * Get a specific conversation by ID
  */
 const getConversationById = async (conversationId: string) => {
-  return await axiosInstance.get(`${BASE_URL}/${conversationId}`);
+  console.log(`[API] Getting conversation by ID: ${conversationId}`);
+
+  try {
+    const response = await axiosInstance.get(`${BASE_URL}/${conversationId}`);
+    console.log(
+      `[API] Conversation details received for ID: ${conversationId}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`[API] Error fetching conversation details:`, error);
+    throw error;
+  }
 };
 
 /**

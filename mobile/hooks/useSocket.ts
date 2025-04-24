@@ -4,7 +4,7 @@ import { socketService } from "~/lib/socket";
 import { useSocketStore } from "~/store/socketStore";
 import { useUserStore } from "~/store/userStore";
 
-export const useSocket = (token: string) => {
+export const useSocket = () => {
   const {
     setConnected,
     addMessage,
@@ -56,6 +56,7 @@ export const useSocket = (token: string) => {
       }
 
       const {
+        sender,
         senderId,
         content,
         message,
@@ -223,7 +224,7 @@ export const useSocket = (token: string) => {
       socketService.off("chat message");
       socketService.off("message_status");
     };
-  }, [token, user?.id, user?.fullName]);
+  }, [user?.id, user?.fullName]);
 
   const sendMessage = (chatId: string, content: string) => {
     console.log("[useSocket] Sending message via socket:", { chatId, content });

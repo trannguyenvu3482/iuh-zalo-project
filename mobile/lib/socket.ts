@@ -1,7 +1,5 @@
 import { io, Socket } from "socket.io-client";
 
-import { useUserStore } from "~/store/userStore";
-
 /**
  * Socket service for real-time communication
  * This is a singleton class that manages a single socket connection
@@ -11,9 +9,12 @@ export class SocketService {
   private socket: Socket | null = null;
   private userId: string | null = null;
   private userName: string | null = null;
+  private conversationRooms = new Set<string>();
+  private directRooms = new Set<string>();
+  private isConnected = false;
 
   private constructor() {
-    console.log("[SocketService] Initialized socket service");
+    console.log("[Socket] SocketService initialized");
   }
 
   public static getInstance(): SocketService {
@@ -24,87 +25,89 @@ export class SocketService {
   }
 
   public connect(userId: string, userName: string): void {
+    if (this.socket && this.isConnected) {
+      console.log("[Socket] Already connected, skipping connection");
+      return;
+    }
+
+    // Store user info for reconnection scenarios
     this.userId = userId;
     this.userName = userName;
 
-    console.log(
-      `[SocketService] Connecting socket with userId: ${userId}, name: ${userName}`,
-    );
-
-    if (this.socket && this.socket.connected) {
-      console.log(
-        "[SocketService] Socket already connected, disconnecting first",
-      );
-      this.socket.disconnect();
-    }
-
-    // The apiUrl should be the same as in the API service
-    const apiUrl = "http://192.168.1.86:8081";
-    console.log(`[SocketService] Connecting to socket at: ${apiUrl}`);
-
     try {
-      const { user } = useUserStore.getState();
+      // Get the backend URL from Constants or use a default
+      let SOCKET_URL = "";
+      try {
+        SOCKET_URL = "http://192.168.137.146:8081";
+      } catch (error) {
+        console.error(
+          "[Socket] Error getting SOCKET_URL from Constants:",
+          error,
+        );
+        SOCKET_URL = "http://192.168.137.146:8081"; // Fallback URL
+      }
 
-      console.log("[SocketContext] user", user);
+      console.log(
+        `[Socket] Connecting to ${SOCKET_URL} with userId: ${userId}`,
+      );
 
-      this.socket = io(apiUrl, {
-        autoConnect: true,
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 500,
+      // Initialize socket connection with auth data
+      this.socket = io(SOCKET_URL, {
+        query: {
+          userId,
+          userName,
+        },
         transports: ["websocket"],
-        query: user
-          ? {
-              userId: user.id,
-              name: user.fullName || "Unknown User",
-            }
-          : {},
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
       });
 
-      console.log("[SocketService] Socket instance created:", !!this.socket);
-
-      // Set up connection status listeners for debugging
+      // Set up connection event listeners
       this.socket.on("connect", () => {
         console.log(
-          `[SocketService] Socket connected with ID: ${this.socket?.id}`,
+          `[Socket] Connected successfully with ID: ${this.socket?.id}`,
         );
-        console.log(`[SocketService] Connection status: ${this.isConnected()}`);
+        this.isConnected = true;
 
-        // Automatically join user's room
-        if (userId) {
-          console.log(
-            `[SocketService] Automatically joining user room: user_${userId}`,
-          );
-          this.emit("join", `user_${userId}`);
-        }
+        // Rejoin all conversation rooms on reconnect
+        this.conversationRooms.forEach((roomId) => {
+          console.log(`[Socket] Rejoining conversation room: ${roomId}`);
+          this.socket?.emit("join_conversation", { conversationId: roomId });
+        });
+
+        // Rejoin all direct rooms on reconnect
+        this.directRooms.forEach((userId) => {
+          console.log(`[Socket] Rejoining direct room: ${userId}`);
+          this.socket?.emit("join_direct", { targetUserId: userId });
+        });
+      });
+
+      this.socket.on("disconnect", () => {
+        console.log("[Socket] Disconnected from server");
+        this.isConnected = false;
       });
 
       this.socket.on("connect_error", (error) => {
-        // console.error("[SocketService] Socket connection error:", error.name);
+        console.error("[Socket] Connection error:", error);
+        this.isConnected = false;
       });
 
-      this.socket.on("disconnect", (reason) => {
-        console.log(`[SocketService] Socket disconnected: ${reason}`);
+      this.socket.on("error", (error) => {
+        console.error("[Socket] Socket error:", error);
       });
 
-      this.socket.on("reconnect_attempt", (attemptNumber) => {
-        console.log(
-          `[SocketService] Socket reconnection attempt #${attemptNumber}`,
-        );
-      });
-
-      this.socket.on("reconnect", (attemptNumber) => {
-        console.log(
-          `[SocketService] Socket reconnected after ${attemptNumber} attempts`,
-        );
-      });
-
-      this.socket.connect();
+      // Explicitly check if the connection succeeded - useful for debugging
+      setTimeout(() => {
+        if (!this.isConnected) {
+          console.log(
+            "[Socket] Connection not established after timeout. Socket state:",
+            this.socket?.connected,
+          );
+        }
+      }, 5000);
     } catch (error) {
-      console.error(
-        "[SocketService] Error setting up socket connection:",
-        error,
-      );
+      console.error("[Socket] Error initializing socket:", error);
     }
   }
 
@@ -112,138 +115,129 @@ export class SocketService {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+      this.isConnected = false;
+      this.conversationRooms.clear();
+      this.directRooms.clear();
+      console.log("[Socket] Disconnected and cleaned up");
     }
   }
 
-  public emit(event: string, data: any): void {
-    if (this.socket) {
-      console.log(`[SocketService] Emitting event: ${event}`, data);
-      this.socket.emit(event, data);
-    } else {
-      console.error(
-        `[SocketService] Cannot emit event: ${event} - Socket not connected`,
-      );
+  public emit(event: string, data: any): boolean {
+    if (!this.socket || !this.isConnected) {
+      console.log(`[Socket] Cannot emit ${event} - not connected`);
+      return false;
     }
+    this.socket.emit(event, data);
+    return true;
   }
 
   public on(event: string, callback: (data: any) => void): void {
-    if (this.socket) {
-      console.log(`[SocketService] Setting up listener for event: ${event}`);
-      this.socket.on(event, (data) => {
-        console.log(`[SocketService] Received event: ${event}`, data);
-        callback(data);
-      });
-    } else {
-      console.error(
-        `[SocketService] Cannot listen for event: ${event} - Socket not connected`,
-      );
+    if (!this.socket) {
+      console.log(`[Socket] Cannot add listener for ${event} - not connected`);
+      return;
     }
+    this.socket.on(event, (data) => {
+      console.log(`[Socket] Received event: ${event}`, data);
+      callback(data);
+    });
   }
 
   public off(event: string): void {
-    if (this.socket) {
-      console.log(`[SocketService] Removing listener for event: ${event}`);
-      this.socket.off(event);
-    }
+    if (!this.socket) return;
+    this.socket.off(event);
   }
 
-  public isConnected(): boolean {
-    return !!this.socket?.connected;
+  public isSocketConnected(): boolean {
+    return Boolean(this.isConnected && this.socket?.connected);
   }
 
   public getSocket(): Socket | null {
     return this.socket;
   }
 
-  public joinConversation(conversationId: string): void {
-    console.log(`[SocketService] Joining conversation room: ${conversationId}`);
-    console.log(
-      `[SocketService] Current connection status: ${this.isConnected()}`,
-    );
-
-    if (!this.isConnected()) {
-      console.warn(
-        `[SocketService] Cannot join conversation - Socket not connected`,
-      );
-
-      // Attempt to reconnect if possible
-      if (this.socket && !this.socket.connected) {
-        console.log("[SocketService] Attempting to reconnect socket...");
-        this.socket.connect();
-      }
-
-      return;
+  public joinConversation(conversationId: string): boolean {
+    if (!this.socket || !this.isConnected) {
+      console.log("[Socket] Cannot join room - not connected");
+      return false;
     }
 
-    // First join the specific conversation room
-    this.emit("join", `conversation_${conversationId}`);
+    try {
+      console.log(`[Socket] Joining conversation: ${conversationId}`);
 
-    // Also join a direct room if it's a direct conversation
-    if (this.userId) {
-      const directRoomId = `direct_${this.userId}_${conversationId}`;
-      console.log(`[SocketService] Joining direct room: ${directRoomId}`);
-      this.emit("join", directRoomId);
+      // Store the conversation ID to rejoin on reconnect
+      this.conversationRooms.add(conversationId);
 
-      // Try the reversed format too to ensure we catch all messages
-      const reversedDirectRoomId = `direct_${conversationId}_${this.userId}`;
+      // Join the conversation room
+      this.socket.emit("join_conversation", { conversationId });
+
+      // For private conversations, we should also join a direct room with the receiver
+      // This ensures private messages work even without a conversation ID
       console.log(
-        `[SocketService] Joining reversed direct room: ${reversedDirectRoomId}`,
+        `[Socket] Current user ID for direct messaging: ${this.userId}`,
       );
-      this.emit("join", reversedDirectRoomId);
+
+      return true;
+    } catch (error) {
+      console.error(
+        `[Socket] Error joining conversation ${conversationId}:`,
+        error,
+      );
+      return false;
     }
   }
 
-  public sendChatMessage(data: {
-    conversationId: string;
-    message: string;
-    file?: any;
-  }): void {
-    console.log(
-      `[SocketService] Sending chat message to ${data.conversationId}:`,
-      data.message,
-    );
-
-    console.log(
-      `[SocketService] Current connection status: ${this.isConnected()}`,
-    );
-
-    if (!this.isConnected()) {
-      console.warn(
-        `[SocketService] Cannot send message - Socket not connected`,
-      );
-
-      // Attempt to reconnect if possible
-      if (this.socket && !this.socket.connected) {
-        console.log("[SocketService] Attempting to reconnect socket...");
-        this.socket.connect();
-
-        // Wait for reconnection and try to send again
-        setTimeout(() => {
-          if (this.isConnected()) {
-            this.sendChatMessage(data);
-          }
-        }, 1000);
-      }
-
-      return;
+  public sendChatMessage(
+    conversationId: string,
+    message: string,
+    receiverId?: string,
+  ): boolean {
+    if (!this.socket || !this.isConnected) {
+      console.log("[Socket] Cannot send message - not connected");
+      return false;
     }
 
-    // Format the data to match what the backend expects
-    const messageData = {
-      ...data,
-      senderId: this.userId,
-      senderName: this.userName,
-      timestamp: new Date().toISOString(),
-      type: data.file ? "FILE" : "TEXT",
-    };
+    try {
+      // Check if we're in the conversation room already
+      if (!this.conversationRooms.has(conversationId)) {
+        console.log(
+          `[Socket] Not in conversation ${conversationId}, joining now`,
+        );
+        const joinResult = this.joinConversation(conversationId);
+        if (!joinResult) {
+          console.log(`[Socket] Failed to join conversation ${conversationId}`);
+          return false;
+        }
+      }
 
-    console.log(`[SocketService] Formatted message data:`, messageData);
+      // Format the message data
+      const messageData = {
+        conversationId,
+        message,
+        senderId: this.userId,
+        senderName: this.userName,
+        receiverId: receiverId || undefined,
+        timestamp: new Date().toISOString(),
+      };
 
-    // Ensure we're in the conversation room before sending
-    this.joinConversation(data.conversationId);
+      console.log(
+        `[Socket] Sending message to conversation: ${conversationId}`,
+        {
+          contentPreview: message.substring(0, 20),
+          receiverId: receiverId || "none",
+        },
+      );
 
-    // Send the message using the same event name as the frontend
-    this.emit("chat message", messageData);
+      // Send the chat message event
+      this.socket.emit("send_message", messageData);
+
+      return true;
+    } catch (error) {
+      console.error(
+        `[Socket] Error sending message to ${conversationId}:`,
+        error,
+      );
+      return false;
+    }
   }
 }
 

@@ -20,7 +20,6 @@ import ChatBubble from "~/components/chat/ChatBubble";
 import ChatHeader from "~/components/chat/ChatHeader";
 import ChatInput from "~/components/chat/ChatInput";
 import { Message, Reaction, User } from "~/components/chat/types";
-import { useAuth } from "~/contexts/AuthContext";
 import { useSocket } from "~/hooks/useSocket";
 import { socketService } from "~/lib/socket";
 import { useSocketStore } from "~/store/socketStore";
@@ -37,8 +36,7 @@ type ExtendedMessage = Message & {
 
 export default function Chat() {
   const { id } = useLocalSearchParams();
-  const { token } = useAuth();
-  const { user } = useUserStore();
+  const { user, token } = useUserStore();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -64,10 +62,8 @@ export default function Chat() {
     isConnected: socketConnected,
   } = useSocketStore();
 
-  // Initialize socket connection
-  const { sendMessage: sendSocketMessage, joinConversation } = useSocket(
-    token || "",
-  );
+  // Initialize socket connection with token from userStore
+  const { sendMessage: sendSocketMessage, joinConversation } = useSocket();
 
   // Store generated waveforms per message
   const [waveforms] = useState<Record<string, number[]>>({});
@@ -83,7 +79,16 @@ export default function Chat() {
     type: string;
     receiverId?: string;
     name?: string;
+    members?: any[];
   }>({ id: Array.isArray(id) ? id[0] : (id as string), type: "PRIVATE" });
+
+  // Store message IDs to track which ones we've already processed
+  const processedMessageIds = useRef<Set<string>>(new Set());
+
+  // Track messages sent by us to prevent duplication from socket/API feedback
+  const sentMessageTracker = useRef<
+    Map<string, { content: string; timestamp: number }>
+  >(new Map());
 
   // Watch for changes in the socketMessages and update local state
   useEffect(() => {
@@ -103,10 +108,55 @@ export default function Chat() {
       // Create a map of existing message IDs for faster lookup
       const existingMessageIds = new Set(prevMessages.map((m) => m.id));
 
-      // Filter out messages that already exist in the current state
-      const newMessages = chatMessages.filter(
-        (msg) => !existingMessageIds.has(msg.id),
-      );
+      // Also check our processed message tracker
+      const processedIds = processedMessageIds.current;
+
+      // Filter out messages that already exist in the current state or already processed
+      const newMessages = chatMessages.filter((msg) => {
+        // Skip if we've already processed this message ID
+        if (processedIds.has(msg.id)) {
+          console.log(`[Chat] Already processed message: ${msg.id}`, msg);
+          return false;
+        }
+
+        // Skip if message already exists in messages state
+        if (existingMessageIds.has(msg.id)) {
+          console.log(`[Chat] Message already in state: ${msg.id}`, msg);
+          return false;
+        }
+
+        // Check if this might be a duplicate of a message we sent
+        const senderId =
+          msg.senderId || (msg.sender?.id ? msg.sender.id : null);
+        const content = msg.content || msg.message || "";
+
+        if (senderId === user?.id) {
+          // Check our sent message tracker for similar content
+          for (const [
+            trackedId,
+            trackedMsg,
+          ] of sentMessageTracker.current.entries()) {
+            if (
+              trackedMsg.content === content &&
+              Date.now() - trackedMsg.timestamp < 10000
+            ) {
+              console.log(
+                `[Chat] Message matches recently sent content: ${content}`,
+                msg,
+              );
+
+              // Add this ID to processed IDs to prevent future processing
+              processedIds.add(msg.id);
+
+              return false;
+            }
+          }
+        }
+
+        // Message passes all checks, add to processed IDs
+        processedIds.add(msg.id);
+        return true;
+      });
 
       if (newMessages.length === 0) {
         console.log("[Chat] No new messages to add from socket store");
@@ -114,7 +164,7 @@ export default function Chat() {
       }
 
       console.log(
-        `[Chat] Adding ${newMessages.length} new messages from socket store`,
+        `[Chat] Adding ${newMessages.length} messages from socket store`,
       );
 
       // Combine and sort all messages by timestamp
@@ -126,17 +176,23 @@ export default function Chat() {
 
       return allMessages;
     });
-  }, [id, socketMessages]);
+  }, [id, socketMessages, user?.id]);
 
   // Fetch conversation details to determine if it's a private or group chat
   useEffect(() => {
+    console.log("Fetching conversation details");
+    console.log("id", id);
+    console.log("token", token);
     if (!id || !token) return;
 
     const fetchConversationDetails = async () => {
       try {
         const conversationId = Array.isArray(id) ? id[0] : id;
         const response = await getConversationById(conversationId);
-        const conversationData = response.data || {};
+
+        console.log("response from getConversationById", response);
+        const conversationData = response || {};
+        console.log("conversationData", conversationData);
 
         console.log(
           `[Chat] Conversation API response:`,
@@ -147,44 +203,37 @@ export default function Chat() {
           }),
         );
 
-        // If type is PRIVATE, find the other user's ID to use as receiverId
+        // Store the full members array for later use
+        const members = conversationData.members || [];
+        console.log(`[Chat] Conversation has ${members.length} members`);
+
+        // Find the receiver ID (the other member who isn't the current user)
         let receiverId;
-        if (
-          conversationData.type === "PRIVATE" &&
-          Array.isArray(conversationData.members)
-        ) {
-          const otherMember = conversationData.members.find(
+        if (Array.isArray(members)) {
+          // For PRIVATE chats, find the other user's ID
+          const otherMember = members.find(
             (member: any) => member.id !== user?.id,
           );
-          receiverId = otherMember?.id;
-          console.log(
-            `[Chat] Found receiverId for private conversation: ${receiverId}`,
-          );
-        }
 
-        // For 1:1 chats, we MUST have a receiverId for proper API calls
-        if (conversationData.members?.length === 2 && !receiverId && user?.id) {
-          // Backup logic - if we have 2 members, the receiverId is the one that's not the current user
-          const possibleMembers = conversationData.members
-            .map((m: any) => m.id)
-            .filter((id: string) => id !== user.id);
-          if (possibleMembers.length === 1) {
-            receiverId = possibleMembers[0];
+          if (otherMember) {
+            receiverId = otherMember.id;
             console.log(
-              `[Chat] Used backup logic to find receiverId: ${receiverId}`,
+              `[Chat] Found receiverId: ${receiverId} from members array`,
             );
           }
         }
 
+        // Set the conversation details with the found receiverId and members
         setConversation({
           id: conversationId,
           type: conversationData.type || "PRIVATE",
           receiverId,
           name: conversationData.name,
+          members,
         });
 
         console.log(
-          `[Chat] Conversation details loaded - type: ${conversationData.type}, members: ${conversationData.members?.length}`,
+          `[Chat] Conversation details loaded - type: ${conversationData.type}, receiverId: ${receiverId}`,
         );
       } catch (error) {
         console.error("[Chat] Error fetching conversation details:", error);
@@ -207,7 +256,7 @@ export default function Chat() {
     console.log(`[Chat] Explicitly joining conversation: ${conversationId}`);
 
     // Force socket connection if needed
-    if (!socketService.isConnected()) {
+    if (!socketService.isSocketConnected()) {
       console.log(
         "[Chat] Socket not connected, attempting to connect and join conversation",
       );
@@ -246,10 +295,12 @@ export default function Chat() {
         console.log(`[Chat] Fetching messages for conversation: ${id}`);
         const conversationId = Array.isArray(id) ? id[0] : id;
 
+        // IMPORTANT: Request messages in descending order (newest first)
+        // and increase the limit to ensure we get the most recent messages
         const response = await getMessages(conversationId, {
           limit: 50,
           offset: 0,
-          sort: "desc", // Keep desc order for inverted list
+          sort: "desc", // Get newest messages first
         });
 
         console.log(
@@ -418,7 +469,9 @@ export default function Chat() {
           },
         );
 
-        // Don't reverse the messages since we're using inverted list
+        // Since we're fetching in desc order (newest first), but want to display oldest first
+        // We need to reverse the transformedMessages to display them correctly
+        // DON'T reverse the array - keep the original order from the API
         const sortedMessages = transformedMessages;
 
         console.log(
@@ -444,7 +497,7 @@ export default function Chat() {
         setIsLoading(false);
 
         // After loading initial messages, check if we should join the conversation
-        if (socketService.isConnected()) {
+        if (socketService.isSocketConnected()) {
           const conversationId = Array.isArray(id) ? id[0] : id;
           console.log(
             `[Chat] Joining conversation after loading messages: ${conversationId}`,
@@ -483,7 +536,7 @@ export default function Chat() {
 
     // Check connection status every 10 seconds and rejoin if needed
     const intervalId = setInterval(() => {
-      if (!socketService.isConnected()) {
+      if (!socketService.isSocketConnected()) {
         console.log(
           "[Chat] Socket connection check: not connected. Attempting to rejoin conversation.",
         );
@@ -500,23 +553,37 @@ export default function Chat() {
 
   // Function to load more messages
   const loadMoreMessages = async () => {
-    if (!pagination.hasMore || isLoadingMore) return;
+    if (!pagination.hasMore || isLoadingMore) {
+      console.log(
+        "Not loading more messages:",
+        !pagination.hasMore ? "No more messages to load" : "Already loading",
+      );
+      return;
+    }
 
     try {
+      console.log("Loading more messages from offset:", pagination.offset);
       setIsLoadingMore(true);
+
       const response = await getMessages(id as string, {
         limit: pagination.limit,
         offset: pagination.offset,
-        sort: "desc", // Keep desc order for inverted list
       });
 
-      const responseMessages = response.messages || [];
+      console.log("API response structure:", Object.keys(response));
+      const responseMessages =
+        response.messages || response.data?.messages || [];
+      const paginationInfo = response.pagination || response.data?.pagination;
 
-      // Update pagination
+      // Update pagination info
+      const hasMore =
+        !!paginationInfo?.hasMore ||
+        responseMessages.length >= pagination.limit;
+
       setPagination({
         offset: pagination.offset + pagination.limit,
         limit: pagination.limit,
-        hasMore: responseMessages.length >= pagination.limit,
+        hasMore,
       });
 
       // Transform messages to match the expected format
@@ -634,15 +701,26 @@ export default function Chat() {
         },
       );
 
+      // Sort messages by timestamp
+      const sortedMessages = transformedMessages.sort(
+        (a: Message, b: Message) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return timeA - timeB;
+        },
+      );
+
+      // Add older messages to the beginning of the messages array
       setMessages((prevMessages) => {
+        // Filter out duplicates based on message ID
         const existingIds = new Set(prevMessages.map((m) => m.id));
-        const newMessages = transformedMessages.filter(
+        const newMessages = sortedMessages.filter(
           (m: Message) => !existingIds.has(m.id),
         );
-        return [...prevMessages, ...newMessages];
+        return [...newMessages, ...prevMessages];
       });
     } catch (error) {
-      console.error("[Chat] Error loading more messages:", error);
+      console.error("Error loading more messages:", error);
     } finally {
       setIsLoadingMore(false);
     }
@@ -695,8 +773,8 @@ export default function Chat() {
     }
   }, [isLoadingMore]);
 
-  // Instead of relying on the useEffect hook for socket messages, we'll modify the direct message handler
-  // to ensure immediate updates to the UI
+  // Instead of relying on the useEffect hook for socket messages, we'll improve the direct message handler
+  // to ensure immediate updates to the UI and prevent duplicates
   useEffect(() => {
     if (!token || !id) return;
 
@@ -706,11 +784,25 @@ export default function Chat() {
     // Listen for direct new_message events to bypass the store
     const handleNewMessage = (data: any) => {
       console.log("[Chat] Direct new_message handler received:", data);
+      console.log("[Chat] Current user ID:", user?.id);
+      console.log("[Chat] Sender ID:", data.senderId || data.sender?.id);
+
+      // Skip if the sender is the current user (to prevent showing own messages twice)
+      if ((data.senderId || (data.sender && data.sender.id)) === user?.id) {
+        console.log("[Chat] Skipping as this is a message we sent");
+        return;
+      }
 
       // Ensure the message has an ID
       if (!data.id) {
         data.id = Date.now().toString();
         console.log("[Chat] Added missing ID to message:", data.id);
+      }
+
+      // If we've already processed this message ID, skip it
+      if (processedMessageIds.current.has(data.id)) {
+        console.log(`[Chat] Already processed message: ${data.id}, skipping`);
+        return;
       }
 
       // Check if this message belongs to the current chat
@@ -750,9 +842,37 @@ export default function Chat() {
         (data.sender && typeof data.sender === "object" ? data.sender.id : "");
       const isFromMe = messageSenderId === user?.id;
 
+      // Skip our own messages sent via socket to prevent duplication
+      if (isFromMe) {
+        console.log("[Chat] This is our own message, not adding it again");
+        return;
+      }
+
+      const messageContent = data.content || data.message || "";
+
+      // Check our sent message tracker if this is from us
+      if (isFromMe) {
+        for (const [
+          trackedId,
+          trackedMsg,
+        ] of sentMessageTracker.current.entries()) {
+          if (
+            trackedMsg.content === messageContent &&
+            Date.now() - trackedMsg.timestamp < 10000
+          ) {
+            console.log(
+              `[Chat] This appears to be a message we sent: ${messageContent}, skipping`,
+            );
+            // Add to processed IDs to prevent future processing
+            processedMessageIds.current.add(data.id);
+            return;
+          }
+        }
+      }
+
       const transformedMessage: any = {
         id: data.id,
-        content: data.content || data.message || "",
+        content: messageContent,
         senderId: messageSenderId,
         receiverId:
           data.receiverId || (isFromMe ? conversationId : user?.id) || "",
@@ -777,16 +897,32 @@ export default function Chat() {
         };
       }
 
-      console.log("[Chat] Adding message to UI:", transformedMessage);
+      console.log(
+        "[Chat] Adding message from other user to UI:",
+        transformedMessage,
+      );
 
-      // Check if this message already exists
+      // Mark as processed
+      processedMessageIds.current.add(data.id);
+
+      // Check if this message already exists - IMPROVED DUPLICATE DETECTION
       setMessages((prevMessages) => {
-        // Skip if message already exists
+        // ENHANCED DUPLICATE CHECK: Check ID and content/timestamp for similar messages
         const messageExists = prevMessages.some(
-          (m) => m.id === transformedMessage.id,
+          (m) =>
+            m.id === transformedMessage.id ||
+            (m.content === transformedMessage.content &&
+              Math.abs(
+                new Date(m.timestamp).getTime() -
+                  new Date(transformedMessage.timestamp).getTime(),
+              ) < 5000 &&
+              m.senderId === transformedMessage.senderId),
         );
+
         if (messageExists) {
-          console.log("[Chat] Message already exists in state, skipping");
+          console.log(
+            "[Chat] Message or similar already exists in state, skipping",
+          );
           return prevMessages;
         }
 
@@ -850,46 +986,76 @@ export default function Chat() {
   };
 
   // We need to also modify the send function to make sure we see our own messages immediately
+  // and avoid duplicates
   const handleSend = async () => {
     if (message.trim()) {
       try {
         const conversationId = Array.isArray(id) ? id[0] : id;
         const messageText = message.trim();
+        const tempId = `temp-${Date.now()}`;
+
+        // Track this message to prevent duplicates
+        sentMessageTracker.current.set(tempId, {
+          content: messageText,
+          timestamp: Date.now(),
+        });
+
+        // Clean up old tracked messages after 10 seconds
+        setTimeout(() => {
+          sentMessageTracker.current.delete(tempId);
+        }, 10000);
 
         // Create a temporary message for immediate display
         const tempMessage: any = {
-          id: Date.now().toString(),
+          id: tempId, // Use a consistent ID format for better duplicate detection
           content: messageText,
           senderId: user?.id || "",
-          receiverId: conversation.receiverId || conversationId,
           timestamp: new Date().toISOString(),
           status: "sent",
           type: "TEXT",
           reaction: "",
           sender: "me",
+          // Add a flag to identify this as a temporary message
+          isTemporary: true,
         };
 
         // Clear input immediately to improve UX responsiveness
         setMessage("");
 
-        // Add to local state immediately
+        // Add to local state immediately - this is what we see on our side
         setMessages((prev) => {
           const newMessages = [...prev, tempMessage];
           return newMessages;
         });
 
+        // Add to processed IDs so we don't duplicate if it comes in via socket
+        processedMessageIds.current.add(tempId);
+
         // Scroll to bottom immediately
         scrollToBottom();
 
         console.log(
-          `[Chat] Sending message. Conversation type: ${conversation.type}, receiverId: ${conversation.receiverId}`,
+          `[Chat] Sending message to conversation: ${conversationId}, type: ${conversation.type}`,
         );
 
         // Try socket send first if connected (real-time update)
         let socketSent = false;
-        if (socketService.isConnected()) {
+        if (socketService.isSocketConnected()) {
           console.log("[Chat] Sending message via socket");
-          socketSent = sendSocketMessage(conversationId, messageText);
+          const receiverId = conversation.receiverId;
+          // Only pass receiverId for private conversations
+          if (conversation.type === "PRIVATE" && receiverId) {
+            socketSent = socketService.sendChatMessage(
+              conversationId,
+              messageText,
+              receiverId,
+            );
+          } else {
+            socketSent = socketService.sendChatMessage(
+              conversationId,
+              messageText,
+            );
+          }
 
           if (socketSent) {
             console.log("[Chat] Message sent successfully via socket");
@@ -900,31 +1066,112 @@ export default function Chat() {
           console.log("[Chat] Socket not connected, will use API only");
         }
 
-        // Always use API for persistence since socket is unreliable
+        // Always use API for persistence
         try {
-          if (conversation.receiverId) {
+          // For private conversations, we need to find the receiverId
+          if (conversation.type === "PRIVATE") {
             console.log(
-              `[Chat] Using private message API with receiverId: ${conversation.receiverId}`,
+              `[Chat] Sending private message to conversation: ${conversationId}`,
             );
-            // Use private message API
-            await sendMessage({
-              conversationId,
-              content: messageText,
-              receiverId: conversation.receiverId,
-              type: "TEXT",
-            });
-            console.log("[Chat] Message sent via private API");
+
+            // Try to get receiverId from different sources
+            let receiverId = conversation.receiverId;
+
+            // If receiverId is not in conversation state, try to get it from members array
+            if (
+              !receiverId &&
+              conversation.members &&
+              conversation.members.length > 0
+            ) {
+              // Find the other member in the conversation (not the current user)
+              const otherMember = conversation.members.find(
+                (member: any) => member.id !== user?.id,
+              );
+
+              if (otherMember) {
+                receiverId = otherMember.id;
+                console.log(
+                  `[Chat] Found receiverId: ${receiverId} from members array`,
+                );
+              }
+            }
+
+            if (receiverId) {
+              console.log(`[Chat] Using receiverId: ${receiverId}`);
+
+              // Send message with receiverId for private conversations
+              const response = await sendMessage({
+                conversationId,
+                content: messageText,
+                receiverId, // Include the receiverId we found
+                type: "TEXT",
+              });
+
+              console.log("send message response", response);
+
+              // If we get a response with the real message ID, update our temporary message
+              if (response?.message?.id) {
+                console.log(
+                  `[Chat] Replacing temp message with real ID: ${response.message.id}`,
+                );
+
+                // Add to processed IDs so we don't duplicate if it comes in via socket
+                processedMessageIds.current.add(response.message.id);
+
+                setMessages((prevMessages) => {
+                  // First, remove any existing messages with the same content
+                  const filteredMessages = prevMessages.filter(
+                    (msg) => msg.content !== messageText || msg.id === tempId,
+                  );
+
+                  // Then add the updated message
+                  return [
+                    ...filteredMessages,
+                    {
+                      ...prevMessages.find((msg) => msg.id === tempId),
+                      id: response.message.id,
+                      isTemporary: false,
+                    },
+                  ];
+                });
+              }
+
+              console.log(
+                "[Chat] Private message sent successfully with receiverId",
+              );
+            }
           } else {
-            // Last resort - use group API
+            // For GROUP conversations
             console.log(
-              `[Chat] Using group message API as fallback for: ${conversationId}`,
+              `[Chat] Sending group message to conversation: ${conversationId}`,
             );
-            await sendMessage({
+
+            const response = await sendMessage({
               conversationId,
               content: messageText,
               type: "TEXT",
             });
-            console.log("[Chat] Message sent via group API");
+
+            // Update temporary message if we get a response
+            if (response?.data?.id) {
+              console.log(
+                `[Chat] Replacing temp message with real ID: ${response.data.id}`,
+              );
+
+              // Add to processed IDs so we don't duplicate if it comes in via socket
+              processedMessageIds.current.add(response.data.id);
+
+              setMessages((prevMessages) =>
+                prevMessages.map((msg) =>
+                  msg.id === tempId ||
+                  (msg.content === messageText && msg.isTemporary)
+                    ? { ...msg, id: response.data.id, isTemporary: false }
+                    : msg,
+                ),
+              );
+            }
+
+            console.log("[Chat] Group message sent successfully");
           }
         } catch (apiError) {
           console.error("[Chat] API send error:", apiError);
@@ -1259,31 +1506,39 @@ export default function Chat() {
           keyExtractor={(item) => item.id}
           ref={flatListRef}
           className="flex-1 bg-gray-50"
-          contentContainerStyle={{
-            padding: 16,
-            flexGrow: 1,
-            justifyContent: "flex-end",
-          }}
-          inverted
+          contentContainerStyle={{ padding: 16 }}
+          inverted={false}
           onEndReachedThreshold={0.1}
           onScroll={handleScroll}
+          onContentSizeChange={() => {
+            if (!isLoadingMore && messages.length > 0) {
+              // Scroll to bottom whenever content size changes (new message received)
+              scrollToBottom(false);
+            }
+          }}
+          onLayout={() => {
+            // Scroll to bottom when layout is ready
+            if (messages.length > 0) {
+              scrollToBottom(false);
+            }
+          }}
           scrollEventThrottle={16}
           maintainVisibleContentPosition={{
             minIndexForVisible: 0,
             autoscrollToTopThreshold: 10,
           }}
-          ListFooterComponent={
+          ListHeaderComponent={
             pagination.hasMore ? (
               <TouchableOpacity
                 onPress={loadMoreMessages}
                 disabled={isLoadingMore}
-                className="items-center justify-center py-2 mt-4"
+                className="items-center justify-center py-2 mb-4"
               >
                 {isLoadingMore ? (
                   <ActivityIndicator size="small" color="#3b82f6" />
                 ) : (
                   <View className="flex-row items-center">
-                    <Ionicons name="arrow-down" size={16} color="#3b82f6" />
+                    <Ionicons name="arrow-up" size={16} color="#3b82f6" />
                     <Text className="text-blue-500 ml-1">
                       Load previous messages
                     </Text>
@@ -1293,11 +1548,14 @@ export default function Chat() {
             ) : null
           }
           renderItem={({ item: msg }) => {
+            // Check if it might be a GIF by URL
             if (
               msg.file &&
               typeof msg.file === "string" &&
               msg.file.toLowerCase().includes(".gif")
             ) {
+              console.log("Detected GIF in render function:", msg.file);
+              // Force the message type to GIF for proper rendering
               msg.type = "GIF";
             }
 
