@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useAuthStore } from "~/store/authStore"; // Import auth store
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 import { useUserStore } from "~/store/userStore"; // Import user store
 
 const AddFriend = () => {
-  const { token, userId } = useAuthStore(); // Lấy token và userId từ auth store
-  const { user, setUser } = useUserStore(); // Lấy thông tin người dùng từ user store
+  const { user, setUser, token } = useUserStore(); // Lấy thông tin người dùng từ user store
   const [phoneNumber, setPhoneNumber] = useState(""); // State lưu số điện thoại
   const [isValid, setIsValid] = useState(false); // State kiểm tra tính hợp lệ của số điện thoại
   const [countryCode, setCountryCode] = useState("+84"); // State lưu đầu số quốc gia
@@ -30,7 +37,10 @@ const AddFriend = () => {
       Alert.alert("Lỗi", "Số điện thoại không hợp lệ. Vui lòng nhập lại.");
       return;
     }
-    Alert.alert("Thành công", `Đã gửi lời mời kết bạn đến số ${countryCode} ${phoneNumber}`);
+    Alert.alert(
+      "Thành công",
+      `Đã gửi lời mời kết bạn đến số ${countryCode} ${phoneNumber}`,
+    );
   };
 
   // Hàm xóa số điện thoại
@@ -72,8 +82,12 @@ const AddFriend = () => {
           source={{ uri: user?.avatar || "https://via.placeholder.com/150" }} // Hiển thị avatar từ store
           className="w-40 h-40 rounded-lg"
         />
-        <Text className="text-lg font-bold mt-2">{user?.fullName || "Tên người dùng"}</Text>
-        <Text className="text-gray-500 mt-1">Quét mã để thêm bạn Zalo với tôi</Text>
+        <Text className="text-lg font-bold mt-2">
+          {user?.fullName || "Tên người dùng"}
+        </Text>
+        <Text className="text-gray-500 mt-1">
+          Quét mã để thêm bạn Zalo với tôi
+        </Text>
       </View>
 
       {/* Input Section */}
@@ -112,14 +126,24 @@ const AddFriend = () => {
       <View className="bg-white mt-4">
         <TouchableOpacity
           className="flex-row items-center px-4 py-3 border-b border-gray-200"
-          onPress={() => Alert.alert("Quét mã QR", "Chức năng quét mã QR chưa được triển khai.")}
+          onPress={() =>
+            Alert.alert(
+              "Quét mã QR",
+              "Chức năng quét mã QR chưa được triển khai.",
+            )
+          }
         >
           <Ionicons name="qr-code" size={20} color="gray" />
           <Text className="ml-4 text-gray-800">Quét mã QR</Text>
         </TouchableOpacity>
         <TouchableOpacity
           className="flex-row items-center px-4 py-3 border-b border-gray-200"
-          onPress={() => Alert.alert("Danh bạ máy", "Chức năng danh bạ máy chưa được triển khai.")}
+          onPress={() =>
+            Alert.alert(
+              "Danh bạ máy",
+              "Chức năng danh bạ máy chưa được triển khai.",
+            )
+          }
         >
           <Ionicons name="person" size={20} color="gray" />
           <Text className="ml-4 text-gray-800">Danh bạ máy</Text>

@@ -1,5 +1,10 @@
 const conversationService = require("../services/conversation.service");
-const { UnauthorizedError, ValidationError } = require("../exceptions/errors");
+const {
+  UnauthorizedError,
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+} = require("../exceptions/errors");
 const { successResponse } = require("../utils/response");
 const { Op } = require("sequelize");
 const db = require("../models");
@@ -511,6 +516,105 @@ exports.debugConversation = async (req, res, next) => {
   } catch (error) {
     console.error("Error in debugConversation:", error);
     return handleError(error, res);
+  }
+};
+
+/**
+ * Get a single conversation by ID
+ * @param {Object} req - Request object with conversationId parameter
+ * @param {Object} res - Response object
+ * @returns {Object} Response with conversation details
+ */
+exports.getConversationById = async (req, res, next) => {
+  const { conversationId } = req.params;
+  const userId = req?.userId;
+
+  try {
+    if (!userId) throw new UnauthorizedError("Authentication required");
+    if (!conversationId)
+      throw new ValidationError("Conversation ID is required");
+
+    console.log(
+      `[getConversationById] Fetching conversation: ${conversationId} for user: ${userId}`
+    );
+
+    // Verify user is a member of the conversation
+    const conversation = await Conversation.findOne({
+      where: { id: conversationId },
+      include: [
+        {
+          model: User,
+          as: "members",
+          attributes: ["id", "phoneNumber", "fullName", "avatar", "status"],
+          through: { attributes: ["role"] },
+        },
+      ],
+    });
+
+    if (!conversation) {
+      throw new NotFoundError("Conversation not found");
+    }
+
+    // Check if user is a member of this conversation
+    const isMember = conversation.members.some(
+      (member) => member.id === userId
+    );
+    if (!isMember) {
+      throw new ForbiddenError("You are not a member of this conversation");
+    }
+
+    // Filter out the current user from members for PRIVATE conversations
+    const otherMembers = conversation.members.filter(
+      (member) => member.id !== userId
+    );
+
+    // For private chats, use the other user's info if name is not set
+    const conversationName =
+      conversation.type === "PRIVATE" &&
+      !conversation.name &&
+      otherMembers.length > 0
+        ? otherMembers[0].fullName
+        : conversation.name || "Unnamed Conversation";
+
+    const conversationAvatar =
+      conversation.type === "PRIVATE" &&
+      !conversation.avatar &&
+      otherMembers.length > 0
+        ? otherMembers[0].avatar
+        : conversation.avatar;
+
+    // Find user's role in this conversation
+    const userMember = conversation.members.find((m) => m.id === userId);
+    const userRole =
+      userMember && userMember.ConversationMember
+        ? userMember.ConversationMember.role
+        : "MEMBER";
+
+    const result = {
+      id: conversation.id,
+      name: conversationName,
+      avatar: conversationAvatar,
+      type: conversation.type,
+      created_at: conversation.created_at,
+      updated_at: conversation.updated_at,
+      members: conversation.members.map((m) => ({
+        id: m.id,
+        phoneNumber: m.phoneNumber,
+        fullName: m.fullName,
+        avatar: m.avatar,
+        status: m.status,
+        role: m.ConversationMember?.role || "MEMBER",
+      })),
+      userRole,
+    };
+
+    console.log(
+      `[getConversationById] Successfully fetched conversation ${conversationId}`
+    );
+    successResponse(res, "Conversation fetched successfully", result);
+  } catch (error) {
+    console.error("[getConversationById] Error:", error);
+    next(error);
   }
 };
 
