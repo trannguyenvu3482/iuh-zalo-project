@@ -13,7 +13,7 @@ const CACHE_TIME = 5 * 60 * 1000 // 5 minutes
 
 const instance = axios.create({
   baseURL:
-    import.meta.env.VITE_NGROK_ENABLED === true ? BASE_URL[1] : BASE_URL[0],
+    import.meta.env.VITE_NGROK_ENABLED === 'true' ? BASE_URL[1] : BASE_URL[0],
   headers: {
     'Content-Type': 'application/json',
   },

@@ -5,14 +5,31 @@ import axiosInstance from "../lib/axios";
  */
 export const getMessages = async (
   conversationId: string,
-  options: { limit?: number; offset?: number } = {},
+  options: { limit?: number; offset?: number; sort?: "asc" | "desc" } = {},
 ) => {
-  const { limit = 20, offset = 0 } = options;
-  const response = await axiosInstance.get(
-    `/conversations/${conversationId}/messages`,
-    { params: { limit, offset } },
-  );
-  return response.data;
+  const { limit = 20, offset = 0, sort = "asc" } = options;
+
+  console.log(`[API] Getting messages for conversation ${conversationId}`, {
+    limit,
+    offset,
+    sort,
+  });
+
+  try {
+    const response = await axiosInstance.get(
+      `/conversations/${conversationId}/messages`,
+      { params: { limit, offset, sort } },
+    );
+
+    console.log(
+      `[API] Received ${response.data?.messages?.length || 0} messages`,
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(`[API] Error fetching messages:`, error);
+    throw error;
+  }
 };
 
 /**

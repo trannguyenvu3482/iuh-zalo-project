@@ -35,6 +35,11 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     conversationController.getConversationMessages
   );
+  app.get(
+    "/api/conversations/:conversationId",
+    [authJwt.verifyToken],
+    conversationController.getConversationById
+  );
   app.post(
     "/api/groups",
     [authJwt.verifyToken],
