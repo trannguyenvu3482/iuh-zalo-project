@@ -12,11 +12,19 @@ interface Message {
   reaction?: any; // Allow reaction field
   file?: any; // Allow file field
 }
+interface Friend {
+  id: string;
+  name: string;
+  avatar?: string;
+  status: "online" | "offline"; // Trạng thái bạn bè
+  friendshipStatus: "PENDING" | "ACCEPTED" | "REJECTED"; // Trạng thái kết bạn
+}
 
 interface SocketState {
   isConnected: boolean;
   messages: Record<string, Message[]>;
   unreadCounts: Record<string, number>;
+  friends: Friend[]; // Danh sách bạn bè
   setConnected: (connected: boolean) => void;
   addMessage: (chatId: string, message: Message) => void;
   updateMessageStatus: (
@@ -26,13 +34,25 @@ interface SocketState {
   ) => void;
   incrementUnreadCount: (chatId: string) => void;
   resetUnreadCount: (chatId: string) => void;
+  setFriends: (friends: Friend[]) => void;
+  updateFriendStatus: (
+    friendId: string,
+    status: "online" | "offline",
+  ) => void; // Cập nhật trạng thái online/offline
+  updateFriendshipStatus: (
+    friendId: string,
+    friendshipStatus: "PENDING" | "ACCEPTED" | "REJECTED",
+  ) => void; // Cập nhật trạng thái kết bạn
 }
 
 export const useSocketStore = create<SocketState>((set) => ({
   isConnected: false,
   messages: {},
   unreadCounts: {},
+  friends: [],
+
   setConnected: (connected) => set({ isConnected: connected }),
+
   addMessage: (chatId, message) =>
     set((state) => {
       console.log(`[SocketStore] Adding message to chat ${chatId}:`, message);
@@ -85,5 +105,28 @@ export const useSocketStore = create<SocketState>((set) => ({
         ...state.unreadCounts,
         [chatId]: 0,
       },
+    })),
+  // Cập nhật toàn bộ danh sách bạn bè
+  setFriends: (friends) =>
+    set({
+      friends,
+    }),
+
+  // Cập nhật trạng thái online/offline của một bạn bè
+  updateFriendStatus: (friendId, status) =>
+    set((state) => ({
+      friends: state.friends.map((friend) =>
+        friend.id === friendId ? { ...friend, status } : friend,
+      ),
+    })),
+
+  // Cập nhật trạng thái kết bạn (PENDING, ACCEPTED, REJECTED)
+  updateFriendshipStatus: (friendId, friendshipStatus) =>
+    set((state) => ({
+      friends: state.friends.map((friend) =>
+        friend.id === friendId
+          ? { ...friend, friendshipStatus }
+          : friend,
+      ),
     })),
 }));

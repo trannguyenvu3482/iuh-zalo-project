@@ -17,7 +17,6 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
 // API URLs configuration for different environments
 // Determine the best API URL to use based on the platform and environment
 const API_URLS = [
-  "http://192.168.137.146:8081/api",
   "https://strongly-boss-finch.ngrok-free.app/api",
 ];
 
@@ -26,7 +25,7 @@ const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 // Create axios instance with better logging for debugging
 const axiosInstance = axios.create({
   baseURL:
-    process.env.EXPO_NGROK_ENABLED === "true" ? API_URLS[1] : API_URLS[0],
+    process.env.EXPO_NGROK_ENABLED === "true" ? API_URLS[0] : API_URLS[1],
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",

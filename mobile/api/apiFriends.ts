@@ -1,6 +1,6 @@
 import axiosInstance from "../lib/axios";
 
-const BASE_URL = "/friends";
+const BASE_URL = "/users/friends";
 
 /**
  * Get all friends of the current user

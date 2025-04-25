@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState, useEffect } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View, FlatList } from "react-native";
 import { router } from "expo-router";
-import { getFriends} from "../../api/apiFriends";
+import { getFriends } from "../../api/apiFriends";
+import FriendComponent from "~/components/FriendComponent";
 export type ContactSection = {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -53,9 +54,6 @@ const sections: ContactSection[] = [
   },
 ];
 
-const allContacts: Contact[] = [
-  
-];
 
 const recentContacts: Contact[] = [
   { id: "1", name: "Anh Cường" },
@@ -93,27 +91,40 @@ const Contacts = () => {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [sortType, setSortType] = useState("lastActivity"); // State cho sắp xếp
   const [isSortMenuVisible, setSortMenuVisible] = useState(false); // Hiển thị menu sắp xếp
-  //Ham vua response vua put vao mang contact
-  useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        const response = await getFriends();
-        allContacts.push(...response.data); // Thêm dữ liệu vào mảng allContacts
-      } catch (error) {
-        console.error("Error fetching contacts:", error);
-      }
-    };
-    fetchContacts();
-  }
-  , []);
+  const [friends, setFriends] = useState<Contact[]>([]); // Danh sách bạn bè
+  const [isLoading, setIsLoading] = useState(false); // Trạng thái loading
+  const [error, setError] = useState<string | null>(null); // Trạng thái // Chuyển thành state
+
   const tabs = [
     { id: "friends", label: "Bạn bè" },
     { id: "groups", label: "Nhóm" },
     { id: "oa", label: "OA" },
   ];
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getFriends(); // Gọi API lấy danh sách bạn bè
+        const mappedFriends = response.data.map((friend: any) => ({
+          id: friend.id, // Lấy ID
+          name: friend.fullName, // Lấy tên đầy đủ
+          avatar: friend.avatar, // Lấy avatar
+        }));
+        setFriends(mappedFriends); // Lưu danh sách bạn bè đã ánh xạ vào state
+        setError(null); // Xóa lỗi nếu có
+        console.log("Mapped Friends data:", mappedFriends); // Log dữ liệu đã ánh xạ
+      } catch (err) {
+        console.error("Failed to fetch friends:", err);
+        setError("Không thể tải danh sách bạn bè. Vui lòng thử lại sau."); // Cập nhật lỗi
+      } finally {
+        setIsLoading(false); // Kết thúc trạng thái loading
+      }
+    };
 
+    fetchFriends();
+  }, []);
   const filters = [
-    { id: "all", label: "Tất cả 93" },
+    { id: "all", label: "Tất cả " },
     { id: "recent", label: "Mới truy cập" },
   ];
 
@@ -126,9 +137,8 @@ const Contacts = () => {
   const getContactsByTab = () => {
     if (activeTab === "groups") return groups;
     if (activeTab === "oa") return oas;
-    return selectedFilter === "recent" ? recentContacts : allContacts;
+    return selectedFilter === "recent" ? recentContacts : friends;
   };
-
   const filteredContacts = useMemo(() => getContactsByTab(), [activeTab, selectedFilter]);
 
   const groupedContacts = useMemo(() => {
@@ -161,18 +171,26 @@ const Contacts = () => {
     return groups; // Mặc định không sắp xếp
   }, [groups, sortType]);
 
-  const renderContactItem = (item: Contact) => (
-    <TouchableOpacity
-      key={item.id}
-      className="flex-row items-center px-4 py-3 bg-white"
-      onPress={() => router.push(`/chat/${item.id}`)}
-    >
-      <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
-        <Ionicons name="person" size={20} color="#9CA3AF" />
-      </View>
-      <Text className="flex-1 ml-3 text-gray-900">{item.name}</Text>
-    </TouchableOpacity>
-  );
+  // Gọi API để lấy danh sách bạn bè
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getFriends();// Gọi API lấy danh sách bạn bè
+        console.log("Friends data:", response.data); // Log dữ liệu bạn bè
+        setFriends(response.data); // Lưu danh sách bạn bè vào state
+        setError(null); // Xóa lỗi nếu có
+      } catch (err) {
+        console.error("Failed to fetch friends:", err);
+        setError("Không thể tải danh sách bạn bè. Vui lòng thử lại sau."); // Cập nhật lỗi
+      } finally {
+        setIsLoading(false); // Kết thúc trạng thái loading
+      }
+    };
+
+    fetchFriends();
+  }, []);
+
 
   const renderGroupItem = (item: ContactItemProps) => (
     <TouchableOpacity
@@ -228,16 +246,14 @@ const Contacts = () => {
             <TouchableOpacity
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
-              className={`flex-1 items-center pb-2 ${
-                activeTab === tab.id
-                  ? "border-b-2 border-primary"
-                  : "border-b-2 border-transparent"
-              }`}
+              className={`flex-1 items-center pb-2 ${activeTab === tab.id
+                ? "border-b-2 border-primary"
+                : "border-b-2 border-transparent"
+                }`}
             >
               <Text
-                className={`text-lg font-medium ${
-                  activeTab === tab.id ? "font-bold text-black" : "text-gray-500"
-                }`}
+                className={`text-lg font-medium ${activeTab === tab.id ? "font-bold text-black" : "text-gray-500"
+                  }`}
               >
                 {tab.label}
               </Text>
@@ -252,31 +268,31 @@ const Contacts = () => {
             {activeTab === "friends" && (
               <View className="mb-2">
                 {sections.map((section) => (
-  <TouchableOpacity
-    key={section.id}
-    className="flex-row items-center px-4 py-3 bg-white"
-    onPress={() => handleSectionPress(section.id)}
-  >
-    <View className="w-8 h-8 rounded-xl bg-primary items-center justify-center">
-      <Ionicons name={section.icon} size={16} color="white" />
-    </View>
-    <View className="flex-1 ml-3">
-      <View className="flex-row items-center">
-        <Text className="text-base font-medium text-gray-900">
-          {section.title}
-        </Text>
-        {section.count && (
-          <View className="ml-1 px-1.5">
-            <Text className="text-gray-500">({section.count})</Text>
-          </View>
-        )}
-      </View>
-      {section.subtitle && (
-        <Text className="text-sm text-gray-500">{section.subtitle}</Text>
-      )}
-    </View>
-  </TouchableOpacity>
-))}
+                  <TouchableOpacity
+                    key={section.id}
+                    className="flex-row items-center px-4 py-3 bg-white"
+                    onPress={() => handleSectionPress(section.id)}
+                  >
+                    <View className="w-8 h-8 rounded-xl bg-primary items-center justify-center">
+                      <Ionicons name={section.icon} size={16} color="white" />
+                    </View>
+                    <View className="flex-1 ml-3">
+                      <View className="flex-row items-center">
+                        <Text className="text-base font-medium text-gray-900">
+                          {section.title}
+                        </Text>
+                        {section.count && (
+                          <View className="ml-1 px-1.5">
+                            <Text className="text-gray-500">({section.count})</Text>
+                          </View>
+                        )}
+                      </View>
+                      {section.subtitle && (
+                        <Text className="text-sm text-gray-500">{section.subtitle}</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
 
@@ -286,28 +302,40 @@ const Contacts = () => {
                   <TouchableOpacity
                     key={filter.id}
                     onPress={() => setSelectedFilter(filter.id)}
-                    className={`px-4 py-2 rounded-full ${
-                      selectedFilter === filter.id
-                        ? "bg-gray-200"
-                        : "bg-white border border-gray-200"
-                    }`}
+                    className={`px-4 py-2 rounded-full ${selectedFilter === filter.id
+                      ? "bg-gray-200"
+                      : "bg-white border border-gray-200"
+                      }`}
                   >
                     <Text
-                      className={`${
-                        selectedFilter === filter.id
-                          ? "text-gray-900 font-medium"
-                          : "text-gray-500"
-                      }`}
+                      className={`${selectedFilter === filter.id
+                        ? "text-gray-900 font-medium"
+                        : "text-gray-500"
+                        }`}
                     >
                       {filter.label}
                     </Text>
                   </TouchableOpacity>
+
                 ))}
               </View>
+
             )}
+
+
 
             {activeTab === "groups" && (
               <View className="mt-2">
+                <View
+                  className="flex-row items-center px-4 py-3 bg-white "
+                >
+                  <TouchableOpacity className="flex-row items-center px-4 py-3 bg-white" onPress={() => router.push("/group/create")}>
+                    <Ionicons name="people" size={20} color="#007AFF" />
+                    <Text className="ml-2 text-base text-primary font-medium">
+                      Tạo nhóm mới
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 <View className="px-4 py-2 bg-white flex-row justify-between items-center">
                   <Text className="text-sm text-gray-500">Nhóm đang tham gia ({groups.length})</Text>
                   <TouchableOpacity
@@ -331,9 +359,8 @@ const Contacts = () => {
                         className="px-4 py-2"
                       >
                         <Text
-                          className={`text-sm ${
-                            sortType === option.id ? "text-primary font-medium" : "text-gray-700"
-                          }`}
+                          className={`text-sm ${sortType === option.id ? "text-primary font-medium" : "text-gray-700"
+                            }`}
                         >
                           {option.label}
                         </Text>
@@ -355,12 +382,24 @@ const Contacts = () => {
 
             {activeTab === "friends" && (
               <View className="mt-2">
-                {Object.entries(groupedContacts).map(([letter, contacts]) => (
+                {Object.entries(groupedContacts).map(([letter, friends]) => (
                   <View key={letter}>
                     <View className="px-4 py-2 bg-gray-50">
                       <Text className="text-sm font-medium text-gray-500">{letter}</Text>
                     </View>
-                    {contacts.map(renderContactItem)}
+                    <FlatList
+                      data={friends}
+                      keyExtractor={(item) => item.id}
+                      renderItem={({ item }) => (
+                        <FriendComponent
+                          id={item.id}
+                          name={item.name}
+                          avatar={item.avatar}
+                          onPress={() => router.push(`/chat/${item.id}`)} // Điều hướng đến màn hình chat
+                        />
+                      )}
+                      ItemSeparatorComponent={() => <View className="h-px bg-gray-200 mx-4" />}
+                    />
                   </View>
                 ))}
               </View>
@@ -368,7 +407,7 @@ const Contacts = () => {
           </>
         )}
       </ScrollView>
-    </View>
+    </View >
   );
 };
 
