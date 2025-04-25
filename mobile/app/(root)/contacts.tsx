@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
-
+import { getFriends} from "../../api/apiFriends";
 export type ContactSection = {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -54,16 +54,7 @@ const sections: ContactSection[] = [
 ];
 
 const allContacts: Contact[] = [
-  { id: "1", name: "Anh Cường" },
-  { id: "2", name: "Bảo" },
-  { id: "3", name: "Cường" },
-  { id: "4", name: "Châu" },
-  { id: "5", name: "Dũng" },
-  { id: "6", name: "An Nhiên" },
-  { id: "7", name: "Bình" },
-  { id: "8", name: "Đạt" },
-  { id: "9", name: "Dương" },
-  { id: "10", name: "Cẩm Ly" },
+  
 ];
 
 const recentContacts: Contact[] = [
@@ -114,7 +105,19 @@ const Contacts = () => {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [sortType, setSortType] = useState("lastActivity"); // State cho sắp xếp
   const [isSortMenuVisible, setSortMenuVisible] = useState(false); // Hiển thị menu sắp xếp
-
+  //Ham vua response vua put vao mang contact
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const response = await getFriends();
+        allContacts.push(...response.data); // Thêm dữ liệu vào mảng allContacts
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+      }
+    };
+    fetchContacts();
+  }
+  , []);
   const tabs = [
     { id: "friends", label: "Bạn bè" },
     { id: "groups", label: "Nhóm" },
@@ -214,29 +217,21 @@ const Contacts = () => {
       )}
     </TouchableOpacity>
   );
-
-  const renderOAItem = (item: Contact) => (
-    <TouchableOpacity
-      key={item.id}
-      className="flex-row items-center px-4 py-3 bg-white"
-    >
-      <View className="relative">
-        <Image
-          source={{ uri: item.avatar || "https://i.pravatar.cc/150?img=12" }}
-          className="w-10 h-10 rounded-full"
-          resizeMode="cover"
-        />
-        <Ionicons
-          name="checkmark-circle"
-          size={16}
-          color="#FFD700" // Đổi màu thành vàng
-          style={{ position: "absolute", bottom: 0, right: 0 }}
-        />
-      </View>
-      <Text className="flex-1 ml-3 text-gray-900">{item.name}</Text>
-    </TouchableOpacity>
-  );
-
+  const handleSectionPress = (sectionId: string) => {
+    switch (sectionId) {
+      case "friend-requests":
+        router.push("/friend/lists/friend-requests"); // Đường dẫn đến màn hình lời mời kết bạn
+        break;
+      case "phone-contacts":
+        router.push("/friend/lists/phone-contacts"); // Đường dẫn đến màn hình danh bạ máy
+        break;
+      case "birthdays":
+        router.push("/friend/lists/birthdays"); // Đường dẫn đến màn hình sinh nhật
+        break;
+      default:
+        console.warn("Không tìm thấy màn hình phù hợp");
+    }
+  };
   return (
     <View className="flex-1 bg-gray-50">
       <View className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200">
@@ -269,30 +264,31 @@ const Contacts = () => {
             {activeTab === "friends" && (
               <View className="mb-2">
                 {sections.map((section) => (
-                  <TouchableOpacity
-                    key={section.id}
-                    className="flex-row items-center px-4 py-3 bg-white"
-                  >
-                    <View className="w-8 h-8 rounded-xl bg-primary items-center justify-center">
-                      <Ionicons name={section.icon} size={16} color="white" />
-                    </View>
-                    <View className="flex-1 ml-3">
-                      <View className="flex-row items-center">
-                        <Text className="text-base font-medium text-gray-900">
-                          {section.title}
-                        </Text>
-                        {section.count && (
-                          <View className="ml-1 px-1.5">
-                            <Text className="text-gray-500">({section.count})</Text>
-                          </View>
-                        )}
-                      </View>
-                      {section.subtitle && (
-                        <Text className="text-sm text-gray-500">{section.subtitle}</Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+  <TouchableOpacity
+    key={section.id}
+    className="flex-row items-center px-4 py-3 bg-white"
+    onPress={() => handleSectionPress(section.id)}
+  >
+    <View className="w-8 h-8 rounded-xl bg-primary items-center justify-center">
+      <Ionicons name={section.icon} size={16} color="white" />
+    </View>
+    <View className="flex-1 ml-3">
+      <View className="flex-row items-center">
+        <Text className="text-base font-medium text-gray-900">
+          {section.title}
+        </Text>
+        {section.count && (
+          <View className="ml-1 px-1.5">
+            <Text className="text-gray-500">({section.count})</Text>
+          </View>
+        )}
+      </View>
+      {section.subtitle && (
+        <Text className="text-sm text-gray-500">{section.subtitle}</Text>
+      )}
+    </View>
+  </TouchableOpacity>
+))}
               </View>
             )}
 

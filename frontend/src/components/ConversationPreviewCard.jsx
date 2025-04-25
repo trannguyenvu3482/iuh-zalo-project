@@ -1,17 +1,22 @@
+import PropTypes from 'prop-types'
 import React, { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 const ConversationPreviewCard = ({ user, isFriend, ...props }) => {
-  const location = useLocation()
   const navigate = useNavigate()
   const [isSelected, setIsSelected] = useState(false)
   console.log(user, isFriend)
 
   const handleSelectConversation = () => {
     if (isFriend) {
-      navigate(`/chat/${user?.id}`)
+      navigate(`/chats/${user?.id}`, {
+        state: {
+          isFriend,
+          user,
+        },
+      })
     } else {
-      navigate(`/chat`, {
+      navigate(`/chats`, {
         state: {
           isFriend,
           user,
@@ -48,6 +53,21 @@ const ConversationPreviewCard = ({ user, isFriend, ...props }) => {
       </div>
     </li>
   )
+}
+
+ConversationPreviewCard.propTypes = {
+  user: PropTypes.shape({
+    id: PropTypes.string,
+    fullName: PropTypes.string,
+    avatar: PropTypes.string,
+    phoneNumber: PropTypes.string,
+  }),
+  isFriend: PropTypes.bool,
+}
+
+ConversationPreviewCard.defaultProps = {
+  isFriend: false,
+  user: {},
 }
 
 export default ConversationPreviewCard

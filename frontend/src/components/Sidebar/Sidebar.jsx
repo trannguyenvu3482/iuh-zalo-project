@@ -14,6 +14,7 @@ import createGroupIcon from '../../assets/icons/create-group-btn.png'
 import moreIcon from '../../assets/icons/more-btn.png'
 import SearchEmptyIcon from '../../assets/icons/search-empty.png'
 import { useDebounce } from '../../hooks'
+import CreateGroupDialog from '../dialogs/CreateGroupDialog'
 import { ChatRoom, ConversationPreviewCard, LoadingSpinner } from '../index'
 import SidebarControls from './SidebarControls'
 
@@ -62,6 +63,9 @@ const Sidebar = () => {
   const [searchValue, setSearchValue] = useState('')
   const { enqueueSnackbar } = useSnackbar()
   const debouncedSearchValue = useDebounce(searchValue, 500) // Reduced debounce time for better UX
+
+  // Group dialog state
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false)
 
   // Conversations state
   const [activeSearchTab, setActiveSearchTab] = useState(SearchTabs.ALL)
@@ -156,6 +160,24 @@ const Sidebar = () => {
     }
   }, [refetchConversations, isContactsPage])
 
+  // Handle creating a group
+  const handleCreateGroup = async (groupData) => {
+    try {
+      // The createGroup API is now handled within the CreateGroupDialog component
+      // This function will be called after successful group creation
+      console.log('Group created successfully:', groupData)
+      enqueueSnackbar('Nhóm đã được tạo thành công!', { variant: 'success' })
+
+      // Refetch conversations to include the new group
+      if (refetchConversations) {
+        await refetchConversations()
+      }
+    } catch (error) {
+      console.error('Error in group creation callback:', error)
+      enqueueSnackbar('Có lỗi xảy ra khi tạo nhóm', { variant: 'error' })
+    }
+  }
+
   // Render search bar component - common to both views
   const renderSearchBar = () => (
     <div
@@ -247,6 +269,7 @@ const Sidebar = () => {
               className="flex h-full items-center justify-center rounded-md p-2 hover:bg-gray-200"
               aria-label="Create group"
               title="Tạo nhóm"
+              onClick={() => setIsCreateGroupDialogOpen(true)}
             >
               <img src={createGroupIcon} alt="Create group" />
             </button>
@@ -297,7 +320,7 @@ const Sidebar = () => {
 
           <div className="flex-1 overflow-y-auto">
             {searchResult && !error ? (
-              <div className="p-4">
+              <div className="">
                 <h3 className="px-3 pt-3 text-sm font-semibold">
                   Tìm bạn qua số điện thoại:
                 </h3>
@@ -473,6 +496,14 @@ const Sidebar = () => {
               : renderConversationsContent()}
         </div>
       </div>
+
+      {/* Create Group Dialog */}
+      <CreateGroupDialog
+        isOpen={isCreateGroupDialogOpen}
+        onClose={() => setIsCreateGroupDialogOpen(false)}
+        onCreateGroup={handleCreateGroup}
+        // contacts={contacts}
+      />
     </aside>
   )
 }

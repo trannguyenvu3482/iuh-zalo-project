@@ -114,7 +114,7 @@ const Messages = () => {
       </View>
 
       {/* Content */}
-      <ScrollView className="flex-1">
+      {/* <ScrollView className="flex-1">
         {isLoading ? (
           <View className="flex-1 items-center justify-center py-10">
             <ActivityIndicator size="large" color="#257dfd" />
@@ -167,7 +167,7 @@ const Messages = () => {
             />
           ))
         )}
-      </ScrollView>
+      </ScrollView> */}
 
       {/* Filter Modal */}
       <Modal

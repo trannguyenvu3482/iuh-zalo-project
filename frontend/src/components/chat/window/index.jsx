@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import useChat from '../../../hooks/useChat'
 import { useUser } from '../../../hooks/useUser'
 import instance from '../../../service/axios'
+import { reconnectSocket } from '../../../service/socket'
 import ProfileDialog from '../../Sidebar/ProfileDialog'
 import ChatHeader from './ChatHeader'
 import ChatSidebar from './ChatSidebar'
@@ -42,6 +43,22 @@ const ChatWindow = ({ conversation }) => {
 
   // Handle new conversation case (no ID yet)
   const isNewConversation = conversation?.isNew === true
+
+  // Ensure socket is connected when the chat window mounts
+  useEffect(() => {
+    if (conversation?.id) {
+      console.log('ChatWindow mounted for conversation:', conversation.id)
+
+      // Force reconnect socket to ensure we're getting real-time updates
+      reconnectSocket()
+
+      // Invalidate the message queries to ensure latest data
+      queryClient.invalidateQueries({
+        queryKey: ['messages', conversation.id],
+        refetchType: 'all',
+      })
+    }
+  }, [conversation?.id, queryClient])
 
   // Combine server messages with local media messages - wrapped in useMemo
   const allMessagesWithMedia = useMemo(() => {

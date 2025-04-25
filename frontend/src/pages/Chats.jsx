@@ -5,16 +5,14 @@ import { getAllConversations } from '../api/apiMessage'
 import ChatWindow from '../components/ChatWindow'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useAuth } from '../hooks/useAuth'
-import { useUser } from '../hooks/useUser'
 
 const Chats = () => {
   const { id: conversationId } = useParams()
   const location = useLocation()
-  const currentUser = useUser()
   const { isAuthenticated } = useAuth()
   const [selectedConversation, setSelectedConversation] = useState(null)
-  const isFriend = location.state?.isFriend // Get data for new conversation
-  const user = location.state?.user // Get data for new conversation
+  const isFriend = location.state?.isFriend
+  const user = location.state?.user
 
   // Check for authentication
   useEffect(() => {
@@ -42,29 +40,100 @@ const Chats = () => {
     [conversationsResponse?.data],
   )
 
+  // Debug log for incoming user data
+  useEffect(() => {
+    if (user) {
+      console.log('User data for new conversation:', user)
+    }
+  }, [user])
+
   // Update selected conversation when conversationId changes or newUserData is provided
   useEffect(() => {
-    console.log(conversationId, conversations)
+    console.log('Conversation ID:', conversationId)
+    console.log('User data from location:', user)
+    console.log('Is friend:', isFriend)
+    console.log('All conversations:', conversations)
 
     if (conversationId && conversations.length > 0) {
-      // Case 1: We have a conversationId and it exists
+      // Case 1: We have a conversationId and it exists in our conversations
       const conversation = conversations.find(
         (conv) => conv.id === conversationId,
       )
-      setSelectedConversation(conversation)
-    } else if (!isFriend) {
-      console.log('CASE')
+      if (conversation) {
+        console.log('Found existing conversation:', conversation)
+        setSelectedConversation(conversation)
+        return
+      }
 
-      setSelectedConversation({
-        id: null,
-        user,
-        messages: [],
-        isNew: true,
-      })
-    } else {
-      setSelectedConversation(null)
+      // Case 2: We have a conversationId but no matching conversation,
+      // and we also have user data from navigation state
+      if (user) {
+        console.log(
+          'Conversation ID not found but user data available. Creating new conversation.',
+        )
+        createNewConversationFromUser(user)
+        return
+      }
     }
-  }, [conversationId, conversations, isFriend, user])
+
+    // Case 3: We have user data from navigation state (creating a new conversation)
+    if (user && !conversationId) {
+      console.log(
+        'No conversation ID, but user data available. Creating new conversation.',
+      )
+      createNewConversationFromUser(user)
+      return
+    }
+
+    // Case 4: We have a conversationId but it doesn't exist in our conversations yet
+    if (conversationId && conversations.length > 0) {
+      console.log('Conversation ID not found in loaded conversations')
+      setSelectedConversation({
+        id: conversationId,
+        messages: [],
+        isLoading: true,
+      })
+      return
+    }
+
+    // Default case: No conversation selected
+    setSelectedConversation(null)
+  }, [conversationId, conversations, user, isFriend])
+
+  // Helper function to create a new conversation object from user data
+  const createNewConversationFromUser = (userData) => {
+    // Ensure user object matches expected format in ChatWindow
+    const formattedUser = {
+      id: userData.id,
+      userId: userData.id, // Some components might expect userId instead of id
+      fullName:
+        userData.fullName ||
+        userData.name ||
+        userData.username ||
+        'Unknown User',
+      avatar:
+        userData.avatar ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName || 'User')}&background=random`,
+      status: userData.status || 'active',
+      phoneNumber: userData.phoneNumber || userData.phone || null,
+    }
+
+    // Create a properly formatted conversation object that matches what the ChatWindow expects
+    const newConversation = {
+      id: null, // No ID yet since it's a new conversation
+      user: formattedUser, // The user we're chatting with
+      members: [formattedUser], // Members excluding current user
+      type: 'PRIVATE',
+      messages: [], // Start with empty messages
+      isNew: true, // Flag to indicate new conversation
+      name: formattedUser.fullName, // For display in header
+      avatar: formattedUser.avatar, // For display in header
+      lastMessage: null, // No messages yet
+    }
+
+    console.log('Created new conversation object:', newConversation)
+    setSelectedConversation(newConversation)
+  }
 
   if (isLoading) {
     return (

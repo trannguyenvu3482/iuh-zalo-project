@@ -115,7 +115,6 @@ export const SocketProvider = ({ children }) => {
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
 
   // Clear unread messages flag when window gets focus
-  
 
   // Initialize socket when user is authenticated
   useEffect(() => {
@@ -216,6 +215,14 @@ export const SocketProvider = ({ children }) => {
 
       // Check if sender is an object or just an ID
       let senderObj = message.sender
+
+      // Preserve the original sender name sent from the server
+      const originalSenderName =
+        message.senderName ||
+        (message.sender && typeof message.sender === 'object'
+          ? message.sender.fullName
+          : null)
+
       if (
         typeof message.sender === 'string' ||
         message.sender instanceof String
@@ -223,8 +230,24 @@ export const SocketProvider = ({ children }) => {
         // If sender is just an ID, create a basic sender object
         senderObj = {
           id: message.sender,
-          fullName: message.senderName || 'Unknown User',
+          fullName: originalSenderName || 'Unknown User',
           avatar: null,
+        }
+      } else if (message.sender === null || message.sender === undefined) {
+        // If sender is null/undefined but we have senderId and senderName
+        if (message.senderId) {
+          senderObj = {
+            id: message.senderId,
+            fullName: originalSenderName || 'Unknown User',
+            avatar: message.avatar || null,
+          }
+        }
+      } else if (typeof message.sender === 'object') {
+        // Ensure sender object has the correct fullName by prioritizing originalSenderName
+        senderObj = {
+          ...message.sender,
+          fullName:
+            originalSenderName || message.sender.fullName || 'Unknown User',
         }
       }
 
@@ -234,10 +257,15 @@ export const SocketProvider = ({ children }) => {
         // Ensure consistent field names
         content: message.content || message.message,
         message: message.message || message.content,
-        // Always keep the sender ID
+        // Always keep the sender ID separately
         senderId: message.senderId || (senderObj && senderObj.id),
         // Keep or construct the sender object
         sender: senderObj,
+        // Preserve the original sender name
+        senderName:
+          originalSenderName ||
+          (senderObj && senderObj.fullName) ||
+          'Unknown User',
         // Identify message source
         isFromCurrentUser:
           message.isFromCurrentUser ||
@@ -246,7 +274,36 @@ export const SocketProvider = ({ children }) => {
       }
 
       // Add new message to pending messages
-      setPendingMessages((prev) => [...prev, normalizedMessage])
+      setPendingMessages((prev) => {
+        // Check for duplicates before adding
+        const isDuplicate = prev.some(
+          (m) =>
+            (m.id && m.id === normalizedMessage.id) ||
+            (m.content === normalizedMessage.content &&
+              m.senderId === normalizedMessage.senderId &&
+              Math.abs(
+                new Date(m.timestamp || m.created_at || new Date()) -
+                  new Date(
+                    normalizedMessage.timestamp ||
+                      normalizedMessage.created_at ||
+                      new Date(),
+                  ),
+              ) < 2000),
+        )
+
+        if (isDuplicate) {
+          console.log(
+            'Duplicate message detected in socket context, not adding',
+          )
+          return prev
+        }
+
+        console.log(
+          'Adding new message to pending messages:',
+          normalizedMessage,
+        )
+        return [...prev, normalizedMessage]
+      })
 
       // Don't show notifications for system messages
       if (
@@ -267,15 +324,34 @@ export const SocketProvider = ({ children }) => {
       if (!isFromCurrentUser) {
         showMessageNotification(message)
       }
+
+      // Also force a query invalidation to ensure UI updates
+      if (!isFromCurrentUser && message.conversationId) {
+        // Wait a brief moment to let the socket update process first
+        setTimeout(() => {
+          if (queryClient) {
+            queryClient.invalidateQueries({
+              queryKey: ['messages', message.conversationId],
+              refetchType: 'all',
+            })
+            console.log(
+              'Invalidated messages query for conversation:',
+              message.conversationId,
+            )
+          }
+        }, 100)
+      }
     }
 
     // Subscribe to new message events
+    console.log('Setting up socket message listener')
     const unsubscribe = onNewMessage(handleNewMessage)
 
     return () => {
+      console.log('Cleaning up socket message listener')
       unsubscribe()
     }
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user, queryClient])
 
   // Handle friend requests
   useEffect(() => {
