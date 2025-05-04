@@ -257,7 +257,7 @@ const SearchResultsPanel = () => {
 
   return (
     <SafeAreaView
-      className="absolute top-[110px] left-0 right-0 bottom-0 bg-white z-40"
+      className="absolute top-[60px] left-0 right-0 bottom-0 bg-white z-30" // Changed top-0 to top-[60px]
       edges={["bottom"]}
     >
       <ScrollView className="flex-1">

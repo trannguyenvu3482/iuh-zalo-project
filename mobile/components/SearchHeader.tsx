@@ -96,7 +96,7 @@ const SearchHeader = ({
 
   return (
     <View
-      className={`flex-row items-center justify-between px-4 bg-primary border-b border-gray-200 ${isSearchActive ? "pt-3 pb-4" : "py-3"} z-50`}
+      className={`flex-row items-center justify-between px-4 bg-primary border-b border-gray-200 ${isSearchActive ? "pt-3 pb-4" : "py-3"} z-50`} // Ensure z-50
     >
       <>
         {isSearchActive ? (
