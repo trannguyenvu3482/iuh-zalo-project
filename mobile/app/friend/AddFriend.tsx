@@ -22,7 +22,7 @@ const AddFriend = () => {
 
   // Hàm kiểm tra số điện thoại hợp lệ
   const isValidPhoneNumber = (phone: string): boolean => {
-    const phoneRegex = /^[0-9]{9,15}$/; // Số điện thoại từ 9 đến 15 chữ số
+    const phoneRegex = /^[0-9]{10,15}$/; // Số điện thoại từ 9 đến 15 chữ số
     return phoneRegex.test(phone);
   };
 
@@ -32,60 +32,44 @@ const AddFriend = () => {
     setIsValid(isValidPhoneNumber(text)); // Cập nhật trạng thái hợp lệ
   };
 
-  const sendFriendRQ = async () => {
-    if (isValid) {
-      try {
-        const response = await searchUserByPhoneNumber(phoneNumber); // Gọi API với số điện thoại
-        
-        Alert.alert("Thành công", phoneNumber);
-      } catch (error) {
-        console.error("Error searching user:", error);
-        
-      }
-    } else {
-      Alert.alert("Lỗi", "Số điện thoại không hợp lệ. Vui lòng nhập lại.");
-    }
-  };
+const sendFriendRQ = async () => {
+  if (isValid) {
+    try {
+      // 1. Tìm user theo số điện thoại
+      console.log("Searching user by phone number:", phoneNumber);
+      const searchRes = await searchUserByPhoneNumber(phoneNumber);
+      // Lấy đúng id từ response mới
+      const foundUser = searchRes?.data?.user;
+      console.log("Found user:", foundUser);
+      
+   const foundUserId = foundUser.id;
+  console.log("Found user ID:", foundUserId);
 
-  // Hàm xử lý khi nhấn nút gửi
-  const handleSend = () => {
-    if (!isValid) {
-      Alert.alert("Lỗi", "Số điện thoại không hợp lệ. Vui lòng nhập lại.");
-      return;
-    }else{
-      sendFriendRQ();
+      // 2. Gửi lời mời kết bạn
+      await sendFriendRequest(foundUserId);
+      // Có thể set state báo thành công hoặc hiển thị thông báo trên UI
+      clearPhoneNumber();
+    } catch (error) {
+      console.error("Error sending friend request:", error);
+      // Có thể set state báo lỗi hoặc hiển thị thông báo lỗi trên UI
     }
-    Alert.alert(
-      "Thành công",
-      `Đã gửi lời mời kết bạn đến số ${countryCode} ${phoneNumber}`,
-    );
-  };
+  }
+};
+
+// Hàm xử lý khi nhấn nút gửi
+const handleSend = () => {
+  if (!isValid) {
+    // Có thể set state báo lỗi hoặc hiển thị trên UI
+  } else {
+    sendFriendRQ();
+  }
+};
 
   // Hàm xóa số điện thoại
   const clearPhoneNumber = () => {
     setPhoneNumber("");
     setIsValid(false);
   };
-
-  // Lấy thông tin người dùng từ store nếu `userId` tồn tại
-  useEffect(() => {
-    if (userId && !user) {
-      // Giả sử bạn đã lưu thông tin người dùng trong store `useUserStore`
-      setUser({
-        id: userId,
-        phoneNumber: "0123456789", // Thay bằng dữ liệu mẫu hoặc dữ liệu đã lưu
-        fullName: "Trần Ngọc Phát",
-        avatar: "https://via.placeholder.com/150",
-        banner: "https://via.placeholder.com/300x100",
-        gender: "male",
-        birthdate: "1990-01-01",
-        roles: ["user"],
-      });
-    }
-  }, [userId, user, setUser]);
-
-  // Hàm tìm kiếm người dùng theo số điện thoại
-  
   
   return (
     <ScrollView className="flex-1 bg-gray-100">

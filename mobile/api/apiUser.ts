@@ -1,57 +1,71 @@
 import axiosInstance from "../lib/axios";
+import { useSigninStore } from "~/store/signinStore";
 
 const BASE_URL = "/users";
 
+// Lấy token từ store
+const getToken = () => useSigninStore.getState().data.accessToken;
+
 /**
- * Search for a user by phone number
+ * Search for a user by phone number (yêu cầu xác thực)
  */
 const searchUserByPhoneNumber = async (phoneNumber: string) => {
+  const token = getToken();
   return await axiosInstance.get(`${BASE_URL}/search`, {
     params: { phoneNumber },
+    headers: { "x-access-token": token },
   });
 };
 
 /**
- * Get current user information
+ * Get current user information (yêu cầu xác thực)
  */
 const getUserInfo = async () => {
-  const response = await axiosInstance.get(`${BASE_URL}/me`);
+  const token = getToken();
+  const response = await axiosInstance.get(`${BASE_URL}/me`, {
+    headers: { "x-access-token": token },
+  });
   return response.data;
 };
 
 /**
- * Update user profile information
+ * Update user profile information (yêu cầu xác thực)
  */
 const updateUserProfile = async (userData: any) => {
-  return await axiosInstance.put(`${BASE_URL}/profile`, userData);
+  const token = getToken();
+  return await axiosInstance.put(`${BASE_URL}/profile`, userData, {
+    headers: { "x-access-token": token },
+  });
 };
 
 /**
- * Update user avatar
+ * Update user avatar (yêu cầu xác thực)
  */
-const updateUserAvatar = async (avatar: any, token?: string) => {
+const updateUserAvatar = async (avatar: any) => {
+  const token = getToken();
   return await axiosInstance.put(`${BASE_URL}/avatar`, avatar, {
     headers: {
       "Content-Type": "multipart/form-data",
-      Authorization: token ? `Bearer ${token}` : undefined,
+      "x-access-token": token,
     },
   });
 };
 
 /**
- * Update user banner
+ * Update user banner (yêu cầu xác thực)
  */
-const updateUserBanner = async (banner: any, token?: string) => {
+const updateUserBanner = async (banner: any) => {
+  const token = getToken();
   return await axiosInstance.put(`${BASE_URL}/banner`, banner, {
     headers: {
       "Content-Type": "multipart/form-data",
-      Authorization: token ? `Bearer ${token}` : undefined,
+      "x-access-token": token,
     },
   });
 };
 
 /**
- * Search for a user by phone number (public endpoint, no authentication required)
+ * Search for a user by phone number (public endpoint, không cần xác thực)
  */
 const searchUserByPhoneNumberPublic = async (phoneNumber: string) => {
   return await axiosInstance.get(`${BASE_URL}/search-phone`, {
@@ -60,13 +74,17 @@ const searchUserByPhoneNumberPublic = async (phoneNumber: string) => {
 };
 
 /**
- * Change user password
+ * Change user password (yêu cầu xác thực)
  */
 const changePassword = async (oldPassword: string, newPassword: string) => {
-  return await axiosInstance.put(`${BASE_URL}/change-password`, {
-    oldPassword,
-    newPassword,
-  });
+  const token = getToken();
+  return await axiosInstance.put(
+    `${BASE_URL}/change-password`,
+    { oldPassword, newPassword },
+    {
+      headers: { "x-access-token": token },
+    }
+  );
 };
 
 export {
