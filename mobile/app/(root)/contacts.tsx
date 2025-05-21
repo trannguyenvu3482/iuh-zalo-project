@@ -112,29 +112,33 @@ const Contacts = () => {
     { id: "groups", label: "Nhóm" },
     { id: "oa", label: "OA" },
   ];
-  useEffect(() => {
-    const fetchFriends = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getFriends(); // Gọi API lấy danh sách bạn bè
-        const mappedFriends = response.data.map((friend: any) => ({
-          id: friend.id, // Lấy ID
-          name: friend.fullName, // Lấy tên đầy đủ
-          avatar: friend.avatar, // Lấy avatar
-        }));
-        setFriends(mappedFriends); // Lưu danh sách bạn bè đã ánh xạ vào state
-        setError(null); // Xóa lỗi nếu có
-        console.log("Mapped Friends data:", mappedFriends); // Log dữ liệu đã ánh xạ
-      } catch (err) {
-        console.error("Failed to fetch friends:", err);
-        setError("Không thể tải danh sách bạn bè. Vui lòng thử lại sau."); // Cập nhật lỗi
-      } finally {
-        setIsLoading(false); // Kết thúc trạng thái loading
-      }
-    };
+ useEffect(() => {
+  const fetchFriends = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getFriends(); // Gọi API lấy danh sách bạn bè
+      console.log("Friends data:", response.data);
 
-    fetchFriends();
-  }, []);
+      // Map lại dữ liệu cho đúng props của FriendComponent
+      const mappedFriends = response.data.map((item: any) => ({
+        id: item.id,
+        name: item.fullName, // map fullName thành name
+        avatar: item.avatar,
+      }));
+
+      console.log("Mapped friends data:", mappedFriends);
+      setFriends(mappedFriends); // Đúng: setFriends với dữ liệu đã map
+      setError(null); // Xóa lỗi nếu có
+    } catch (err) {
+      console.error("Failed to fetch friends:", err);
+      setError("Không thể tải danh sách bạn bè. Vui lòng thử lại sau.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  fetchFriends();
+}, []);
   const filters = [
     { id: "all", label: "Tất cả " },
     { id: "recent", label: "Mới truy cập" },
@@ -147,10 +151,12 @@ const Contacts = () => {
   ];
 
   const getContactsByTab = () => {
-    if (activeTab === "groups") return groups;
-    if (activeTab === "oa") return oas;
-    return selectedFilter === "recent" ? recentContacts : friends;
-  };
+  if (activeTab === "groups") return groups;
+  if (activeTab === "oa") return oas;
+  // Nếu filter là "all" hoặc không có recentContacts thì trả về friends
+  if (selectedFilter === "recent" && recentContacts.length > 0) return recentContacts;
+  return friends;
+};
   const filteredContacts = useMemo(() => getContactsByTab(), [activeTab, selectedFilter]);
 
   const groupedContacts = useMemo(() => {
@@ -163,6 +169,7 @@ const Contacts = () => {
       if (!grouped[letter]) grouped[letter] = [];
       grouped[letter].push(contact);
     });
+    
     return grouped;
   }, [filteredContacts]);
 
@@ -184,24 +191,7 @@ const Contacts = () => {
   }, [groups, sortType]);
 
   // Gọi API để lấy danh sách bạn bè
-  useEffect(() => {
-    const fetchFriends = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getFriends();// Gọi API lấy danh sách bạn bè
-        console.log("Friends data:", response.data); // Log dữ liệu bạn bè
-        setFriends(response.data); // Lưu danh sách bạn bè vào state
-        setError(null); // Xóa lỗi nếu có
-      } catch (err) {
-        console.error("Failed to fetch friends:", err);
-        setError("Không thể tải danh sách bạn bè. Vui lòng thử lại sau."); // Cập nhật lỗi
-      } finally {
-        setIsLoading(false); // Kết thúc trạng thái loading
-      }
-    };
-
-    fetchFriends();
-  }, []);
+ 
 
 
   const renderGroupItem = (item: ContactItemProps) => (
