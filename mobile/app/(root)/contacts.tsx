@@ -61,23 +61,35 @@ const recentContacts: Contact[] = [
 ];
 
 const groups: ContactItemProps[] = [
+
   {
     id: "g1",
     avatar: "https://i.pravatar.cc/150?img=12",
-    name: "SinhVien_Nganh_SE_Khoa 17",
-    lastMessage: "Các bạn hãy tham gia thử nhé @All",
+    name: "DH17KTPMC",
+    lastMessage: "Nguyễn Trọng Tiến: Kính gửi thầy cô...",
     time: "1 giờ",
     unseen: true,
-    unseenCount: 12,
+    unseenCount: 5,
     isGroup: true,
   },
   {
     id: "g2",
     avatar: "https://i.pravatar.cc/150?img=12",
     name: "Nhóm lớp",
-    lastMessage: "Chúc các em học tốt nhé",
+    lastMessage: "Admin: Thông báo về lịch học tuần tới...",
+    time: "1 giờ",
+    unseen: true,
+    unseenCount: 12,
+    isGroup: true,
+  },
+  {
+    id: "g3",
+    avatar: "https://i.pravatar.cc/150?img=12",
+    name: "Nhóm dự án",
+    lastMessage: "Minh: Tôi đã cập nhật lại file thiết kế...",
     time: "T4",
-    unseen: false,
+    unseen: true,
+    unseenCount: 3,
   },
 ];
 
@@ -342,8 +354,9 @@ const Contacts = () => {
                     onPress={() => setSortMenuVisible(!isSortMenuVisible)}
                     className="flex-row items-center"
                   >
-                    <Text className="text-sm text-primary mr-1">Sắp xếp</Text>
-                    <Ionicons name="chevron-down" size={16} color="#007AFF" />
+                    <Ionicons name="swap-vertical" size={16} color="#9CA3AF" className="mr-1" />
+                    {/* Đổi biểu tượng thành `swap-vertical` và thêm màu xám nhạt */}
+                    <Text className="text-sm text-gray-500">Sắp xếp</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -402,6 +415,26 @@ const Contacts = () => {
                     />
                   </View>
                 ))}
+              </View>
+            )}
+
+            {activeTab === "oa" && (
+              <View>
+                <TouchableOpacity className="flex-row items-center px-4 py-3 bg-white mb-2">
+                  {/* Thêm khoảng cách bằng `mb-2` */}
+                  <View className="w-10 h-10 rounded-full bg-purple-500 items-center justify-center">
+                    <Ionicons name="radio-outline" size={20} color="white" />
+                  </View>
+                  <Text className="flex-1 ml-3 text-gray-900 font-medium">
+                    Tìm thêm Official Account
+                  </Text>
+                </TouchableOpacity>
+                <View className="bg-white">
+                  <Text className="px-4 py-2 text-sm text-gray-500 font-medium">
+                    Official Account đã quan tâm
+                  </Text>
+                  {oas.map(renderOAItem)}
+                </View>
               </View>
             )}
           </>
