@@ -47,8 +47,6 @@ const SearchHeader = ({
               onPress={() =>
                 router.push({
                   pathname: "/friend/AddFriend",
-
-
                 })
               }
             >

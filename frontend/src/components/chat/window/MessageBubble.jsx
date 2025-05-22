@@ -10,6 +10,7 @@ import { HiMiniGif } from 'react-icons/hi2'
 import { recallMessage } from '../../../api/apiMessage'
 import ChatImageViewer from '../../chat/ChatImageViewer'
 import DocumentPreview from '../../chat/DocumentPreview'
+import ShareMessageDialog from '../../dialogs/ShareMessageDialog' // Import the dialog component
 
 // Helper function to check if a string is an image URL
 const isImageUrl = (url) => {
@@ -36,6 +37,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false); // State to control dialog visibility
   const menuRef = useRef(null)
   const bubbleRef = useRef(null)
 
@@ -198,9 +200,17 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
 
   // Handle share
   const handleShare = () => {
-    console.log('Share message:', message.id)
-    setIsMenuOpen(false)
-  }
+    setIsShareDialogOpen(true); // Open the share dialog
+  };
+
+  const handleShareMessage = async (selectedContacts) => {
+    try {
+      console.log('Sharing message:', message.id, 'with contacts:', selectedContacts);
+      // Add your logic to share the message with the selected contacts
+    } catch (error) {
+      console.error('Error sharing message:', error);
+    }
+  };
 
   // Handle copy message
   const handleCopy = () => {
@@ -652,6 +662,13 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
           </div>
         </div>
       )}
+
+      {/* Share Message Dialog */}
+      <ShareMessageDialog
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+        onShareMessage={handleShareMessage}
+      />
     </div>
   )
 }

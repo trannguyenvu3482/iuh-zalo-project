@@ -89,16 +89,14 @@ const Messages = () => {
             <TouchableOpacity
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
-              className={`pb-2 ${
-                activeTab === tab.id
+              className={`pb-2 ${activeTab === tab.id
                   ? "border-b-2 border-primary"
                   : "border-b-2 border-transparent"
-              }`}
+                }`}
             >
               <Text
-                className={`text-lg font-medium ${
-                  activeTab === tab.id ? "text-primary" : "text-gray-500"
-                }`}
+                className={`text-lg font-medium ${activeTab === tab.id ? "text-primary" : "text-gray-500"
+                  }`}
               >
                 {tab.label}
               </Text>
@@ -114,7 +112,7 @@ const Messages = () => {
       </View>
 
       {/* Content */}
-      {/* <ScrollView className="flex-1">
+      <ScrollView className="flex-1">
         {isLoading ? (
           <View className="flex-1 items-center justify-center py-10">
             <ActivityIndicator size="large" color="#257dfd" />
@@ -167,7 +165,7 @@ const Messages = () => {
             />
           ))
         )}
-      </ScrollView> */}
+      </ScrollView>
 
       {/* Filter Modal */}
       <Modal
