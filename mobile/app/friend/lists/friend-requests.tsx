@@ -1,13 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { getSentFriendRequests } from "../../../api/apiFriends"; // Import API function to get sent friend requests
+interface FriendInfo {
+  id: string;
+  phoneNumber: string;
+  fullName: string;
+  avatar: string;
+}
 
+interface SentRequestItem {
+  userId: string;
+  friendId: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  friend: FriendInfo;
+}
 const FriendRequests = () => {
   // State để quản lý tab hiện tại
   const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
   const [receivedRequest, setReceivedRequest] = useState([]);
-const [sentRequest, setSentRequest] = useState([]);
+const [sentRequest, setSentRequest] = useState<SentRequestItem[]>([]);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
   // Dữ liệu mẫu cho lời mời kết bạn
@@ -32,27 +47,29 @@ const [error, setError] = useState<string | null>(null);
     },
   ];
 
-  const sentRequests = [
-    {
-      id: "4",
-      name: "Phạm Thị D",
-      avatar: "https://via.placeholder.com/150",
-      message: "Muốn kết bạn",
-    },
-    {
-      id: "5",
-      name: "Hoàng Văn E",
-      avatar: "https://via.placeholder.com/150",
-      message: "Muốn kết bạn",
-    },
-    {
-      id: "6",
-      name: "Nguyễn Thị F",
-      avatar: "https://via.placeholder.com/150",
-      message: "Muốn kết bạn",
-    },
-  ];
+   useEffect(() => {
+    const fetchSentRequests = async () => {
+      setLoading(true);
+      try {
+        const res = await getSentFriendRequests();
+        setSentRequest(res.data); // Giả sử API trả về danh sách lời mời đã gửi
+        console.log("Sent requests:", res.data);
+        setError(null);
+      } catch (err) {
+        setError("Không thể tải danh sách đã gửi");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSentRequests();
+  }, []);
 
+  //Hàm cancelFriendRequest
+  const cancelFriendRequest = async (userId: string) => {
+    // Gọi API để hủy lời mời kết bạn
+    // Ví dụ: await api.cancelFriendRequest(userId);
+    console.log(`Hủy lời mời kết bạn với userId: ${userId}`);
+  };
   
   return (
     <View className="flex-1 bg-gray-100">
@@ -95,7 +112,7 @@ const [error, setError] = useState<string | null>(null);
               activeTab === "sent" ? "text-blue-500" : "text-gray-500"
             } font-medium`}
           >
-            Đã gửi {sentRequests.length}
+            Đã gửi {sentRequest.length}
           </Text>
         </TouchableOpacity>
       </View>
@@ -134,26 +151,26 @@ const [error, setError] = useState<string | null>(null);
         {activeTab === "sent" && (
           <>
             {/* Danh sách "Đã gửi" */}
-            {sentRequests.map((request) => (
-              <View
-                key={request.id}
-                className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200"
-              >
-                <Image
-                  source={{ uri: request.avatar }}
-                  className="w-12 h-12 rounded-full"
-                />
-                <View className="flex-1 ml-3">
-                  <Text className="text-base font-medium text-gray-900">
-                    {request.name}
-                  </Text>
-                  <Text className="text-sm text-gray-500">{request.message}</Text>
-                </View>
-                <TouchableOpacity className="px-4 py-2 bg-gray-200 rounded-lg">
-                  <Text className="text-gray-800 text-sm font-medium">Thu hồi</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+{sentRequest.map((item) => (
+  <View
+    key={item.friendId}
+    className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200"
+  >
+    <Image
+      source={{ uri: item.friend?.avatar }}
+      className="w-12 h-12 rounded-full"
+    />
+    <View className="flex-1 ml-3">
+      <Text className="text-base font-medium text-gray-900">
+        {item.friend?.fullName}
+      </Text>
+      <Text className="text-sm text-gray-500">Đang chờ phản hồi</Text>
+    </View>
+    <TouchableOpacity className="px-4 py-2 bg-gray-200 rounded-lg">
+      <Text className="text-gray-800 text-sm font-medium">Thu hồi</Text>
+    </TouchableOpacity>
+  </View>
+))}
           </>
         )}
       </ScrollView>

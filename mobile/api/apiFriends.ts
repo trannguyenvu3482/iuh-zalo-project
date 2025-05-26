@@ -18,13 +18,14 @@ const getFriends = async () => {
 /**
  * Lấy danh sách lời mời kết bạn nhận được
  */
-const getFriendRequests = async () => {
+const getFriendRequest = async (friendId: string) => {
   const token = getToken();
-  return await axiosInstance.get(`${BASE_URL}/requests`, {
-    headers: { "x-access-token": token },
-  });
+  return await axiosInstance.post(
+    `${BASE_URL}/add`,
+    { friendId }, // body
+    { headers: { "x-access-token": token } }
+  );
 };
-
 /**
  * Lấy danh sách lời mời kết bạn đã gửi
  */
@@ -41,7 +42,7 @@ const getSentFriendRequests = async () => {
 const sendFriendRequest = async (userId: string) => {
   const token = getToken();
   return await axiosInstance.post(
-    `${BASE_URL}/add`,
+    `${BASE_URL}/sent-requests`,
     { userId },
     { headers: { "x-access-token": token } }
   );
@@ -115,7 +116,7 @@ const getFriendSuggestions = async () => {
 
 export {
   getFriends,
-  getFriendRequests,
+  getFriendRequest,
   getSentFriendRequests,
   sendFriendRequest,
   acceptFriendRequest,

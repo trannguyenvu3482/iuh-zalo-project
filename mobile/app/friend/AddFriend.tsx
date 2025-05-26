@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Image,
@@ -12,8 +12,8 @@ import {
 } from "react-native";
 
 import { useUserStore } from "~/store/userStore"; // Import user store
-import { searchUserByPhoneNumber,searchUserByPhoneNumberPublic } from "../../api/apiUser";
-import {sendFriendRequest } from "../../api/apiFriends";
+import { searchUserByPhoneNumber } from "../../api/apiUser";
+import {getFriendRequest } from "../../api/apiFriends";
 const AddFriend = () => {
   const { user, setUser, token } = useUserStore(); // Lấy thông tin người dùng từ user store
   const [phoneNumber, setPhoneNumber] = useState(""); // State lưu số điện thoại
@@ -21,10 +21,10 @@ const AddFriend = () => {
   const [countryCode, setCountryCode] = useState("+84"); // State lưu đầu số quốc gia
 
   // Hàm kiểm tra số điện thoại hợp lệ
-  const isValidPhoneNumber = (phone: string): boolean => {
-    const phoneRegex = /^[0-9]{10,15}$/; // Số điện thoại từ 9 đến 15 chữ số
-    return phoneRegex.test(phone);
-  };
+const isValidPhoneNumber = (phone: string): boolean => {
+  const phoneRegex = /^[0-9]{9}$/; // Số điện thoại từ 9 đến 14 chữ số
+  return phoneRegex.test(phone);
+};
 
   // Hàm xử lý khi nhập số điện thoại
   const handlePhoneNumberChange = (text: string) => {
@@ -36,17 +36,26 @@ const sendFriendRQ = async () => {
   if (isValid) {
     try {
       // 1. Tìm user theo số điện thoại
-      console.log("Searching user by phone number:", phoneNumber);
-      const searchRes = await searchUserByPhoneNumber(phoneNumber);
+      const phone = "0"+ phoneNumber; // Thêm "0" vào đầu số điện thoại
+      setPhoneNumber(phone); // Cập nhật lại state với số điện thoại đã thêm "0"
+      console.log("Searching user by phone number:", phone);
+      const searchRes = await searchUserByPhoneNumber(phone);
       // Lấy đúng id từ response mới
       const foundUser = searchRes?.data?.user;
       console.log("Found user:", foundUser);
       
-   const foundUserId = foundUser.id;
-  console.log("Found user ID:", foundUserId);
-
+      const foundUserId = foundUser.id;
+      console.log("Found user ID:", foundUserId);
+      if (!foundUserId) {
+        Alert.alert("Không tìm thấy người dùng với số điện thoại này.");
+        return;
+      }else {
+        // Chuyển hướng đến trang profile của người dùng đã tìm thấy
+        const data = await getFriendRequest(foundUserId);
+        console.log("Friend request sent successfully:", data);
+      }
       // 2. Gửi lời mời kết bạn
-      await sendFriendRequest(foundUserId);
+      
       // Có thể set state báo thành công hoặc hiển thị thông báo trên UI
       clearPhoneNumber();
     } catch (error) {
@@ -55,13 +64,19 @@ const sendFriendRQ = async () => {
     }
   }
 };
-
+const goToFriendProfile = () => {
+  router.push(`/(root)/contacts`); // Chuyển hướng đến trang profile của người dùng đã tìm thấy
+};
 // Hàm xử lý khi nhấn nút gửi
 const handleSend = () => {
   if (!isValid) {
     // Có thể set state báo lỗi hoặc hiển thị trên UI
   } else {
     sendFriendRQ();
+  // Chuyển qua màn hình friendProfile với id đã tìm
+    goToFriendProfile(); // Chuyển hướng đến trang profile của người dùng đã tìm thấy
+    
+
   }
 };
 
@@ -70,6 +85,8 @@ const handleSend = () => {
     setPhoneNumber("");
     setIsValid(false);
   };
+  
+  //Hàm chuyển qua trang profile với id đã tìm
   
   return (
     <ScrollView className="flex-1 bg-gray-100">
