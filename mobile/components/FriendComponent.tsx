@@ -7,6 +7,7 @@ interface FriendComponentProps {
     id: string;
     avatar?: string;
     name: string;
+    status?: string;
     onPress?: () => void;
 }
 
@@ -14,7 +15,7 @@ const FriendComponent = ({
     id,
     avatar,
     name,
-    
+    status,
     onPress,
 }: FriendComponentProps) => {
     const router = useRouter();
@@ -33,16 +34,31 @@ const FriendComponent = ({
             className="flex-row items-center px-4 py-3 border-b border-gray-100"
         >
             {/* Avatar */}
-            <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center mr-3">
-                {avatar ? (
-                    <Image
-                        source={{ uri: avatar }}
-                        className="w-full h-full rounded-full"
-                    />
-                ) : (
-                    <Ionicons name="person" size={24} color="#9CA3AF" />
-                )}
-            </View>
+           {/* Avatar */}
+<View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center mr-3 relative">
+    {avatar ? (
+        <Image
+            source={{ uri: avatar }}
+            className="w-full h-full rounded-full"
+        />
+    ) : (
+        <Ionicons name="person" size={24} color="#9CA3AF" />
+    )}
+    {/* Chấm trạng thái */}
+    <View
+        style={{
+            position: "absolute",
+            bottom: 2,
+            right: 2,
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            borderWidth: 2,
+            borderColor: "#fff",
+            backgroundColor: status === "active" ? "#22c55e" : "#d1d5db", // xanh nếu online, xám nếu offline
+        }}
+    />
+</View>
 
             {/* Content */}
             <View className="flex-1">

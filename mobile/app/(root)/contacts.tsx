@@ -16,6 +16,7 @@ export type Contact = {
   id: string;
   name: string;
   avatar?: string;
+  status?: string; // Trạng thái hoạt động, ví dụ: "Đang hoạt động", "Không hoạt động"
 };
 
 export type GroupedContacts = {
@@ -55,10 +56,7 @@ const sections: ContactSection[] = [
 ];
 
 
-const recentContacts: Contact[] = [
-  { id: "1", name: "Anh Cường" },
-  { id: "6", name: "An Nhiên" },
-];
+
 
 const groups: ContactItemProps[] = [
 
@@ -127,6 +125,7 @@ const Contacts = () => {
         id: item.id,
         name: item.fullName, // map fullName thành name
         avatar: item.avatar,
+        status: item.status || "inactive", // Giả định có trường status, nếu không có thì mặc định là offline
       }));
 
       console.log("Mapped friends data:", mappedFriends);
@@ -142,7 +141,10 @@ const Contacts = () => {
   console.log("select filter:", selectedFilter);
   fetchFriends();
 }, []);
-
+const recentContacts: Contact[] = useMemo(
+  () => friends.filter(friend => friend.status === "active"),
+  [friends]
+);
 
   const sortOptions = [
     { id: "lastActivity", label: "Hoạt động cuối" },
@@ -398,6 +400,7 @@ const Contacts = () => {
                           id={item.id}
                           name={item.name}
                           avatar={item.avatar}
+                          status={item.status}
                           onPress={() => router.push(`/chat/${item.id}`)} // Điều hướng đến màn hình chat
                         />
                       )}
