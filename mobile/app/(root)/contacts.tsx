@@ -97,7 +97,10 @@ const oas: Contact[] = [
   { id: "oa1", name: "Zalo Official" },
   { id: "oa2", name: "Tech News" },
 ];
-
+  const filters = [
+    { id: "all", label: "Tất cả " },
+    { id: "recent", label: "Mới truy cập" },
+  ];
 const Contacts = () => {
   const [activeTab, setActiveTab] = useState("friends");
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -136,13 +139,10 @@ const Contacts = () => {
       setIsLoading(false);
     }
   };
-
+  console.log("select filter:", selectedFilter);
   fetchFriends();
 }, []);
-  const filters = [
-    { id: "all", label: "Tất cả " },
-    { id: "recent", label: "Mới truy cập" },
-  ];
+
 
   const sortOptions = [
     { id: "lastActivity", label: "Hoạt động cuối" },
@@ -157,7 +157,7 @@ const Contacts = () => {
   if (selectedFilter === "recent" && recentContacts.length > 0) return recentContacts;
   return friends;
 };
-  const filteredContacts = useMemo(() => getContactsByTab(), [activeTab, selectedFilter]);
+  const filteredContacts = useMemo(() => getContactsByTab(), [activeTab, selectedFilter,friends]);
 
   const groupedContacts = useMemo(() => {
     const grouped: GroupedContacts = {};
@@ -195,8 +195,8 @@ const Contacts = () => {
 
 
   const renderGroupItem = (item: ContactItemProps) => (
-    <TouchableOpacity
-      key={item.id}
+      <TouchableOpacity
+        key={item.id}
       className="flex-row items-center px-4 py-3 bg-white"
       onPress={() => router.push(`/chat/${item.id}`)}
     >

@@ -14,7 +14,7 @@ const FriendComponent = ({
     id,
     avatar,
     name,
-
+    
     onPress,
 }: FriendComponentProps) => {
     const router = useRouter();
