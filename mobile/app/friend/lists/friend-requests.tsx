@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { getSentFriendRequests } from "../../../api/apiFriends"; // Import API function to get sent friend requests
+import { getSentFriendRequests, cancelFriendRequest,acceptFriendRequest, getReceivedFriendRequests } from "../../../api/apiFriends"; // Import API function to get sent friend requests
+import {useUserStore} from "../../../store/userStore";
 interface FriendInfo {
   id: string;
   phoneNumber: string;
@@ -18,34 +19,32 @@ interface SentRequestItem {
   updated_at: string;
   friend: FriendInfo;
 }
+interface ReceivedRequestUser {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  avatar: string;
+}
+
+interface ReceivedRequestItem {
+  userId: string;
+  friendId: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  user: ReceivedRequestUser;
+}
 const FriendRequests = () => {
   // State để quản lý tab hiện tại
+  const userId = useUserStore((state) => state.user?.id);
   const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
-  const [receivedRequest, setReceivedRequest] = useState([]);
+  const [receivedRequest, setReceivedRequest] = useState<ReceivedRequestItem[]>([]);
 const [sentRequest, setSentRequest] = useState<SentRequestItem[]>([]);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
-  // Dữ liệu mẫu cho lời mời kết bạn
-  const receivedRequests = [
-    {
-      id: "1",
-      name: "Nguyễn Văn A",
-      avatar: "https://via.placeholder.com/150",
-      message: "Muốn kết bạn",
-    },
-    {
-      id: "2",
-      name: "Trần Thị B",
-      avatar: "https://via.placeholder.com/150",
-      message: "Muốn kết bạn",
-    },
-    {
-      id: "3",
-      name: "Lê Văn C",
-      avatar: "https://via.placeholder.com/150",
-      message: "Muốn kết bạn",
-    },
-  ];
+
+// Lấy userId từ store
+
 
    useEffect(() => {
     const fetchSentRequests = async () => {
@@ -64,13 +63,38 @@ const [error, setError] = useState<string | null>(null);
     fetchSentRequests();
   }, []);
 
-  //Hàm cancelFriendRequest
-  const cancelFriendRequest = async (userId: string) => {
-    // Gọi API để hủy lời mời kết bạn
-    // Ví dụ: await api.cancelFriendRequest(userId);
-    console.log(`Hủy lời mời kết bạn với userId: ${userId}`);
+useEffect(() => {
+  console.log("userId:", userId);
+  if (!userId) return; // Chỉ gọi khi userId đã có giá trị
+  const fetchReceivedRequests = async () => {
+    setLoading(true);
+    try {
+      console.log("Fetching received friend requests for userId:", userId);
+      const res = await getReceivedFriendRequests(userId);
+
+
+      setReceivedRequest(res.data);
+            console.log("Received requests:", receivedRequest);
+      setError(null);
+    } catch (err) {
+      setError("Không thể tải danh sách đã nhận");
+    } finally {
+      setLoading(false);
+    }
   };
-  
+  fetchReceivedRequests();
+}, [userId]);
+
+  const handleCancelRequest = async (friendId: string, userId: string) => {
+  try {
+    await cancelFriendRequest(friendId, userId);
+    // Xóa khỏi danh sách đã gửi sau khi hủy thành công
+    setSentRequest((prev) => prev.filter((item) => item.friendId !== friendId));
+  } catch (error) {
+    console.error("Hủy lời mời kết bạn thất bại:", error);
+    // Có thể setError hoặc hiển thị thông báo lỗi tại đây
+  }
+};
   return (
     <View className="flex-1 bg-gray-100">
       {/* Header */}
@@ -98,7 +122,7 @@ const [error, setError] = useState<string | null>(null);
               activeTab === "received" ? "text-blue-500" : "text-gray-500"
             } font-medium`}
           >
-            Đã nhận {receivedRequests.length}
+            Đã nhận {receivedRequest.length}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -122,29 +146,29 @@ const [error, setError] = useState<string | null>(null);
         {activeTab === "received" && (
           <>
             {/* Danh sách "Đã nhận" */}
-            {receivedRequests.map((request) => (
-              <View
-                key={request.id}
-                className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200"
-              >
-                <Image
-                  source={{ uri: request.avatar }}
-                  className="w-12 h-12 rounded-full"
-                />
-                <View className="flex-1 ml-3">
-                  <Text className="text-base font-medium text-gray-900">
-                    {request.name}
-                  </Text>
-                  <Text className="text-sm text-gray-500">{request.message}</Text>
-                </View>
-                <TouchableOpacity className="px-4 py-2 bg-gray-200 rounded-lg mr-2">
-                  <Text className="text-gray-800 text-sm font-medium">Từ chối</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="px-4 py-2 bg-blue-500 rounded-lg">
-                  <Text className="text-white text-sm font-medium">Đồng ý</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+           {receivedRequest.map((request) => (
+  <View
+    key={request.userId}
+    className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200"
+  >
+    <Image
+      source={{ uri: request.user.avatar }}
+      className="w-12 h-12 rounded-full"
+    />
+    <View className="flex-1 ml-3">
+      <Text className="text-base font-medium text-gray-900">
+        {request.user.fullName}
+      </Text>
+      <Text className="text-sm text-gray-500">Muốn kết bạn</Text>
+    </View>
+    <TouchableOpacity className="px-4 py-2 bg-gray-200 rounded-lg mr-2">
+      <Text className="text-gray-800 text-sm font-medium">Từ chối</Text>
+    </TouchableOpacity>
+    <TouchableOpacity className="px-4 py-2 bg-blue-500 rounded-lg">
+      <Text className="text-white text-sm font-medium">Đồng ý</Text>
+    </TouchableOpacity>
+  </View>
+))}
           </>
         )}
 
@@ -166,7 +190,7 @@ const [error, setError] = useState<string | null>(null);
       </Text>
       <Text className="text-sm text-gray-500">Đang chờ phản hồi</Text>
     </View>
-    <TouchableOpacity className="px-4 py-2 bg-gray-200 rounded-lg">
+    <TouchableOpacity className="px-4 py-2 bg-gray-200 rounded-lg" onPress={() => handleCancelRequest(item.friendId, item.userId)}>
       <Text className="text-gray-800 text-sm font-medium">Thu hồi</Text>
     </TouchableOpacity>
   </View>

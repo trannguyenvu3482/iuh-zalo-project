@@ -36,26 +36,25 @@ const getSentFriendRequests = async () => {
   });
 };
 
-/**
- * Gửi lời mời kết bạn
- */
-const sendFriendRequest = async (userId: string) => {
+const getReceivedFriendRequests = async (userId: string) => {
   const token = getToken();
-  return await axiosInstance.post(
-    `${BASE_URL}/sent-requests`,
-    { userId },
-    { headers: { "x-access-token": token } }
+  return await axiosInstance.get(
+    `${BASE_URL}/requests`,
+    {
+      headers: { "x-access-token": token },
+      params: { userId }, // Thêm userId vào query params
+    }
   );
 };
 
 /**
  * Chấp nhận lời mời kết bạn
  */
-const acceptFriendRequest = async (userId: string) => {
+const acceptFriendRequest = async (friendId: string) => {
   const token = getToken();
   return await axiosInstance.put(
     `${BASE_URL}/accept`,
-    { userId },
+    { friendId },
     { headers: { "x-access-token": token } }
   );
 };
@@ -75,11 +74,11 @@ const rejectFriendRequest = async (userId: string) => {
 /**
  * Hủy lời mời kết bạn đã gửi
  */
-const cancelFriendRequest = async (userId: string) => {
+const cancelFriendRequest = async (friendId: string, userId: string) => {
   const token = getToken();
   return await axiosInstance.delete(`${BASE_URL}/cancel`, {
     headers: { "x-access-token": token },
-    data: { userId },
+    data: { friendId, userId },
   });
 };
 
@@ -118,7 +117,7 @@ export {
   getFriends,
   getFriendRequest,
   getSentFriendRequests,
-  sendFriendRequest,
+  getReceivedFriendRequests,
   acceptFriendRequest,
   rejectFriendRequest,
   cancelFriendRequest,
