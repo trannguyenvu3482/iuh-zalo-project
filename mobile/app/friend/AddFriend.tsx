@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Alert,
   Image,
@@ -13,19 +13,48 @@ import {
 
 import { useUserStore } from "~/store/userStore"; // Import user store
 import { searchUserByPhoneNumber } from "../../api/apiUser";
-import {getFriendRequest } from "../../api/apiFriends";
+import {getFriendRequest, getFriends } from "../../api/apiFriends";
 const AddFriend = () => {
   const { user, setUser, token } = useUserStore(); // Lấy thông tin người dùng từ user store
   const [phoneNumber, setPhoneNumber] = useState(""); // State lưu số điện thoại
   const [isValid, setIsValid] = useState(false); // State kiểm tra tính hợp lệ của số điện thoại
   const [countryCode, setCountryCode] = useState("+84"); // State lưu đầu số quốc gia
-
+  const [friends, setFriends] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null); // State lưu lỗi nếu có
   // Hàm kiểm tra số điện thoại hợp lệ
 const isValidPhoneNumber = (phone: string): boolean => {
   const phoneRegex = /^[0-9]{9}$/; // Số điện thoại từ 9 đến 14 chữ số
   return phoneRegex.test(phone);
 };
+ useEffect(() => {
+  const fetchFriends = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getFriends(); // Gọi API lấy danh sách bạn bè
+      console.log("Friends data:", response.data);
 
+      // Map lại dữ liệu cho đúng props của FriendComponent
+      const mappedFriends = response.data.map((item: any) => ({
+        id: item.id,
+        name: item.fullName, // map fullName thành name
+        avatar: item.avatar,
+        status: item.status || "inactive", // Giả định có trường status, nếu không có thì mặc định là offline
+      }));
+
+      console.log("Mapped friends data:", mappedFriends);
+      setFriends(mappedFriends); // Đúng: setFriends với dữ liệu đã map
+      setError(null); // Xóa lỗi nếu có
+    } catch (err) {
+      console.error("Failed to fetch friends:", err);
+      setError("Không thể tải danh sách bạn bè. Vui lòng thử lại sau.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  fetchFriends();
+}, []);
+  
   // Hàm xử lý khi nhập số điện thoại
   const handlePhoneNumberChange = (text: string) => {
     setPhoneNumber(text);
@@ -46,13 +75,20 @@ const sendFriendRQ = async () => {
       
       const foundUserId = foundUser.id;
       console.log("Found user ID:", foundUserId);
+      const isFriend = friends.some(friend => friend.id === foundUserId);
+      
       if (!foundUserId) {
         Alert.alert("Không tìm thấy người dùng với số điện thoại này.");
         return;
       }else {
+        if (isFriend) {
+        Alert.alert("Người này đã là bạn bè của bạn.");
+        return;
+          }else {
         // Chuyển hướng đến trang profile của người dùng đã tìm thấy
         const data = await getFriendRequest(foundUserId);
         console.log("Friend request sent successfully:", data);
+        }
       }
       // 2. Gửi lời mời kết bạn
       
@@ -75,8 +111,6 @@ const handleSend = () => {
     sendFriendRQ();
   // Chuyển qua màn hình friendProfile với id đã tìm
     goToFriendProfile(); // Chuyển hướng đến trang profile của người dùng đã tìm thấy
-    
-
   }
 };
 

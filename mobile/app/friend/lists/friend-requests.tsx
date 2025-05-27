@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { getSentFriendRequests, cancelFriendRequest,acceptFriendRequest, getReceivedFriendRequests } from "../../../api/apiFriends"; // Import API function to get sent friend requests
 import {useUserStore} from "../../../store/userStore";
+import { set } from "date-fns";
 interface FriendInfo {
   id: string;
   phoneNumber: string;
@@ -45,23 +46,25 @@ const [error, setError] = useState<string | null>(null);
 
 // Lấy userId từ store
 
+const [refreshSent, setRefreshSent] = useState(0);
 
-   useEffect(() => {
-    const fetchSentRequests = async () => {
-      setLoading(true);
-      try {
-        const res = await getSentFriendRequests();
-        setSentRequest(res.data); // Giả sử API trả về danh sách lời mời đã gửi
-        console.log("Sent requests:", res.data);
-        setError(null);
-      } catch (err) {
-        setError("Không thể tải danh sách đã gửi");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSentRequests();
-  }, []);
+useEffect(() => {
+  const fetchSentRequests = async () => {
+    setLoading(true);
+    try {
+      const res = await getSentFriendRequests();
+      const data = res.data;
+      console.log("Sent requests:", data);
+      setSentRequest(data);
+      setError(null);
+    } catch (err) {
+      setError("Không thể tải danh sách đã gửi");
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchSentRequests();
+}, []);
 
 useEffect(() => {
   console.log("userId:", userId);
@@ -71,8 +74,6 @@ useEffect(() => {
     try {
       console.log("Fetching received friend requests for userId:", userId);
       const res = await getReceivedFriendRequests(userId);
-
-
       setReceivedRequest(res.data);
             console.log("Received requests:", receivedRequest);
       setError(null);
@@ -85,15 +86,17 @@ useEffect(() => {
   fetchReceivedRequests();
 }, [userId]);
 
+
   const handleCancelRequest = async (friendId: string, userId: string) => {
   try {
     await cancelFriendRequest(friendId, userId);
-    // Xóa khỏi danh sách đã gửi sau khi hủy thành công
-    setSentRequest((prev) => prev.filter((item) => item.friendId !== friendId));
+    
+    // Hoặc gọi lại API và set đúng cấu trúc như trên\
+  
   } catch (error) {
     console.error("Hủy lời mời kết bạn thất bại:", error);
-    // Có thể setError hoặc hiển thị thông báo lỗi tại đây
   }
+  router.push(`/(root)/contacts`);
 };
   return (
     <View className="flex-1 bg-gray-100">

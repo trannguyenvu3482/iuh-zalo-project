@@ -7,7 +7,7 @@ import { FaEllipsisH, FaStar } from 'react-icons/fa'
 import { FiAlertCircle } from 'react-icons/fi'
 import { HiOutlineReply } from 'react-icons/hi'
 import { HiMiniGif } from 'react-icons/hi2'
-import { recallMessage } from '../../../api/apiMessage'
+import { recallMessage, sendNewMessage } from '../../../api/apiMessage'
 import ChatImageViewer from '../../chat/ChatImageViewer'
 import DocumentPreview from '../../chat/DocumentPreview'
 import ShareMessageDialog from '../../dialogs/ShareMessageDialog' // Import the dialog component
@@ -206,7 +206,17 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   const handleShareMessage = async (selectedContacts) => {
     try {
       console.log('Sharing message:', message.id, 'with contacts:', selectedContacts);
-      // Add your logic to share the message with the selected contacts
+
+      // Iterate over the selected contacts and send the message to each
+      for (const receiverId of selectedContacts) {
+        await sendNewMessage({
+          receiverId,
+          content: message.content || message.message || '',
+          type: message.type || 'TEXT',
+        });
+      }
+
+      console.log('Message shared successfully with all selected contacts');
     } catch (error) {
       console.error('Error sharing message:', error);
     }
