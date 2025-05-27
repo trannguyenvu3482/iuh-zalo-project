@@ -1,10 +1,9 @@
 import axiosInstance from "../lib/axios";
-import { useSigninStore } from "~/store/signinStore";
+import { useUserStore } from "~/store/userStore";
 const BASE_URL = "/users/friends";
 
 // Lấy token từ store
-const getToken = () => useSigninStore.getState().data.accessToken;
-
+const getToken = () => useUserStore.getState().token || "";
 /**
  * Lấy danh sách bạn bè
  */
@@ -18,43 +17,44 @@ const getFriends = async () => {
 /**
  * Lấy danh sách lời mời kết bạn nhận được
  */
-const getFriendRequests = async () => {
+const getFriendRequest = async (friendId: string) => {
   const token = getToken();
-  return await axiosInstance.get(`${BASE_URL}/requests`, {
-    headers: { "x-access-token": token },
-  });
+  return await axiosInstance.post(
+    `${BASE_URL}/add`,
+    { friendId }, // body
+    { headers: { "x-access-token": token } }
+  );
 };
-
 /**
  * Lấy danh sách lời mời kết bạn đã gửi
  */
 const getSentFriendRequests = async () => {
   const token = getToken();
+  console.log("Fetching sent friend requests with token:", token);
   return await axiosInstance.get(`${BASE_URL}/sent-requests`, {
     headers: { "x-access-token": token },
   });
 };
 
-/**
- * Gửi lời mời kết bạn
- */
-const sendFriendRequest = async (userId: string) => {
+const getReceivedFriendRequests = async (userId: string) => {
   const token = getToken();
-  return await axiosInstance.post(
-    `${BASE_URL}/add`,
-    { userId },
-    { headers: { "x-access-token": token } }
+  return await axiosInstance.get(
+    `${BASE_URL}/requests`,
+    {
+      headers: { "x-access-token": token },
+      params: { userId }, // Thêm userId vào query params
+    }
   );
 };
 
 /**
  * Chấp nhận lời mời kết bạn
  */
-const acceptFriendRequest = async (userId: string) => {
+const acceptFriendRequest = async (friendId: string) => {
   const token = getToken();
   return await axiosInstance.put(
     `${BASE_URL}/accept`,
-    { userId },
+    { friendId },
     { headers: { "x-access-token": token } }
   );
 };
@@ -74,11 +74,12 @@ const rejectFriendRequest = async (userId: string) => {
 /**
  * Hủy lời mời kết bạn đã gửi
  */
-const cancelFriendRequest = async (userId: string) => {
+const cancelFriendRequest = async (friendId: string, userId: string) => {
   const token = getToken();
   return await axiosInstance.delete(`${BASE_URL}/cancel`, {
     headers: { "x-access-token": token },
-    data: { userId },
+    data: { friendId }, // Gửi friendId và userId trong body
+    params: {userId } // Sử dụng params để truyền friendId và userId
   });
 };
 
@@ -115,9 +116,9 @@ const getFriendSuggestions = async () => {
 
 export {
   getFriends,
-  getFriendRequests,
+  getFriendRequest,
   getSentFriendRequests,
-  sendFriendRequest,
+  getReceivedFriendRequests,
   acceptFriendRequest,
   rejectFriendRequest,
   cancelFriendRequest,

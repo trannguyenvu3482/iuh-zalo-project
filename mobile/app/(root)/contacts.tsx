@@ -16,6 +16,7 @@ export type Contact = {
   id: string;
   name: string;
   avatar?: string;
+  status?: string; // Trạng thái hoạt động, ví dụ: "Đang hoạt động", "Không hoạt động"
 };
 
 export type GroupedContacts = {
@@ -55,10 +56,7 @@ const sections: ContactSection[] = [
 ];
 
 
-const recentContacts: Contact[] = [
-  { id: "1", name: "Anh Cường" },
-  { id: "6", name: "An Nhiên" },
-];
+
 
 const groups: ContactItemProps[] = [
 
@@ -97,7 +95,10 @@ const oas: Contact[] = [
   { id: "oa1", name: "Zalo Official" },
   { id: "oa2", name: "Tech News" },
 ];
-
+  const filters = [
+    { id: "all", label: "Tất cả " },
+    { id: "recent", label: "Mới truy cập" },
+  ];
 const Contacts = () => {
   const [activeTab, setActiveTab] = useState("friends");
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -124,6 +125,7 @@ const Contacts = () => {
         id: item.id,
         name: item.fullName, // map fullName thành name
         avatar: item.avatar,
+        status: item.status || "inactive", // Giả định có trường status, nếu không có thì mặc định là offline
       }));
 
       console.log("Mapped friends data:", mappedFriends);
@@ -136,13 +138,13 @@ const Contacts = () => {
       setIsLoading(false);
     }
   };
-
+  console.log("select filter:", selectedFilter);
   fetchFriends();
 }, []);
-  const filters = [
-    { id: "all", label: "Tất cả " },
-    { id: "recent", label: "Mới truy cập" },
-  ];
+const recentContacts: Contact[] = useMemo(
+  () => friends.filter(friend => friend.status === "active"),
+  [friends]
+);
 
   const sortOptions = [
     { id: "lastActivity", label: "Hoạt động cuối" },
@@ -157,7 +159,7 @@ const Contacts = () => {
   if (selectedFilter === "recent" && recentContacts.length > 0) return recentContacts;
   return friends;
 };
-  const filteredContacts = useMemo(() => getContactsByTab(), [activeTab, selectedFilter]);
+  const filteredContacts = useMemo(() => getContactsByTab(), [activeTab, selectedFilter,friends]);
 
   const groupedContacts = useMemo(() => {
     const grouped: GroupedContacts = {};
@@ -195,8 +197,8 @@ const Contacts = () => {
 
 
   const renderGroupItem = (item: ContactItemProps) => (
-    <TouchableOpacity
-      key={item.id}
+      <TouchableOpacity
+        key={item.id}
       className="flex-row items-center px-4 py-3 bg-white"
       onPress={() => router.push(`/chat/${item.id}`)}
     >
@@ -398,6 +400,7 @@ const Contacts = () => {
                           id={item.id}
                           name={item.name}
                           avatar={item.avatar}
+                          status={item.status}
                           onPress={() => router.push(`/chat/${item.id}`)} // Điều hướng đến màn hình chat
                         />
                       )}
