@@ -38,13 +38,13 @@ export class SocketService {
       // Get the backend URL from Constants or use a default
       let SOCKET_URL = "";
       try {
-        SOCKET_URL = "http://192.168.137.146:8081";
+        SOCKET_URL = "http://192.168.0.105:8081";
       } catch (error) {
         console.error(
           "[Socket] Error getting SOCKET_URL from Constants:",
           error,
         );
-        SOCKET_URL = "http://192.168.137.146:8081"; // Fallback URL
+        SOCKET_URL = "http://192.168.0.105:8081"; // Fallback URL
       }
 
       console.log(
@@ -71,9 +71,11 @@ export class SocketService {
         this.isConnected = true;
 
         // Rejoin all conversation rooms on reconnect
-        this.conversationRooms.forEach((roomId) => {
-          console.log(`[Socket] Rejoining conversation room: ${roomId}`);
-          this.socket?.emit("join_conversation", { conversationId: roomId });
+        this.conversationRooms.forEach((conversationId) => {
+          console.log(
+            `[Socket] Rejoining conversation room: ${conversationId}`,
+          );
+          this.socket?.emit("join", `conversation_${conversationId}`);
         });
 
         // Rejoin all direct rooms on reconnect
@@ -154,7 +156,6 @@ export class SocketService {
   public getSocket(): Socket | null {
     return this.socket;
   }
-
   public joinConversation(conversationId: string): boolean {
     if (!this.socket || !this.isConnected) {
       console.log("[Socket] Cannot join room - not connected");
@@ -167,8 +168,8 @@ export class SocketService {
       // Store the conversation ID to rejoin on reconnect
       this.conversationRooms.add(conversationId);
 
-      // Join the conversation room
-      this.socket.emit("join_conversation", { conversationId });
+      // Join the conversation room using the correct event name
+      this.socket.emit("join", `conversation_${conversationId}`);
 
       // For private conversations, we should also join a direct room with the receiver
       // This ensures private messages work even without a conversation ID
@@ -225,10 +226,8 @@ export class SocketService {
           contentPreview: message.substring(0, 20),
           receiverId: receiverId || "none",
         },
-      );
-
-      // Send the chat message event
-      this.socket.emit("send_message", messageData);
+      ); // Send the chat message event
+      this.socket.emit("chat message", messageData);
 
       return true;
     } catch (error) {

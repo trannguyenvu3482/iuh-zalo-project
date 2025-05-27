@@ -5,13 +5,7 @@ import { useSocketStore } from "~/store/socketStore";
 import { useUserStore } from "~/store/userStore";
 
 export const useSocket = () => {
-  const {
-    setConnected,
-    addMessage,
-    updateMessageStatus,
-    incrementUnreadCount,
-  } = useSocketStore();
-
+  const { setConnected, addMessage, updateMessageStatus } = useSocketStore();
   const { user } = useUserStore();
 
   useEffect(() => {
@@ -29,7 +23,7 @@ export const useSocket = () => {
     // Connect to the socket
     socketService.connect(user.id, userName);
 
-    // Set up event listeners
+    // Set up basic connection event listeners only
     socketService.on("connect", () => {
       console.log("[useSocket] Socket connected event received");
       setConnected(true);
@@ -40,34 +34,26 @@ export const useSocket = () => {
       setConnected(false);
     });
 
-    // Reset socket event listeners to ensure we don't have duplicates
-    socketService.off("new_message");
-    socketService.off("chat message");
-    socketService.off("message_status");
-
-    // Must use the same exact event name as the frontend
+    // Listen for new messages but only process messages from OTHER users
     socketService.on("new_message", (data) => {
       console.log("[useSocket] Received new_message event:", data);
 
-      // Add essential fields if missing
       if (!data.id) {
         data.id = Date.now().toString();
-        console.log("[useSocket] Added missing ID to message");
       }
 
-      const {
-        sender,
-        senderId,
-        content,
-        message,
-        conversationId,
-        receiverId,
-        timestamp,
-      } = data;
+      const { senderId, conversationId } = data;
 
-      // Determine the chat ID - could be conversationId or for direct messages the senderId
+      // Only process messages from OTHER users (not current user)
+      // This prevents duplication for sent messages
+      if (senderId === user?.id) {
+        console.log("[useSocket] Skipping own message to prevent duplication");
+        return;
+      }
+
+      // Determine chat ID for the message
       const chatId =
-        conversationId || (user?.id === senderId ? receiverId : senderId);
+        conversationId || (senderId !== user?.id ? senderId : data.receiverId);
 
       if (!chatId) {
         console.error(
@@ -77,128 +63,26 @@ export const useSocket = () => {
         return;
       }
 
-      console.log(`[useSocket] Processing message for chat ${chatId}`);
-
-      // Format message to match our store format
+      // Format message for store
       const formattedMessage = {
         id: data.id,
-        content: content || message || "",
+        content: data.content || data.message || "",
         senderId: senderId || "",
-        receiverId: receiverId || "",
-        timestamp: timestamp || new Date().toISOString(),
+        receiverId: data.receiverId || "",
+        timestamp: data.timestamp || new Date().toISOString(),
         status: "sent" as const,
-        sender: senderId === user?.id ? "me" : "other",
-        type: "TEXT" as const,
-        // Add sender object if it exists
+        sender: "other",
+        type: data.type || "TEXT",
         ...(data.sender && typeof data.sender === "object"
           ? { sender: data.sender }
           : {}),
-        // Add other properties that might be present
-        ...(data.type ? { type: data.type as "TEXT" } : {}),
         ...(data.file ? { file: data.file } : {}),
         ...(data.reaction ? { reaction: data.reaction } : {}),
       };
-
       console.log(
-        `[useSocket] Adding message to chat ${chatId}:`,
-        formattedMessage,
+        `[useSocket] Adding message from other user to chat ${chatId}`,
       );
-
-      // Add message to the store with a slight delay to ensure UI updates
-      setTimeout(() => {
-        addMessage(chatId, formattedMessage);
-        console.log(`[useSocket] Added delayed message to chat ${chatId}`);
-
-        // Only increment unread count if message is not from current user
-        if (senderId !== user?.id) {
-          incrementUnreadCount(chatId);
-        }
-      }, 100);
-    });
-
-    // Also listen for direct chat message events (legacy format)
-    socketService.on("chat message", (data) => {
-      console.log("[useSocket] Received chat message event:", data);
-
-      // Add essential fields if missing
-      if (!data.id) {
-        data.id = Date.now().toString();
-        console.log("[useSocket] Added missing ID to chat message");
-      }
-
-      // Transform to expected format and forward to new_message handler
-      const transformedData = {
-        ...data,
-        content: data.message || data.content || "",
-      };
-
-      console.log(
-        "[useSocket] Transformed chat message data:",
-        transformedData,
-      );
-
-      // IMPORTANT: Directly process this message using the same logic
-      // as the new_message handler instead of trying to trigger that handler
-      const {
-        senderId,
-        content,
-        message,
-        conversationId,
-        receiverId,
-        timestamp,
-      } = transformedData;
-
-      // Determine the chat ID
-      const chatId =
-        conversationId || (user?.id === senderId ? receiverId : senderId);
-
-      if (!chatId) {
-        console.error(
-          "[useSocket] Cannot determine chat ID for message:",
-          transformedData,
-        );
-        return;
-      }
-
-      console.log(`[useSocket] Processing chat message for chat ${chatId}`);
-
-      // Format message to match our store format
-      const formattedMessage = {
-        id: transformedData.id,
-        content: content || message || "",
-        senderId: senderId || "",
-        receiverId: receiverId || "",
-        timestamp: timestamp || new Date().toISOString(),
-        status: "sent" as const,
-        sender: senderId === user?.id ? "me" : "other",
-        type: "TEXT" as const, // Safe default
-        // Add sender object if it exists
-        ...(transformedData.sender && typeof transformedData.sender === "object"
-          ? { sender: transformedData.sender }
-          : {}),
-        // Add other properties that might be present - safely typed
-        ...(transformedData.type ? { type: transformedData.type as any } : {}),
-        ...(transformedData.file ? { file: transformedData.file } : {}),
-        ...(transformedData.reaction
-          ? { reaction: transformedData.reaction }
-          : {}),
-      };
-
-      console.log(
-        `[useSocket] Adding chat message to chat ${chatId}:`,
-        formattedMessage,
-      );
-
-      // Add to store - with delay to ensure UI updates
-      setTimeout(() => {
-        addMessage(chatId, formattedMessage);
-        console.log(`[useSocket] Added delayed chat message to chat ${chatId}`);
-
-        // Only increment unread count if message is not from current user
-        if (senderId !== user?.id) {
-          incrementUnreadCount(chatId);
-        }
-      }, 100);
+      addMessage(chatId, formattedMessage);
     });
 
     socketService.on("message_status", (data) => {
@@ -207,9 +91,8 @@ export const useSocket = () => {
       updateMessageStatus(chatId, messageId, status);
     });
 
-    // Join conversation room when chat ID is available
+    // Join user's own room for receiving direct messages
     if (user?.id) {
-      // Always join the user's own room
       const userRoom = `user_${user.id}`;
       console.log(`[useSocket] Joining user room: ${userRoom}`);
       socketService.emit("join", userRoom);
@@ -221,7 +104,6 @@ export const useSocket = () => {
       socketService.off("connect");
       socketService.off("disconnect");
       socketService.off("new_message");
-      socketService.off("chat message");
       socketService.off("message_status");
     };
   }, [user?.id, user?.fullName]);
@@ -230,17 +112,14 @@ export const useSocket = () => {
     console.log("[useSocket] Sending message via socket:", { chatId, content });
 
     // Check connection first to avoid unnecessary steps if disconnected
-    if (!socketService.isConnected()) {
+    if (!socketService.isSocketConnected()) {
       console.warn("[useSocket] Socket not connected, cannot send message");
       return false;
     }
 
     try {
-      // Use our enhanced sendChatMessage method that formats data correctly
-      socketService.sendChatMessage({
-        conversationId: chatId,
-        message: content,
-      });
+      // Use the correct sendChatMessage method signature
+      socketService.sendChatMessage(chatId, content);
 
       // Also explicitly join the conversation room to ensure we receive responses
       socketService.joinConversation(chatId);
