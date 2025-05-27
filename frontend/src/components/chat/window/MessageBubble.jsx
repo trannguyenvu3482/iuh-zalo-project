@@ -7,7 +7,7 @@ import { FaEllipsisH, FaStar } from 'react-icons/fa'
 import { FiAlertCircle } from 'react-icons/fi'
 import { HiOutlineReply } from 'react-icons/hi'
 import { HiMiniGif } from 'react-icons/hi2'
-import { recallMessage, sendNewMessage } from '../../../api/apiMessage'
+import { deleteMessageForUser, recallMessage, sendNewMessage } from '../../../api/apiMessage'
 import ChatImageViewer from '../../chat/ChatImageViewer'
 import DocumentPreview from '../../chat/DocumentPreview'
 import ShareMessageDialog from '../../dialogs/ShareMessageDialog' // Import the dialog component
@@ -38,6 +38,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   const [isHovered, setIsHovered] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false); // State to control dialog visibility
+  const [isDeleted, setIsDeleted] = useState(message.isDeleted);
   const menuRef = useRef(null)
   const bubbleRef = useRef(null)
 
@@ -255,13 +256,22 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
   }
 
   // Handle delete message
-  const handleDeleteMessage = () => {
-    console.log('Delete just for me:', message.id)
-    setIsMenuOpen(false)
+  const handleDeleteMessage = async () => {
+    try {
+      console.log('Deleting message just for me:', message.id);
+      setIsMenuOpen(false);
 
-    // Mark the message as deleted
-    message.isDeleted = true
-  }
+      // Call the API to delete the message for the current user
+      await deleteMessageForUser(message.id);
+
+      // Update the state
+      setIsDeleted(true);
+
+      console.log('Message deleted successfully for the current user');
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
+  };
 
   // Handle reply information
   const isReplyMessage = message.replyToId || message.replyToMessage
@@ -269,22 +279,30 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
 
   // Render message content based on type
   const renderMessageContent = () => {
+    if (isDeleted) {
+      return (
+        <div className="flex items-center gap-1 text-sm italic text-gray-500">
+          <FiAlertCircle className="h-4 w-4" />
+          <span>This message has been deleted.</span>
+        </div>
+      );
+    }
+
     if (message.isRecalled) {
       return (
         <div className="flex items-center gap-1 text-sm italic">
           <FiAlertCircle className="h-4 w-4" />
           <span>Tin nhắn đã bị thu hồi</span>
         </div>
-      )
+      );
     }
 
-    // Get filename for document types
-    const fileName = getFilenameFromUrl(fileUrl || content)
+    // Existing logic for rendering message content
+    const fileName = getFilenameFromUrl(fileUrl || content);
 
     switch (messageType) {
       case 'IMAGE':
-        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
-
+        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />;
       case 'GIF':
         return (
           <div className="relative w-auto">
@@ -293,8 +311,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
               <HiMiniGif className="h-4 w-4" />
             </div>
           </div>
-        )
-
+        );
       // Document types
       case 'PDF':
       case 'DOCX':
@@ -314,10 +331,10 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
             fileType={messageType}
             fileName={fileName}
           />
-        )
+        );
 
       case 'BMP':
-        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />
+        return <ChatImageViewer imageUrl={fileUrl || content} sender={sender} />;
 
       case 'MP4':
         return (
@@ -330,7 +347,7 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
               <source src={fileUrl || content} type="video/mp4" />
             </video>
           </div>
-        )
+        );
 
       default:
         return <p className="break-words text-sm">{content}</p>
@@ -403,8 +420,9 @@ const MessageBubble = ({ message, isCurrentUser, onUserClick, onReply }) => {
     )
   }
 
-  if (message.isDeleted) {
-    return null // Do not render the message if it is marked as deleted
+  // Skip rendering if the message is deleted
+  if (isDeleted) {
+    return null;
   }
 
   return (

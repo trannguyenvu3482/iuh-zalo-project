@@ -28,6 +28,11 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     messageController.recallMessage
   );
+  app.delete(
+    "/api/messages/:messageId/user",
+    [authJwt.verifyToken],
+    messageController.deleteMessageForUser
+  );
 
   // Conversation Routes
   app.get(

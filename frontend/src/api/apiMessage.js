@@ -196,6 +196,21 @@ export const deleteMessage = async (messageId) => {
 }
 
 /**
+ * Delete a message just for the current user
+ * @param {string} messageId - The message ID
+ * @returns {Promise<void>}
+ */
+export const deleteMessageForUser = async (messageId) => {
+  try {
+    const response = await axios.delete(`/messages/${messageId}/user`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting message for user:', error);
+    throw new Error(error.message || 'Failed to delete message for user');
+  }
+};
+
+/**
  * Get unread message count
  * @returns {Promise<Object>} Unread count object
  */
@@ -252,6 +267,7 @@ export default {
   getAllConversations,
   markMessagesAsRead,
   deleteMessage,
+  deleteMessageForUser,
   getUnreadMessageCount,
   createConversation,
   recallMessage,

@@ -96,7 +96,8 @@ CREATE TABLE messages (
     'FRIEND_CONNECTED'
   )),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  isDeleted BOOLEAN DEFAULT FALSE
 );
 
 -- Create reactions table
@@ -139,4 +140,4 @@ CREATE POLICY service_role_access ON friendships FOR ALL USING (auth.role() = 's
 CREATE POLICY service_role_access ON conversations FOR ALL USING (auth.role() = 'service_role');
 CREATE POLICY service_role_access ON conversation_members FOR ALL USING (auth.role() = 'service_role');
 CREATE POLICY service_role_access ON messages FOR ALL USING (auth.role() = 'service_role');
-CREATE POLICY service_role_access ON reactions FOR ALL USING (auth.role() = 'service_role'); 
+CREATE POLICY service_role_access ON reactions FOR ALL USING (auth.role() = 'service_role');

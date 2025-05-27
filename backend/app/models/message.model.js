@@ -37,6 +37,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: false,
       },
+      isDeleted: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false, // Default to false
+      },
       type: {
         type: DataTypes.ENUM(
           "TEXT",
@@ -58,8 +63,6 @@ module.exports = (sequelize, DataTypes) => {
         // Self-referencing field for replying to a message
         type: DataTypes.UUID,
         allowNull: true,
-        // Remove explicit references to prevent "relation 'message' does not exist" error
-        // We'll handle these associations in the index.js file
       },
       isSystemMessage: {
         type: DataTypes.BOOLEAN,
@@ -82,10 +85,6 @@ module.exports = (sequelize, DataTypes) => {
       updatedAt: "updated_at",
     }
   );
-
-  // Remove these associations - they'll be defined in index.js instead
-  // Message.belongsTo(Message, { as: "replyTo", foreignKey: "replyToId" });
-  // Message.hasMany(Message, { as: "replies", foreignKey: "replyToId" });
 
   return Message;
 };
