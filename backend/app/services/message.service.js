@@ -7,6 +7,7 @@ const {
   User,
   Friendship,
   ConversationMember,
+  UserMessage,
 } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const {
@@ -730,5 +731,32 @@ exports.recallMessage = async (messageId, userId) => {
     console.error("Error recalling message:", error);
     if (error instanceof AppError) throw error;
     throw new AppError(`Failed to recall message: ${error.message}`, 500);
+  }
+};
+
+/**
+ * Delete a message for a specific user (soft delete)
+ * @param {string} messageId - ID of the message to delete
+ * @param {string} userId - ID of the user
+ * @returns {boolean} - True if deletion was successful
+ */
+exports.deleteMessageForUser = async (messageId, userId) => {
+  try {
+    const message = await Message.findByPk(messageId);
+
+    if (!message) {
+      throw new NotFoundError("Message not found");
+    }
+
+    // Update the isDeleted flag for the message
+    await Message.update(
+      { isDeleted: true },
+      { where: { id: messageId } } // Remove sender condition
+    );
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting message for user:", error);
+    throw new AppError("Failed to delete message for user", 500);
   }
 };
