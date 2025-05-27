@@ -205,6 +205,22 @@ exports.recallMessage = async (req, res, next) => {
   }
 };
 
+exports.deleteMessageForUser = async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) throw new UnauthorizedError("Authentication required");
+    if (!messageId) throw new ValidationError("Message ID is required");
+
+    await messageService.deleteMessageForUser(messageId, userId);
+
+    successResponse(res, "Message deleted successfully for the user");
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   setIo,
   ...exports,
