@@ -38,24 +38,36 @@ interface ReceivedRequestItem {
 const FriendRequests = () => {
   // State để quản lý tab hiện tại
   const userId = useUserStore((state) => state.user?.id);
+  if (!userId) {
+    console.error("userId is not available in FriendRequests component");
+    return null; // Hoặc hiển thị thông báo lỗi
+  }
   const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
   const [receivedRequest, setReceivedRequest] = useState<ReceivedRequestItem[]>([]);
 const [sentRequest, setSentRequest] = useState<SentRequestItem[]>([]);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
 
-// Lấy userId từ store
-
-const [refreshSent, setRefreshSent] = useState(0);
-
 useEffect(() => {
   const fetchSentRequests = async () => {
     setLoading(true);
     try {
       const res = await getSentFriendRequests();
-      const data = res.data;
-      console.log("Sent requests:", data);
-      setSentRequest(data);
+      // Map lại data cho đúng interface SentRequestItem
+      const mapped = res.data.map((item: any) => ({
+        userId: item.userId,
+        friendId: item.friendId,
+        status: item.status,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        friend: {
+          id: item.friend.id,
+          phoneNumber: item.friend.phoneNumber,
+          fullName: item.friend.fullName,
+          avatar: item.friend.avatar,
+        },
+      }));
+      setSentRequest(mapped);
       setError(null);
     } catch (err) {
       setError("Không thể tải danh sách đã gửi");
@@ -86,17 +98,14 @@ useEffect(() => {
   fetchReceivedRequests();
 }, [userId]);
 
-
-  const handleCancelRequest = async (friendId: string, userId: string) => {
+const handleCancelRequest = async (friendId: string, userId: string) => {
   try {
     await cancelFriendRequest(friendId, userId);
-    
-    // Hoặc gọi lại API và set đúng cấu trúc như trên\
-  
+    // Xoá phần tử khỏi state ngay lập tức để UI phản hồi nhanh
+    setSentRequest((prev) => prev.filter(item => item.friendId !== friendId));
   } catch (error) {
     console.error("Hủy lời mời kết bạn thất bại:", error);
   }
-  router.push(`/(root)/contacts`);
 };
   return (
     <View className="flex-1 bg-gray-100">
@@ -125,7 +134,7 @@ useEffect(() => {
               activeTab === "received" ? "text-blue-500" : "text-gray-500"
             } font-medium`}
           >
-            Đã nhận {receivedRequest.length}
+            Đã nhận 
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -139,7 +148,7 @@ useEffect(() => {
               activeTab === "sent" ? "text-blue-500" : "text-gray-500"
             } font-medium`}
           >
-            Đã gửi {sentRequest.length}
+            Đã gửi 
           </Text>
         </TouchableOpacity>
       </View>
@@ -193,7 +202,10 @@ useEffect(() => {
       </Text>
       <Text className="text-sm text-gray-500">Đang chờ phản hồi</Text>
     </View>
-    <TouchableOpacity className="px-4 py-2 bg-gray-200 rounded-lg" onPress={() => handleCancelRequest(item.friendId, item.userId)}>
+    <TouchableOpacity
+      className="px-4 py-2 bg-gray-200 rounded-lg"
+      onPress={() => handleCancelRequest(item.friendId, userId)}
+    >
       <Text className="text-gray-800 text-sm font-medium">Thu hồi</Text>
     </TouchableOpacity>
   </View>

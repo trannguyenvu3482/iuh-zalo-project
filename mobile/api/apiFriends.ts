@@ -1,10 +1,9 @@
 import axiosInstance from "../lib/axios";
-import { useSigninStore } from "~/store/signinStore";
+import { useUserStore } from "~/store/userStore";
 const BASE_URL = "/users/friends";
 
 // Lấy token từ store
-const getToken = () => useSigninStore.getState().data.accessToken;
-
+const getToken = () => useUserStore.getState().token || "";
 /**
  * Lấy danh sách bạn bè
  */
@@ -31,6 +30,7 @@ const getFriendRequest = async (friendId: string) => {
  */
 const getSentFriendRequests = async () => {
   const token = getToken();
+  console.log("Fetching sent friend requests with token:", token);
   return await axiosInstance.get(`${BASE_URL}/sent-requests`, {
     headers: { "x-access-token": token },
   });
@@ -78,7 +78,8 @@ const cancelFriendRequest = async (friendId: string, userId: string) => {
   const token = getToken();
   return await axiosInstance.delete(`${BASE_URL}/cancel`, {
     headers: { "x-access-token": token },
-    data: { friendId, userId },
+    data: { friendId }, // Gửi friendId và userId trong body
+    params: {userId } // Sử dụng params để truyền friendId và userId
   });
 };
 
