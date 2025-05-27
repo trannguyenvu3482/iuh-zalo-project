@@ -18,15 +18,15 @@ const FriendComponent = ({
     status,
     onPress,
 }: FriendComponentProps) => {
-    const router = useRouter();
+  const router = useRouter();
 
-    const handlePress = () => {
-        onPress?.();
-        router.push({
-            pathname: "/chat/[id]",
-            params: { id },
-        });
-    };
+  const handlePress = () => {
+    onPress?.();
+    router.push({
+      pathname: "/chat/[id]",
+      params: { id },
+    });
+  };
 
     return (
         <TouchableOpacity
@@ -60,18 +60,14 @@ const FriendComponent = ({
     />
 </View>
 
-            {/* Content */}
-            <View className="flex-1">
-                <Text
-                    className="text-lg font-medium text-gray-900"
-                    numberOfLines={1}
-                >
-                    {name}
-                </Text>
-
-            </View>
-        </TouchableOpacity>
-    );
+      {/* Content */}
+      <View className="flex-1">
+        <Text className="text-lg font-medium text-gray-900" numberOfLines={1}>
+          {name}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 };
 
 export default FriendComponent;
